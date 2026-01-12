@@ -6,3 +6,21 @@ steps:
   - name: 'gcr.io/cloud-builders/npm'
     args: ['install']
   # ... other steps ...
+
+# Add this section at the root level of the file
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+  # (Optional) Deploy to Cloud Run or other target
+  # - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  #   entrypoint: 'gcloud'
+  #   args:
+  #     [
+  #       'run',
+  #       'deploy',
+  #       'YOUR_SERVICE_NAME',
+  #       '--image=gcr.io/$PROJECT_ID/YOUR_IMAGE_NAME',
+  #       '--region=YOUR_REGION',
+  #       '--platform=managed',
+  #       '--allow-unauthenticated'
+  #     ]

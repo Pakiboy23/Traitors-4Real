@@ -6,8 +6,8 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       server: {
-        port: 5173,
-        host: '127.0.0.1',
+        port: 3000,
+        host: '0.0.0.0',
       },
       plugins: [react()],
       define: {
@@ -18,21 +18,6 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
-      },
-      build: {
-        rollupOptions: {
-          output: {
-            manualChunks(id) {
-              if (id.includes('node_modules/react')) {
-                return 'react';
-              }
-              if (id.includes('node_modules/firebase')) {
-                return 'firebase';
-              }
-              return undefined;
-            },
-          },
-        },
-      },
+      }
     };
 });
