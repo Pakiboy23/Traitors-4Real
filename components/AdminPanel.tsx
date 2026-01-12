@@ -6,9 +6,14 @@ import { generateTraitorImage } from '../services/gemini';
 interface AdminPanelProps {
   gameState: GameState;
   updateGameState: (state: GameState) => void;
+  onSignOut?: () => void;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({
+  gameState,
+  updateGameState,
+  onSignOut,
+}) => {
   const [pasteContent, setPasteContent] = useState('');
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
@@ -186,6 +191,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-3xl gothic-font text-[#D4AF37]">Management Vault</h2>
         <div className="flex gap-2">
+          {onSignOut && (
+            <button
+              onClick={onSignOut}
+              className="px-4 py-2 bg-zinc-900 text-[10px] text-red-300 rounded border border-red-900 uppercase font-bold tracking-widest hover:bg-red-900/50 transition-all"
+            >
+              Sign Out
+            </button>
+          )}
           <button 
             onClick={handleGenerateAllPortraits}
             className="px-4 py-2 bg-zinc-900 text-[10px] text-[#D4AF37] rounded border border-[#D4AF37]/30 uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all"

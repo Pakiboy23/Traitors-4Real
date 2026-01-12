@@ -1,16 +1,20 @@
 import React, { useState } from 'react';
 
 interface AdminAuthProps {
-  onAuthenticate: (password: string) => boolean;
+  onAuthenticate: (email: string, password: string) => Promise<boolean>;
 }
 
 const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = onAuthenticate(password);
+    setIsSubmitting(true);
+    const success = await onAuthenticate(email, password);
+    setIsSubmitting(false);
 
     if (!success) {
       setError(true);
@@ -37,13 +41,26 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
             <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter Secret Phrase"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Admin Email"
               className={`w-full bg-black border ${
                 error ? 'border-red-600 animate-shake' : 'border-zinc-800'
               } p-4 rounded text-center text-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all gothic-font tracking-[0.2em]`}
+              autoComplete="email"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              className={`w-full bg-black border ${
+                error ? 'border-red-600 animate-shake' : 'border-zinc-800'
+              } p-4 rounded text-center text-[#D4AF37] focus:border-[#D4AF37] outline-none transition-all gothic-font tracking-[0.2em]`}
+              autoComplete="current-password"
             />
             {error && (
               <p className="text-red-600 text-[10px] uppercase font-black mt-2 tracking-tighter">
@@ -54,9 +71,10 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
 
           <button
             type="submit"
+            disabled={isSubmitting}
             className="w-full py-4 bg-red-900/20 border border-red-900 text-red-100 hover:bg-red-900/40 transition-all gothic-font uppercase tracking-widest text-sm"
           >
-            Unlock Forbidden Tools
+            {isSubmitting ? "Verifying..." : "Unlock Forbidden Tools"}
           </button>
         </form>
 

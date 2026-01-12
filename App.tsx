@@ -8,11 +8,17 @@ import ChatInterface from "./components/ChatInterface";
 import AdminAuth from "./components/AdminAuth";
 import { CAST_NAMES, GameState, PlayerEntry } from "./types";
 import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
-import { db } from "./src/lib/firebase";
+import { auth, db } from "./src/lib/firebase";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "firebase/auth";
 
 const STORAGE_KEY = "traitors_db_v4";
 const FIRESTORE_COLLECTION = "games";
 const FIRESTORE_DOC_ID = "default";
+const ADMIN_EMAILS = ["s.haarisshariff@gmail.com"];
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -52,6 +58,20 @@ const App: React.FC = () => {
   }, [gameState]);
 
   useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const email = user?.email?.toLowerCase();
+      const isAdmin =
+        !!email &&
+        ADMIN_EMAILS.some((allowed) => allowed.toLowerCase() === email);
+      setIsAdminAuthenticated(isAdmin);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAdminAuthenticated) return undefined;
     const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
     const unsubscribe = onSnapshot(
       docRef,
@@ -71,9 +91,10 @@ const App: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, []);
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
+    if (!isAdminAuthenticated) return undefined;
     if (writeTimerRef.current) {
       window.clearTimeout(writeTimerRef.current);
     }
@@ -106,7 +127,7 @@ const App: React.FC = () => {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [gameState]);
+  }, [gameState, isAdminAuthenticated]);
 
   const handleAddEntry = (entry: PlayerEntry) => {
     const updatedPlayers = [
@@ -115,14 +136,29 @@ const App: React.FC = () => {
     ];
     setGameState({ ...gameState, players: updatedPlayers });
   };
-  const authenticateAdmin = (password: string): boolean => {
-    const ADMIN_PASSWORD = "Traitor2026"; // change this
-
-    if (password === ADMIN_PASSWORD) {
-      setIsAdminAuthenticated(true);
-      return true;
+  const authenticateAdmin = async (
+    email: string,
+    password: string
+  ): Promise<boolean> => {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const authedEmail = result.user.email?.toLowerCase();
+      const isAdmin =
+        !!authedEmail &&
+        ADMIN_EMAILS.some(
+          (allowed) => allowed.toLowerCase() === authedEmail
+        );
+      if (!isAdmin) {
+        await signOut(auth);
+      }
+      return isAdmin;
+    } catch {
+      return false;
     }
-    return false;
+  };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
   };
   const content = useMemo(() => {
     switch (activeTab) {
@@ -138,7 +174,11 @@ const App: React.FC = () => {
         return <ChatInterface />;
       case "admin":
         return isAdminAuthenticated ? (
-          <AdminPanel gameState={gameState} updateGameState={updateGameState} />
+          <AdminPanel
+            gameState={gameState}
+            updateGameState={updateGameState}
+            onSignOut={handleSignOut}
+          />
         ) : (
           // This prop name might differ. If the build errors, we’ll change it to match AdminAuth.tsx.
           <AdminAuth onAuthenticate={authenticateAdmin} />
