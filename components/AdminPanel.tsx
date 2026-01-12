@@ -372,16 +372,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             return (
               <div key={name} className="bg-black/40 p-4 rounded border border-zinc-800 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
+                  <div className="w-12 h-12 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
                     {status?.portraitUrl ? (
                       <img src={status.portraitUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-zinc-700 font-bold uppercase">
+                      <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-700 font-bold uppercase">
                         {name.charAt(0)}
                       </div>
                     )}
                     {isGenerating === name && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
                         <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}

@@ -107,9 +107,9 @@ const ChatInterface: React.FC = () => {
             }`}>
               {m.type === 'image' ? (
                 <div className="space-y-3">
-                  <div className="relative group">
-                    <img src={m.content} alt="AI Prophecy" className="rounded-lg w-full h-auto border-2 border-black shadow-inner" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+                  <div className="relative group w-12 h-12 mx-auto">
+                    <img src={m.content} alt="AI Prophecy" className="w-12 h-12 rounded-full object-cover border-2 border-black shadow-inner" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
                        <a href={m.content} download="traitor_prophecy.png" className="text-white text-xs underline gothic-font">Download Prophecy</a>
                     </div>
                   </div>
