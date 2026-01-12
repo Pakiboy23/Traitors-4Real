@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: radial-gradient(1200px 800px at 20% 10%, rgba(120, 0, 0, 0.35), transparent 60%),
+              radial-gradient(900px 700px at 80% 20%, rgba(212, 175, 55, 0.18), transparent 55%),
+              linear-gradient(180deg, #05060a, #0b1220);
+  color: #e5e7eb;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+}
+
+/* AdminAuth shake animation */
+@layer utilities {
+  .animate-shake {
+    animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+  }
+  @keyframes shake {
+    10%, 90% { transform: translate3d(-1px, 0, 0); }
+    20%, 80% { transform: translate3d(2px, 0, 0); }
+    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+    40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+}

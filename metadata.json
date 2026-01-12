@@ -1,0 +1,7 @@
+{
+  "name": "The Traitors: Titanic Swim Team Draft",
+  "description": "A high-stakes fantasy draft application for The Traitors Season 4, featuring real-time leaderboards, an admin panel for league managers, AI-powered strategy chat, and image generation.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

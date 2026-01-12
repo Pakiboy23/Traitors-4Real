@@ -1,0 +1,42 @@
+
+export interface CastMemberStatus {
+  isWinner: boolean;
+  isFirstOut: boolean;
+  isTraitor: boolean;
+  isEliminated: boolean;
+  portraitUrl?: string;
+}
+
+export interface DraftPick {
+  member: string;
+  rank: number;
+  role: 'Faithful' | 'Traitor';
+}
+
+export interface PlayerEntry {
+  id: string;
+  name: string;
+  email: string;
+  picks: DraftPick[];
+  predFirstOut: string;
+  predWinner: string;
+  predTraitors: string[];
+  totalScore?: number;
+  portraitUrl?: string;
+}
+
+export interface GameState {
+  players: PlayerEntry[];
+  castStatus: Record<string, CastMemberStatus>;
+}
+
+export const CAST_NAMES = [
+  "Candiace Dillard Bassett (RHOP)", "Caroline Stanbury (RHODubai)", "Dorinda Medley (RHONY)", 
+  "Lisa Rinna (RHOBH)", "Porsha Williams (RHOA)", "Maura Higgins (Love Island UK)", 
+  "Rob Rausch (Love Island USA)", "Rob Cesternino (Survivor)", "Yam Yam Arocho (Survivor)", 
+  "Natalie Anderson (Survivor/Amazing Race)", "Ian Terry (Big Brother)", "Tiffany Mitchell (Big Brother)", 
+  "Colton Underwood (The Bachelor)", "Johnny Weir (Olympian)", "Tara Lipinski (Olympian)", 
+  "Mark Ballas (DWTS)", "Kristen Kish (Top Chef)", "Eric Nam (Singer/Host)", 
+  "Monet X Change (Drag Race)", "Ron Funches (Comedian)", "Michael Rapaport (Actor)", 
+  "Stephen Colletti (One Tree Hill)", "Donna Kelce (Travis' Mom)"
+].sort();
