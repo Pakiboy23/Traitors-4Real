@@ -245,11 +245,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setSelectedPlayer(player)}
               >
                 <div className="flex items-center gap-3">
-                   <div className="w-10 h-10 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
+                   <div className="w-5 h-5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
                       {player.portraitUrl ? (
                         <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-zinc-600 font-bold uppercase text-xs">{player.name.charAt(0)}</span>
+                        <span className="text-zinc-600 font-bold uppercase text-[8px]">{player.name.charAt(0)}</span>
                       )}
                    </div>
                    <div>
@@ -297,16 +297,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="border-b border-zinc-800 pb-4 flex justify-between items-start">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-20 h-20 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
                       {selectedPlayer.portraitUrl ? (
                         <img src={selectedPlayer.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-2xl text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
+                        <span className="text-[8px] text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
                       )}
                     </div>
                     {isGeneratingPlayer && (
                       <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-3 h-3 border border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
                   </div>

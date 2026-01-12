@@ -112,11 +112,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
+                      <div className="w-5 h-5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
                         {p.portraitUrl ? (
                           <img src={p.portraitUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-600 font-bold uppercase">
+                          <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-600 font-bold uppercase">
                             {p.name.charAt(0)}
                           </div>
                         )}
@@ -142,11 +142,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                                 const castPortrait = gameState.castStatus[ach.member]?.portraitUrl;
                                 return (
                                   <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-2 rounded relative group hover:border-[#D4AF37] transition-all">
-                                    <div className="aspect-square rounded overflow-hidden bg-black mb-2">
+                                    <div className="w-5 h-5 rounded-full overflow-hidden bg-black mb-2">
                                       {castPortrait ? (
                                         <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-xl">{ach.member.charAt(0)}</div>
+                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[8px]">{ach.member.charAt(0)}</div>
                                       )}
                                     </div>
                                     <div className="text-center">
