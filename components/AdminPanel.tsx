@@ -6,12 +6,18 @@ interface AdminPanelProps {
   gameState: GameState;
   updateGameState: (state: GameState) => void;
   onSignOut?: () => void;
+  lastSavedAt?: number | null;
+  lastWriteError?: string | null;
+  onSaveNow?: () => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({
   gameState,
   updateGameState,
   onSignOut,
+  lastSavedAt,
+  lastWriteError,
+  onSaveNow,
 }) => {
   const defaultStatus = {
     isWinner: false,
@@ -150,6 +156,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setMsg({ text: "All portraits removed.", type: 'success' });
   };
 
+  const downloadGameState = () => {
+    const payload = JSON.stringify(gameState, null, 2);
+    const blob = new Blob([payload], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `traitors-game-state-${new Date().toISOString().slice(0, 19)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleTomeImport = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     try {
       const data = JSON.parse(e.target.value);
@@ -167,6 +184,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-3xl gothic-font text-[color:var(--accent)]">Admin Console</h2>
         <div className="flex gap-2">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] self-center">
+            {lastWriteError
+              ? `Save failed: ${lastWriteError}`
+              : lastSavedAt
+              ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+              : "Not saved yet"}
+          </div>
+          {onSaveNow && (
+            <button
+              onClick={onSaveNow}
+              className="px-4 py-2 bg-black/60 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+            >
+              Save Now
+            </button>
+          )}
           {onSignOut && (
             <button
               onClick={onSignOut}
@@ -186,6 +218,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             className="px-4 py-2 bg-black/50 text-[10px] text-red-200 rounded-full border border-red-900/60 uppercase font-semibold tracking-[0.2em] hover:bg-red-900/40 transition-all"
           >
             Clear Portraits
+          </button>
+          <button
+            onClick={downloadGameState}
+            className="px-4 py-2 bg-black/50 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+          >
+            Download JSON
           </button>
         </div>
       </div>

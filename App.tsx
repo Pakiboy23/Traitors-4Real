@@ -22,9 +22,13 @@ const ADMIN_EMAILS = ["s.haarisshariff@gmail.com"];
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [lastWriteError, setLastWriteError] = useState<string | null>(null);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
   const writeTimerRef = useRef<number | null>(null);
+  const hasRemoteSnapshotRef = useRef(false);
+  const remoteExistsRef = useRef<boolean | null>(null);
 
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
@@ -53,6 +57,25 @@ const App: React.FC = () => {
     setGameState(newState);
   };
 
+  const saveNow = async () => {
+    if (!isAdminAuthenticated) return;
+    try {
+      const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
+      await setDoc(
+        docRef,
+        { state: gameState, updatedAt: serverTimestamp() },
+        { merge: true }
+      );
+      setLastSavedAt(Date.now());
+      setLastWriteError(null);
+    } catch (error) {
+      setLastWriteError(
+        error instanceof Error ? error.message : String(error)
+      );
+      console.warn("Manual Firestore save failed:", error);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
   }, [gameState]);
@@ -75,10 +98,16 @@ const App: React.FC = () => {
     const unsubscribe = onSnapshot(
       docRef,
       (snapshot) => {
+        hasRemoteSnapshotRef.current = true;
+        remoteExistsRef.current = snapshot.exists();
         if (!snapshot.exists()) return;
         const data = snapshot.data();
         if (!data?.state) return;
         const remoteState = data.state as GameState;
+        const remoteUpdatedAt = data.updatedAt?.toMillis?.();
+        if (typeof remoteUpdatedAt === "number") {
+          setLastSavedAt(remoteUpdatedAt);
+        }
         const serialized = JSON.stringify(remoteState);
         lastRemoteStateRef.current = serialized;
         setGameState(remoteState);
@@ -94,6 +123,10 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (!isAdminAuthenticated) return undefined;
+    if (!hasRemoteSnapshotRef.current) return undefined;
+    if (remoteExistsRef.current && !lastRemoteStateRef.current) {
+      return undefined;
+    }
     if (writeTimerRef.current) {
       window.clearTimeout(writeTimerRef.current);
     }
@@ -115,9 +148,14 @@ const App: React.FC = () => {
         .then(() => {
           lastRemoteStateRef.current = serialized;
           pendingWriteRef.current = null;
+          setLastSavedAt(Date.now());
+          setLastWriteError(null);
         })
         .catch((error) => {
           pendingWriteRef.current = null;
+          setLastWriteError(
+            error instanceof Error ? error.message : String(error)
+          );
           console.warn("Firestore write failed:", error);
         });
     }, 500);
@@ -177,6 +215,9 @@ const App: React.FC = () => {
             gameState={gameState}
             updateGameState={updateGameState}
             onSignOut={handleSignOut}
+            lastSavedAt={lastSavedAt}
+            lastWriteError={lastWriteError}
+            onSaveNow={saveNow}
           />
         ) : (
           // This prop name might differ. If the build errors, we’ll change it to match AdminAuth.tsx.
@@ -188,7 +229,11 @@ const App: React.FC = () => {
   }, [activeTab, gameState, isAdminAuthenticated]);
 
   return (
-    <Layout activeTab={activeTab} onTabChange={setActiveTab}>
+    <Layout
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      lastSync={lastSavedAt ?? undefined}
+    >
       {content}
     </Layout>
   );
