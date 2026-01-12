@@ -7,9 +7,9 @@
 :root {
   --bg-deep: #07090b;
   --bg-emerald: #0b1512;
-  --panel: rgba(14, 18, 22, 0.72);
-  --panel-strong: rgba(10, 12, 15, 0.9);
-  --stroke: rgba(212, 175, 55, 0.28);
+  --panel: rgba(6, 8, 10, 0.88);
+  --panel-strong: rgba(4, 6, 8, 0.94);
+  --stroke: rgba(214, 178, 74, 0.18);
   --accent: #d6b24a;
   --accent-strong: #f5d76e;
   --crimson: #b72c2c;
@@ -43,7 +43,7 @@ body {
 
 @layer components {
   .glass-panel {
-    background: var(--panel);
+    background: var(--panel-strong);
     border: 1px solid var(--stroke);
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(18px);

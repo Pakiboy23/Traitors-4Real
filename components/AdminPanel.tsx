@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
-import { generateTraitorImage } from '../services/gemini';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -25,8 +24,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
   const [isManagingTome, setIsManagingTome] = useState(false);
-  const [isGenerating, setIsGenerating] = useState<string | null>(null);
-  const [isGeneratingPlayer, setIsGeneratingPlayer] = useState(false);
 
   const parseAndAdd = () => {
     try {
@@ -139,49 +136,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleGeneratePortrait = async (name: string) => {
-    setIsGenerating(name);
-    try {
-      const imageUrl = await generateTraitorImage(name, '1K');
-      if (imageUrl) {
-        updateCastMember(name, 'portraitUrl', imageUrl);
-        setMsg({ text: `Portrait of ${name} revealed.`, type: 'success' });
-      }
-    } catch (err) {
-      setMsg({ text: "The shadows refused to reveal a portrait.", type: 'error' });
-    } finally {
-      setIsGenerating(null);
-    }
-  };
-
-  const handleGeneratePlayerAvatar = async () => {
-    if (!selectedPlayer) return;
-    setIsGeneratingPlayer(true);
-    try {
-      const prompt = `A mysterious fantasy character avatar for player named ${selectedPlayer.name}, dark academic aesthetic, high fashion cloak, moody lighting, the traitors tv show style.`;
-      const imageUrl = await generateTraitorImage(prompt, '1K');
-      if (imageUrl) {
-        updatePlayerAvatar(selectedPlayer.id, imageUrl);
-        setMsg({ text: `Avatar for ${selectedPlayer.name} summoned.`, type: 'success' });
-      }
-    } catch (err) {
-      setMsg({ text: "Could not summon player avatar.", type: 'error' });
-    } finally {
-      setIsGeneratingPlayer(false);
-    }
-  };
-
-  const handleGenerateAllPortraits = async () => {
-    if (!confirm("This will summon portraits for the entire cast. Continue?")) return;
-    setMsg({ text: "Invoking portraits for the assembly...", type: 'success' });
-    for (const name of CAST_NAMES) {
-      if (!(gameState.castStatus[name] as any)?.portraitUrl) {
-        await handleGeneratePortrait(name);
-      }
-    }
-    setMsg({ text: "The gallery is complete.", type: 'success' });
-  };
-
   const handleTomeImport = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     try {
       const data = JSON.parse(e.target.value);
@@ -207,12 +161,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               Sign Out
             </button>
           )}
-          <button 
-            onClick={handleGenerateAllPortraits}
-            className="px-4 py-2 bg-black/60 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
-          >
-            🎨 Summon All Cast Portraits
-          </button>
           <button 
             onClick={() => setIsManagingTome(!isManagingTome)}
             className="px-4 py-2 bg-black/50 text-[10px] text-zinc-400 rounded-full border border-zinc-700 uppercase font-semibold tracking-[0.2em] hover:text-[color:var(--accent)] transition-all"
@@ -245,11 +193,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setSelectedPlayer(player)}
               >
                 <div className="flex items-center gap-3">
-                   <div className="w-5 h-5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
+                   <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
                       {player.portraitUrl ? (
                         <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-zinc-600 font-bold uppercase text-[8px]">{player.name.charAt(0)}</span>
+                        <span className="text-zinc-600 font-bold uppercase text-[7px]">{player.name.charAt(0)}</span>
                       )}
                    </div>
                    <div>
@@ -297,29 +245,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="border-b border-zinc-800 pb-4 flex justify-between items-start">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-5 h-5 rounded-full border-2 border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
+                    <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
                       {selectedPlayer.portraitUrl ? (
                         <img src={selectedPlayer.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[8px] text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
+                        <span className="text-[7px] text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
                       )}
                     </div>
-                    {isGeneratingPlayer && (
-                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
-                        <div className="w-3 h-3 border border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
                   </div>
                   <div>
                     <h3 className="text-2xl gothic-font text-[color:var(--accent)]">{selectedPlayer.name}</h3>
                     <div className="flex gap-2 mt-2">
-                      <button 
-                        disabled={isGeneratingPlayer}
-                        onClick={handleGeneratePlayerAvatar}
-                        className="text-[9px] uppercase font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-2 py-1 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all"
-                      >
-                        {isGeneratingPlayer ? 'Summoning...' : 'Summon Avatar'}
-                      </button>
                       <button 
                         onClick={() => {
                           const url = prompt("Enter image URL for player avatar:", selectedPlayer.portraitUrl || "");
@@ -377,31 +313,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {CAST_NAMES.map(name => {
             const status = gameState.castStatus[name] ?? defaultStatus;
+            const cardClass = status.isWinner
+              ? "bg-black/75 border-lime-300/70 shadow-[0_0_24px_rgba(163,230,53,0.45)]"
+              : status.isFirstOut
+              ? "bg-black/75 border-amber-300/70 shadow-[0_0_24px_rgba(251,191,36,0.45)]"
+              : status.isEliminated
+              ? "bg-black/80 border-red-600/70 shadow-[0_0_24px_rgba(239,68,68,0.45)]"
+              : status.isTraitor
+              ? "bg-black/80 border-fuchsia-400/70 shadow-[0_0_24px_rgba(232,121,249,0.45)]"
+              : "bg-black/70 border-zinc-800";
             return (
-              <div key={name} className="bg-black/40 p-4 rounded border border-zinc-800 space-y-3">
+              <div key={name} className={`p-4 rounded-2xl border space-y-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ${cardClass}`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
+                  <div className="w-2.5 h-2.5 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
                     {status?.portraitUrl ? (
                       <img src={status.portraitUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-700 font-bold uppercase">
+                      <div className="w-full h-full flex items-center justify-center text-[7px] text-zinc-700 font-bold uppercase">
                         {name.charAt(0)}
-                      </div>
-                    )}
-                    {isGenerating === name && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                        <div className="w-3 h-3 border border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
                   </div>
                   <div className="flex-1">
                     <p className="text-[11px] font-bold text-white truncate">{name}</p>
-                    <button 
-                      onClick={() => handleGeneratePortrait(name)}
-                      className="text-[8px] uppercase font-bold text-[#D4AF37] hover:underline"
-                    >
-                      {status?.portraitUrl ? 'Regenerate' : 'Summon Portrait'}
-                    </button>
                   </div>
                 </div>
                 
@@ -410,7 +344,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => updateCastMember(name, 'isTraitor', !status?.isTraitor)}
                     className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isTraitor
-                        ? 'bg-red-600 border-red-400 text-white ring-4 ring-red-400/40 shadow-[0_0_20px_rgba(239,68,68,0.6)] scale-[1.03]'
+                        ? 'bg-fuchsia-500 border-fuchsia-300 text-black ring-8 ring-fuchsia-300/80 shadow-[0_0_32px_rgba(232,121,249,0.95)] scale-[1.08]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -421,7 +355,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => updateCastMember(name, 'isEliminated', !status?.isEliminated)}
                     className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isEliminated
-                        ? 'bg-zinc-500 border-zinc-400 text-white ring-4 ring-zinc-300/40 shadow-[0_0_18px_rgba(161,161,170,0.5)] scale-[1.03]'
+                        ? 'bg-sky-400 border-sky-300 text-black ring-8 ring-sky-300/80 shadow-[0_0_32px_rgba(56,189,248,0.95)] scale-[1.08]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -432,7 +366,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => updateCastMember(name, 'isFirstOut', !status?.isFirstOut)}
                     className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isFirstOut
-                        ? 'bg-orange-600 border-orange-400 text-white ring-4 ring-orange-400/40 shadow-[0_0_18px_rgba(251,146,60,0.6)] scale-[1.03]'
+                        ? 'bg-orange-400 border-orange-300 text-black ring-8 ring-orange-300/80 shadow-[0_0_32px_rgba(251,146,60,0.95)] scale-[1.08]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -443,7 +377,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => updateCastMember(name, 'isWinner', !status?.isWinner)}
                     className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isWinner
-                        ? 'bg-yellow-400 border-yellow-300 text-black ring-4 ring-yellow-300/50 shadow-[0_0_18px_rgba(250,204,21,0.6)] scale-[1.03]'
+                        ? 'bg-lime-300 border-lime-200 text-black ring-8 ring-lime-200/80 shadow-[0_0_32px_rgba(163,230,53,0.95)] scale-[1.08]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
