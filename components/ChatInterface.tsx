@@ -8,6 +8,7 @@ const ChatInterface: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [apiKey, setApiKeyState] = useState(getApiKey() || "");
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K');
+  const hasEnvKey = !!import.meta.env.VITE_GEMINI_API_KEY;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,36 +47,38 @@ const ChatInterface: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[75vh] bg-black/60 rounded-xl border border-[#D4AF37] overflow-hidden shadow-2xl">
+    <div className="max-w-4xl mx-auto flex flex-col h-[75vh] glass-panel rounded-2xl overflow-hidden">
       {/* Chat Header */}
-      <div className="p-4 border-b border-[#D4AF37] bg-zinc-900/80 flex flex-wrap justify-between items-center gap-4">
+      <div className="p-4 border-b border-zinc-800/80 bg-black/40 flex flex-wrap justify-between items-center gap-4">
         <div>
-          <h3 className="gothic-font text-[#D4AF37] text-xl">The Cloistered Room</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-widest">Secret Strategy & Visual Prophecies</p>
+          <h3 className="gothic-font text-[color:var(--accent)] text-xl">The Cloistered Room</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.25em]">Strategy + Image prompts</p>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            value={apiKey}
-            onChange={(e) => setApiKeyState(e.target.value)}
-            placeholder="Paste Gemini API key"
-            className="p-2 text-xs rounded bg-black border border-zinc-800 text-white outline-none focus:border-[#D4AF37]"
-          />
-          <button
-            onClick={() => setApiKey(apiKey)}
-            className="px-3 py-2 text-xs font-bold rounded bg-[#D4AF37] text-black"
-          >
-            Save Key
-          </button>
-        </div>
+        {!hasEnvKey && (
+          <div className="flex items-center gap-2">
+            <input
+              value={apiKey}
+              onChange={(e) => setApiKeyState(e.target.value)}
+              placeholder="Gemini API key"
+              className="p-2 text-xs rounded bg-black border border-zinc-800 text-white outline-none focus:border-[color:var(--accent)]"
+            />
+            <button
+              onClick={() => setApiKey(apiKey)}
+              className="px-3 py-2 text-xs font-semibold rounded-full bg-[color:var(--accent)] text-black"
+            >
+              Save
+            </button>
+          </div>
+        )}
         
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-tighter">Resolution:</span>
-          <div className="flex bg-black p-1 rounded-lg border border-zinc-800">
+          <span className="text-[10px] text-zinc-400 uppercase font-semibold tracking-[0.2em]">Resolution</span>
+          <div className="flex bg-black/60 p-1 rounded-full border border-zinc-800">
             {(['1K', '2K', '4K'] as const).map(size => (
               <button 
                 key={size}
                 onClick={() => setImageSize(size)}
-                className={`px-3 py-1 text-[10px] rounded font-bold transition-all ${imageSize === size ? 'bg-[#D4AF37] text-black' : 'text-zinc-500 hover:text-white'}`}
+                className={`px-3 py-1 text-[10px] rounded-full font-semibold transition-all ${imageSize === size ? 'bg-[color:var(--accent)] text-black' : 'text-zinc-500 hover:text-white'}`}
               >
                 {size}
               </button>
@@ -87,13 +90,13 @@ const ChatInterface: React.FC = () => {
       {/* Message List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-30">
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-40">
             <div className="wax-seal scale-150">
               <span className="gothic-font text-2xl text-[#b04a4a] font-black">T</span>
             </div>
             <div className="gothic-font">
-              <p className="text-lg">Speak, Faithful.</p>
-              <p className="text-sm mt-2">Ask for strategy or type <span className="text-[#D4AF37]">/image [prompt]</span></p>
+              <p className="text-lg">Ask a question</p>
+              <p className="text-sm mt-2">Use <span className="text-[color:var(--accent)]">/image [prompt]</span> for portraits</p>
             </div>
           </div>
         )}

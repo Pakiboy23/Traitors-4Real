@@ -75,11 +75,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
   };
 
   return (
-    <div className={`bg-gray-900/80 p-4 md:p-6 rounded-xl border transition-all duration-1000 overflow-hidden shadow-2xl ${isSyncing ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'border-[#D4AF37]'}`}>
+    <div className={`glass-panel p-4 md:p-6 rounded-2xl border transition-all duration-1000 overflow-hidden ${isSyncing ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'border-[color:var(--accent)]/40'}`}>
       <div className="flex justify-between items-center mb-8 relative">
         <div className="flex-1 text-center">
-          <h3 className="text-2xl md:text-3xl gothic-font text-[#D4AF37]">🏆 Official Standings</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1">Updates reveal as the Traitors strike</p>
+          <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)]">🏆 Official Standings</h3>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1">Live updates as results land</p>
         </div>
         {isSyncing && (
            <div className="absolute right-0 top-0 flex items-center gap-2 px-2 py-1 bg-green-900/20 rounded border border-green-900/30 animate-in fade-in zoom-in duration-300">
@@ -92,10 +92,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-700 text-gray-400 text-[10px] uppercase tracking-wider">
+            <tr className="border-b border-gray-800 text-gray-400 text-[10px] uppercase tracking-wider">
               <th className="p-4">Rank</th>
               <th className="p-4">Player</th>
-              <th className="p-4 text-right text-[#D4AF37] text-lg">Total</th>
+              <th className="p-4 text-right text-[color:var(--accent)] text-lg">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">

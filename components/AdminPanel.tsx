@@ -14,6 +14,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   updateGameState,
   onSignOut,
 }) => {
+  const defaultStatus = {
+    isWinner: false,
+    isFirstOut: false,
+    isTraitor: false,
+    isEliminated: false,
+    portraitUrl: undefined,
+  };
   const [pasteContent, setPasteContent] = useState('');
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
@@ -115,7 +122,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const updateCastMember = (name: string, field: string, value: any) => {
     const updatedStatus = { ...gameState.castStatus };
-    updatedStatus[name] = { ...updatedStatus[name], [field]: value };
+    const currentStatus = updatedStatus[name] ?? defaultStatus;
+    updatedStatus[name] = { ...currentStatus, [field]: value };
     if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
     if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
     updateGameState({ ...gameState, castStatus: updatedStatus });
@@ -189,25 +197,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <h2 className="text-3xl gothic-font text-[#D4AF37]">Management Vault</h2>
+        <h2 className="text-3xl gothic-font text-[color:var(--accent)]">Admin Console</h2>
         <div className="flex gap-2">
           {onSignOut && (
             <button
               onClick={onSignOut}
-              className="px-4 py-2 bg-zinc-900 text-[10px] text-red-300 rounded border border-red-900 uppercase font-bold tracking-widest hover:bg-red-900/50 transition-all"
+              className="px-4 py-2 bg-black/60 text-[10px] text-red-200 rounded-full border border-red-900/60 uppercase font-semibold tracking-[0.2em] hover:bg-red-900/40 transition-all"
             >
               Sign Out
             </button>
           )}
           <button 
             onClick={handleGenerateAllPortraits}
-            className="px-4 py-2 bg-zinc-900 text-[10px] text-[#D4AF37] rounded border border-[#D4AF37]/30 uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all"
+            className="px-4 py-2 bg-black/60 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
           >
             🎨 Summon All Cast Portraits
           </button>
           <button 
             onClick={() => setIsManagingTome(!isManagingTome)}
-            className="px-4 py-2 bg-zinc-800 text-[10px] text-zinc-400 rounded border border-zinc-700 uppercase font-bold tracking-widest hover:text-[#D4AF37] transition-all"
+            className="px-4 py-2 bg-black/50 text-[10px] text-zinc-400 rounded-full border border-zinc-700 uppercase font-semibold tracking-[0.2em] hover:text-[color:var(--accent)] transition-all"
           >
             {isManagingTome ? "Close Database Tools" : "Open Database Tools"}
           </button>
@@ -215,8 +223,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {isManagingTome && (
-        <div className="bg-black border-2 border-[#D4AF37]/50 p-6 rounded-lg animate-in slide-in-from-top-4">
-          <h3 className="text-[#D4AF37] gothic-font mb-2 uppercase text-sm">The Tome of Secrets (JSON)</h3>
+        <div className="glass-panel p-6 rounded-2xl animate-in slide-in-from-top-4">
+          <h3 className="text-[color:var(--accent)] gothic-font mb-2 uppercase text-sm">Data Import (JSON)</h3>
           <textarea 
             className="w-full h-32 bg-zinc-950 text-[10px] font-mono p-4 border border-zinc-800 rounded text-zinc-400 focus:border-[#D4AF37] outline-none"
             defaultValue={JSON.stringify(gameState, null, 2)}
@@ -227,8 +235,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-zinc-900/80 p-6 rounded-xl border border-zinc-800">
-          <h3 className="text-xl gothic-font text-[#D4AF37] mb-4">League Roster</h3>
+        <div className="glass-panel p-6 rounded-2xl">
+          <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-4">League Roster</h3>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
             {gameState.players.map(player => (
               <div 
@@ -261,19 +269,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </button>
               </div>
             ))}
-            {gameState.players.length === 0 && <p className="text-gray-500 italic text-center py-4 text-xs">No entries in the vault.</p>}
+            {gameState.players.length === 0 && <p className="text-gray-500 text-center py-4 text-xs">No entries yet.</p>}
           </div>
           
           <div className="mt-6 pt-6 border-t border-zinc-800">
-            <h4 className="text-xs font-bold text-[#D4AF37] mb-2 uppercase tracking-widest">Identify New Player</h4>
+            <h4 className="text-xs font-semibold text-[color:var(--accent)] mb-2 uppercase tracking-[0.25em]">Add Player</h4>
             <textarea 
               value={pasteContent}
               onChange={(e) => setPasteContent(e.target.value)}
               className="w-full h-24 bg-black border border-zinc-800 p-3 rounded text-[10px] font-mono text-zinc-400 focus:border-[#D4AF37] outline-none"
               placeholder="Paste submission text or spreadsheet rows here..."
             />
-            <button onClick={parseAndAdd} className="w-full mt-2 py-2 bg-[#D4AF37] text-black text-xs font-black rounded uppercase hover:bg-yellow-600 transition-all">
-              Identify & Add Player
+            <button onClick={parseAndAdd} className="w-full mt-2 py-2 bg-[color:var(--accent)] text-black text-xs font-bold rounded-full uppercase hover:bg-[color:var(--accent-strong)] transition-all">
+              Add Player
             </button>
             {msg.text && (
               <div className={`mt-3 p-2 rounded text-center text-[10px] font-bold border ${msg.type === 'success' ? 'text-green-500 border-green-900/30 bg-green-900/10' : 'text-red-500 border-red-900/30 bg-red-900/10'}`}>
@@ -283,7 +291,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
 
-        <div className="bg-black/80 p-6 rounded-xl border border-[#D4AF37] min-h-[400px]">
+        <div className="glass-panel p-6 rounded-2xl min-h-[400px]">
           {selectedPlayer ? (
             <div className="space-y-6">
               <div className="border-b border-zinc-800 pb-4 flex justify-between items-start">
@@ -303,12 +311,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-2xl gothic-font text-[#D4AF37]">{selectedPlayer.name}</h3>
+                    <h3 className="text-2xl gothic-font text-[color:var(--accent)]">{selectedPlayer.name}</h3>
                     <div className="flex gap-2 mt-2">
                       <button 
                         disabled={isGeneratingPlayer}
                         onClick={handleGeneratePlayerAvatar}
-                        className="text-[9px] uppercase font-bold text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-1 rounded hover:bg-[#D4AF37] hover:text-black transition-all"
+                        className="text-[9px] uppercase font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-2 py-1 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all"
                       >
                         {isGeneratingPlayer ? 'Summoning...' : 'Summon Avatar'}
                       </button>
@@ -317,7 +325,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           const url = prompt("Enter image URL for player avatar:", selectedPlayer.portraitUrl || "");
                           if (url !== null) updatePlayerAvatar(selectedPlayer.id, url);
                         }}
-                        className="text-[9px] uppercase font-bold text-zinc-500 border border-zinc-800 px-2 py-1 rounded hover:text-white transition-all"
+                        className="text-[9px] uppercase font-semibold text-zinc-500 border border-zinc-800 px-2 py-1 rounded-full hover:text-white transition-all"
                       >
                         Set URL
                       </button>
@@ -358,17 +366,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                <div className="wax-seal mb-4">
                   <span className="gothic-font text-2xl text-[#b04a4a] font-black">T</span>
                 </div>
-               <p className="text-xs gothic-font uppercase tracking-widest text-[#D4AF37]">Select a Player to Reveal their Fate</p>
+               <p className="text-xs gothic-font uppercase tracking-[0.3em] text-[color:var(--accent)]">Select a player</p>
             </div>
           )}
         </div>
       </div>
 
-      <div className="bg-zinc-900/80 p-6 rounded-xl border border-zinc-800 mt-12">
-        <h3 className="text-xl gothic-font text-[#D4AF37] mb-6">Cast Status Control</h3>
+      <div className="glass-panel p-6 rounded-2xl mt-12">
+        <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-6">Cast Status</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {CAST_NAMES.map(name => {
-            const status = gameState.castStatus[name];
+            const status = gameState.castStatus[name] ?? defaultStatus;
             return (
               <div key={name} className="bg-black/40 p-4 rounded border border-zinc-800 space-y-3">
                 <div className="flex items-center gap-3">
@@ -400,26 +408,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button 
                     onClick={() => updateCastMember(name, 'isTraitor', !status?.isTraitor)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all ${status?.isTraitor ? 'bg-red-900 border-red-700 text-white' : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'}`}
+                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                      status?.isTraitor
+                        ? 'bg-red-700 border-red-500 text-white ring-2 ring-red-400/40 shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                        : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
+                    {status?.isTraitor && <span className="text-[10px]">✓</span>}
                     Traitor
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isEliminated', !status?.isEliminated)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all ${status?.isEliminated ? 'bg-zinc-700 border-zinc-600 text-white' : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'}`}
+                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                      status?.isEliminated
+                        ? 'bg-zinc-600 border-zinc-500 text-white ring-2 ring-zinc-400/40 shadow-[0_0_10px_rgba(161,161,170,0.35)]'
+                        : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
+                    {status?.isEliminated && <span className="text-[10px]">✓</span>}
                     Eliminated
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isFirstOut', !status?.isFirstOut)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all ${status?.isFirstOut ? 'bg-orange-900 border-orange-700 text-white' : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'}`}
+                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                      status?.isFirstOut
+                        ? 'bg-orange-700 border-orange-500 text-white ring-2 ring-orange-400/40 shadow-[0_0_10px_rgba(251,146,60,0.4)]'
+                        : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
+                    {status?.isFirstOut && <span className="text-[10px]">✓</span>}
                     1st Out
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isWinner', !status?.isWinner)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all ${status?.isWinner ? 'bg-yellow-600 border-yellow-500 text-black' : 'border-zinc-800 text-zinc-600 hover:text-zinc-400'}`}
+                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                      status?.isWinner
+                        ? 'bg-yellow-500 border-yellow-400 text-black ring-2 ring-yellow-300/50 shadow-[0_0_10px_rgba(250,204,21,0.4)]'
+                        : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
+                    }`}
                   >
+                    {status?.isWinner && <span className="text-[10px]">✓</span>}
                     Winner
                   </button>
                 </div>

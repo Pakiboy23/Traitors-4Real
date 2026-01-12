@@ -163,7 +163,7 @@ const App: React.FC = () => {
   const content = useMemo(() => {
     switch (activeTab) {
       case "home":
-        return <Welcome />;
+        return <Welcome onStart={() => setActiveTab("draft")} />;
       case "draft":
         // If DraftForm doesn't take these props, the build will tell us.
         return <DraftForm gameState={gameState} onAddEntry={handleAddEntry} />;

@@ -27,14 +27,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
   const toggleTheme = () => setIsLightMode(!isLightMode);
 
   return (
-    <div className={`min-h-screen p-4 md:p-8 flex flex-col items-center transition-colors duration-500`}>
+    <div className={`min-h-screen p-4 md:p-10 flex flex-col items-center transition-colors duration-500`}>
       <div className="max-w-6xl w-full space-y-8">
-        <header className={`text-center space-y-4 py-8 border-b-2 ${isLightMode ? 'border-red-900/50 bg-white/40' : 'border-yellow-700 bg-black/40'} relative overflow-hidden rounded-t-xl transition-all duration-500`}>
+        <header className={`text-center space-y-4 py-8 relative overflow-hidden rounded-2xl transition-all duration-500 glass-panel`}>
           {/* Live Sync Badge & Theme Toggle */}
           <div className="absolute top-4 right-4 flex items-center gap-3">
             <button 
               onClick={toggleTheme}
-              className={`p-2 rounded-full border transition-all ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-zinc-800 border-zinc-700 text-[#D4AF37]'}`}
+              className={`p-2 rounded-full border transition-all ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-black/50 border-zinc-700 text-[color:var(--accent)]'}`}
               title={isLightMode ? "Extinguish the Torches" : "Light the Torches"}
             >
               {isLightMode ? (
@@ -48,51 +48,71 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
               )}
             </button>
 
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isLightMode ? 'bg-white/80 border-red-200' : 'bg-black/60 border-zinc-800'}`}>
+            <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isLightMode ? 'bg-white/80 border-red-200' : 'bg-black/50 border-zinc-800'}`}>
               <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_#22c55e]" />
-              <span className={`text-[8px] uppercase tracking-tighter font-bold ${isLightMode ? 'text-red-900' : 'text-zinc-400'}`}>Live Round Table</span>
+              <span className={`text-[8px] uppercase tracking-[0.2em] font-semibold ${isLightMode ? 'text-red-900' : 'text-zinc-400'}`}>Round Table Live</span>
             </div>
           </div>
 
-          <p className={`${isLightMode ? 'text-red-900' : 'text-red-600'} tracking-[0.3em] text-sm uppercase font-bold animate-pulse transition-colors`}>Titanic Swim Team Edition</p>
-          <h1 className={`text-4xl md:text-6xl font-black tracking-wider uppercase drop-shadow-lg gothic-font transition-colors ${isLightMode ? 'text-red-900' : 'text-[#D4AF37]'}`}>The Traitors</h1>
-          <h2 className={`text-xl md:text-2xl font-light gothic-font transition-colors ${isLightMode ? 'text-zinc-700' : 'text-gray-400'}`}>Season 4 Fantasy Draft</h2>
+          <p className={`${isLightMode ? 'text-red-900' : 'text-red-500'} tracking-[0.35em] text-[10px] uppercase font-semibold transition-colors`}>Titanic Swim Team Edition</p>
+          <h1 className={`text-4xl md:text-6xl font-black uppercase drop-shadow-lg gothic-font transition-colors ${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]'}`}>The Traitors</h1>
+          <h2 className={`text-base md:text-xl font-light gothic-font transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
 
-          <nav className="flex flex-wrap justify-center gap-2 md:gap-4 mt-6">
+          <nav className="flex flex-wrap justify-center gap-2 md:gap-2.5 mt-6">
             <button 
               onClick={() => onTabChange('home')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'home' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-zinc-800 text-white border-zinc-800') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-white')}`}
+              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
+                activeTab === 'home'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
             >
               The Castle
             </button>
             <button 
               onClick={() => onTabChange('draft')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'draft' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[#D4AF37] text-black border-[#D4AF37]') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-[#D4AF37]')}`}
+              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
+                activeTab === 'draft'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
             >
               The Draft
             </button>
             <button 
               onClick={() => onTabChange('leaderboard')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'leaderboard' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[#D4AF37] text-black border-[#D4AF37]') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-[#D4AF37]')}`}
+              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
+                activeTab === 'leaderboard'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
             >
               Leaderboard
             </button>
             <button 
               onClick={() => onTabChange('chat')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'chat' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[#D4AF37] text-black border-[#D4AF37]') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-[#D4AF37]')}`}
+              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
+                activeTab === 'chat'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
             >
               The Cloistered Room
             </button>
             <button 
               onClick={() => onTabChange('admin')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'admin' ? 'bg-red-900 text-white border-red-900' : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-red-900')}`}
+              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
+                activeTab === 'admin'
+                  ? 'bg-[color:var(--crimson)] text-white border-[color:var(--crimson)]'
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--crimson)]')
+              }`}
             >
               Admin
             </button>
           </nav>
         </header>
 
-        <main className={`bg-black/5 p-2 md:p-6 rounded-b-xl min-h-[60vh] transition-colors duration-500`}>
+        <main className={`glass-panel p-3 md:p-6 rounded-2xl min-h-[60vh] transition-colors duration-500`}>
           {children}
         </main>
 

@@ -127,14 +127,14 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 px-2">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] md:text-xs">
-        <div className="p-2 bg-white/5 rounded border-l-2 border-l-[#D4AF37] text-center">
-          <span className="block text-[#D4AF37] font-bold">+10 PTS</span> Winner
+        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
+          <span className="block text-[color:var(--accent)] font-semibold">+10 PTS</span> Winner
         </div>
-        <div className="p-2 bg-white/5 rounded border-l-2 border-l-[#D4AF37] text-center">
-          <span className="block text-[#D4AF37] font-bold">+5 PTS</span> 1st Out
+        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
+          <span className="block text-[color:var(--accent)] font-semibold">+5 PTS</span> 1st Out
         </div>
-        <div className="p-2 bg-white/5 rounded border-l-2 border-l-[#D4AF37] text-center">
-          <span className="block text-[#D4AF37] font-bold">+3 PTS</span> Traitor ID
+        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
+          <span className="block text-[color:var(--accent)] font-semibold">+3 PTS</span> Traitor ID
         </div>
         <div className="p-2 bg-red-900/10 rounded border-l-2 border-l-red-600 text-center">
           <span className="block text-red-500 font-bold">-2 PTS</span> Penalty
@@ -142,37 +142,37 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-zinc-900/80 p-5 rounded border border-[#D4AF37]/30">
-          <h3 className="text-lg text-[#D4AF37] mb-4 gothic-font uppercase text-center tracking-widest">Identify Yourself</h3>
+        <div className="glass-panel p-5 rounded-2xl">
+          <h3 className="text-lg text-[color:var(--accent)] mb-4 gothic-font uppercase text-center tracking-[0.25em]">Identify Yourself</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input required type="text" placeholder="Name" value={playerName} onChange={e => setPlayerName(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[#D4AF37] outline-none" />
-            <input required type="email" placeholder="Email" value={playerEmail} onChange={e => setPlayerEmail(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[#D4AF37] outline-none" />
+            <input required type="text" placeholder="Name" value={playerName} onChange={e => setPlayerName(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none" />
+            <input required type="email" placeholder="Email" value={playerEmail} onChange={e => setPlayerEmail(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none" />
           </div>
         </div>
 
-        <section className="bg-zinc-900/80 rounded border border-[#D4AF37]/30 overflow-hidden">
-          <div className="p-4 border-b border-zinc-800 bg-black/50 flex flex-wrap justify-between items-center gap-4">
+        <section className="glass-panel rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-zinc-800/80 bg-black/40 flex flex-wrap justify-between items-center gap-4">
             <div className="flex flex-col">
-              <h3 className="text-xl text-[#D4AF37] gothic-font">I. THE SQUAD</h3>
+              <h3 className="text-xl text-[color:var(--accent)] gothic-font">I. The Squad</h3>
               {hasDuplicates ? (
-                <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter animate-pulse">
-                  ⚠ Error: Duplicate picks detected in squad
+                <span className="text-[10px] text-red-500 font-semibold uppercase tracking-[0.2em] animate-pulse">
+                  ⚠ Duplicate picks detected
                 </span>
               ) : (
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Seal each pick to finalize the Conclave</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em]">Seal each pick to finalize</span>
               )}
             </div>
             <div className="flex items-center gap-3">
               <button 
                 type="button" 
                 onClick={autoGeneratePicks}
-                className="text-[10px] font-bold text-[#D4AF37] border border-[#D4AF37]/30 px-3 py-1.5 rounded hover:bg-[#D4AF37] hover:text-black transition-all uppercase tracking-widest"
+                className="text-[10px] font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-3 py-1.5 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.2em]"
               >
-                Strategize for Me
+                Auto-pick
               </button>
               <div className="flex flex-col items-end">
-                <span className="text-[9px] bg-red-900 px-2 py-1 rounded text-white font-bold">SELECT 10</span>
-                <span className="text-[8px] text-zinc-600 mt-1 uppercase font-bold">{sealedPicks.filter(Boolean).length}/10 SEALED</span>
+                <span className="text-[9px] bg-red-900/60 px-2 py-1 rounded text-white font-semibold">Select 10</span>
+                <span className="text-[8px] text-zinc-600 mt-1 uppercase font-semibold">{sealedPicks.filter(Boolean).length}/10 sealed</span>
               </div>
             </div>
           </div>
@@ -191,10 +191,10 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                         ? 'bg-red-950/40 border-l-4 border-l-red-500' 
                         : pick.role === 'Traitor' 
                           ? 'bg-red-900/10 shadow-[inset_0_0_15px_rgba(138,28,28,0.2)] border-l-4 border-l-red-600' 
-                          : 'bg-black/60 border-l-4 border-l-[#D4AF37]/30'
+                          : 'bg-black/60 border-l-4 border-l-[color:var(--accent)]/40'
                   }`}
                 >
-                  <div className={`text-xs font-bold ${isSealed ? 'text-zinc-600' : isDuplicate ? 'text-red-500' : pick.role === 'Traitor' ? 'text-red-500' : 'text-[#D4AF37]'} w-6`}>#{i+1}</div>
+                  <div className={`text-xs font-semibold ${isSealed ? 'text-zinc-600' : isDuplicate ? 'text-red-500' : pick.role === 'Traitor' ? 'text-red-500' : 'text-[color:var(--accent)]'} w-6`}>#{i+1}</div>
                   
                   <div className="flex-1">
                     <select 
@@ -202,7 +202,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                       value={pick.member} 
                       onChange={e => updatePick(i, 'member', e.target.value)}
                       className={`w-full p-2 text-xs rounded bg-zinc-950 border text-white outline-none transition-colors ${
-                        isSealed ? 'border-zinc-800 text-zinc-500' : isDuplicate ? 'border-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]' : 'border-zinc-800 focus:border-[#D4AF37]'
+                        isSealed ? 'border-zinc-800 text-zinc-500' : isDuplicate ? 'border-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]' : 'border-zinc-800 focus:border-[color:var(--accent)]'
                       }`}
                     >
                       <option value="">Choose Player...</option>
@@ -220,28 +220,28 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                         className={`w-full p-2 rounded text-center text-xs bg-zinc-950 border border-zinc-800 outline-none ${isSealed ? 'text-zinc-600' : 'text-white'}`} 
                       />
                     </div>
-                    <div className="flex bg-black p-1 rounded border border-zinc-800">
+                    <div className="flex bg-black/70 p-1 rounded-full border border-zinc-800">
                       <button 
                         disabled={isSealed}
                         type="button"
                         onClick={() => updatePick(i, 'role', 'Faithful')}
-                        className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all ${pick.role === 'Faithful' ? 'bg-green-900/40 text-green-400' : 'text-zinc-600'}`}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Faithful' ? 'bg-green-900/40 text-green-300' : 'text-zinc-600'}`}
                       >F</button>
                       <button 
                         disabled={isSealed}
                         type="button"
                         onClick={() => updatePick(i, 'role', 'Traitor')}
-                        className={`px-3 py-1.5 rounded text-[10px] font-bold transition-all ${pick.role === 'Traitor' ? 'bg-red-900/40 text-red-400' : 'text-zinc-600'}`}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Traitor' ? 'bg-red-900/40 text-red-300' : 'text-zinc-600'}`}
                       >T</button>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => toggleSeal(i)}
-                      className={`ml-2 px-4 py-2 rounded text-[9px] font-black uppercase tracking-widest transition-all border ${
+                      className={`ml-2 px-4 py-2 rounded-full text-[9px] font-semibold uppercase tracking-[0.2em] transition-all border ${
                         isSealed 
                           ? 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-red-400' 
-                          : 'bg-[#D4AF37]/10 border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black'
+                          : 'bg-[color:var(--accent)]/10 border-[color:var(--accent)]/40 text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black'
                       }`}
                     >
                       {isSealed ? 'Unseal' : 'Seal Pick'}
@@ -254,18 +254,18 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-zinc-900/80 p-5 rounded border border-[#D4AF37]/30">
-            <h3 className="text-lg text-[#D4AF37] gothic-font mb-4 border-b border-zinc-800 pb-2">II. PROPHECIES</h3>
+          <div className="glass-panel p-5 rounded-2xl">
+            <h3 className="text-lg text-[color:var(--accent)] gothic-font mb-4 border-b border-zinc-800 pb-2">II. Prophecies</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] text-red-500 font-bold mb-1 uppercase tracking-widest">💀 First Out</label>
+                <label className="block text-[10px] text-red-500 font-semibold mb-1 uppercase tracking-[0.2em]">💀 First Out</label>
                 <select value={predFirstOut} onChange={e => setPredFirstOut(e.target.value)} className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white">
                   <option value="">Select...</option>
                   {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] text-yellow-500 font-bold mb-1 uppercase tracking-widest">🏆 Sole Winner</label>
+                <label className="block text-[10px] text-yellow-500 font-semibold mb-1 uppercase tracking-[0.2em]">🏆 Sole Winner</label>
                 <select value={predWinner} onChange={e => setPredWinner(e.target.value)} className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white">
                   <option value="">Select...</option>
                   {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -274,15 +274,15 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
             </div>
           </div>
 
-          <div className="bg-zinc-900/80 p-5 rounded border border-[#D4AF37]/30">
-            <h3 className="text-lg text-[#D4AF37] gothic-font mb-4 border-b border-zinc-800 pb-2">III. THE TRAITORS</h3>
+          <div className="glass-panel p-5 rounded-2xl">
+            <h3 className="text-lg text-[color:var(--accent)] gothic-font mb-4 border-b border-zinc-800 pb-2">III. The Traitors</h3>
             <div className="space-y-2">
               {traitors.map((t, i) => (
                 <select key={i} value={t} onChange={e => {
                   const newT = [...traitors];
                   newT[i] = e.target.value;
                   setTraitors(newT);
-                }} className="w-full p-3 rounded bg-red-900/5 border border-red-900/20 text-xs text-white">
+                }} className="w-full p-3 rounded bg-red-900/5 border border-red-900/30 text-xs text-white">
                   <option value="">Traitor Guess #{i+1}</option>
                   {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -293,17 +293,17 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
 
         <div className="pt-4 pb-12">
           {!allPicksSealed && picks.some(p => p.member !== '') && (
-            <p className="text-center text-[10px] text-red-500 font-bold uppercase mb-2 tracking-[0.2em] animate-pulse">
-              You must seal all 10 scrolls to submit your fate.
+            <p className="text-center text-[10px] text-red-500 font-semibold uppercase mb-2 tracking-[0.2em] animate-pulse">
+              Seal all 10 picks to submit.
             </p>
           )}
           <button 
             type="submit"
             disabled={hasDuplicates || !allPicksSealed}
-            className={`w-full py-5 font-black rounded border-2 uppercase tracking-[0.3em] transition-all gothic-font ${
+            className={`w-full py-5 font-semibold rounded-full border-2 uppercase tracking-[0.3em] transition-all gothic-font ${
               hasDuplicates || !allPicksSealed
                 ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50' 
-                : 'bg-gradient-to-b from-red-800 to-red-950 text-[#D4AF37] border-[#D4AF37] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.02] active:scale-95 cursor-pointer'
+                : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
             }`}
           >
             {hasDuplicates ? "Resolve Duplicates" : !allPicksSealed ? "Seal All Picks to Submit" : "Seal Final Fate"}
