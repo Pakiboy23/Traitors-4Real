@@ -380,17 +380,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             return (
               <div key={name} className="bg-black/40 p-4 rounded border border-zinc-800 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
+                  <div className="w-5 h-5 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
                     {status?.portraitUrl ? (
                       <img src={status.portraitUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-700 font-bold uppercase">
+                      <div className="w-full h-full flex items-center justify-center text-[8px] text-zinc-700 font-bold uppercase">
                         {name.charAt(0)}
                       </div>
                     )}
                     {isGenerating === name && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-full">
-                        <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+                        <div className="w-3 h-3 border border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
                   </div>
@@ -408,9 +408,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button 
                     onClick={() => updateCastMember(name, 'isTraitor', !status?.isTraitor)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                    className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isTraitor
-                        ? 'bg-red-700 border-red-500 text-white ring-2 ring-red-400/40 shadow-[0_0_10px_rgba(239,68,68,0.4)]'
+                        ? 'bg-red-600 border-red-400 text-white ring-4 ring-red-400/40 shadow-[0_0_20px_rgba(239,68,68,0.6)] scale-[1.03]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -419,9 +419,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isEliminated', !status?.isEliminated)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                    className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isEliminated
-                        ? 'bg-zinc-600 border-zinc-500 text-white ring-2 ring-zinc-400/40 shadow-[0_0_10px_rgba(161,161,170,0.35)]'
+                        ? 'bg-zinc-500 border-zinc-400 text-white ring-4 ring-zinc-300/40 shadow-[0_0_18px_rgba(161,161,170,0.5)] scale-[1.03]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -430,9 +430,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isFirstOut', !status?.isFirstOut)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                    className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isFirstOut
-                        ? 'bg-orange-700 border-orange-500 text-white ring-2 ring-orange-400/40 shadow-[0_0_10px_rgba(251,146,60,0.4)]'
+                        ? 'bg-orange-600 border-orange-400 text-white ring-4 ring-orange-400/40 shadow-[0_0_18px_rgba(251,146,60,0.6)] scale-[1.03]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
@@ -441,9 +441,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </button>
                   <button 
                     onClick={() => updateCastMember(name, 'isWinner', !status?.isWinner)}
-                    className={`py-1 rounded text-[9px] font-bold uppercase border transition-all flex items-center justify-center gap-1 ${
+                    className={`py-2 rounded-full text-[10px] font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
                       status?.isWinner
-                        ? 'bg-yellow-500 border-yellow-400 text-black ring-2 ring-yellow-300/50 shadow-[0_0_10px_rgba(250,204,21,0.4)]'
+                        ? 'bg-yellow-400 border-yellow-300 text-black ring-4 ring-yellow-300/50 shadow-[0_0_18px_rgba(250,204,21,0.6)] scale-[1.03]'
                         : 'border-zinc-800 text-zinc-500 hover:text-zinc-300'
                     }`}
                   >
