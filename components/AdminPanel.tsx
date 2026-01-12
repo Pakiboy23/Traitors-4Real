@@ -136,6 +136,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const clearAllPortraits = () => {
+    if (!confirm("Remove all stored portraits?")) return;
+    const updatedStatus = { ...gameState.castStatus };
+    Object.keys(updatedStatus).forEach((name) => {
+      updatedStatus[name] = { ...updatedStatus[name], portraitUrl: undefined };
+    });
+    const updatedPlayers = gameState.players.map((p) => ({
+      ...p,
+      portraitUrl: undefined,
+    }));
+    updateGameState({ ...gameState, castStatus: updatedStatus, players: updatedPlayers });
+    setMsg({ text: "All portraits removed.", type: 'success' });
+  };
+
   const handleTomeImport = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     try {
       const data = JSON.parse(e.target.value);
@@ -166,6 +180,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             className="px-4 py-2 bg-black/50 text-[10px] text-zinc-400 rounded-full border border-zinc-700 uppercase font-semibold tracking-[0.2em] hover:text-[color:var(--accent)] transition-all"
           >
             {isManagingTome ? "Close Database Tools" : "Open Database Tools"}
+          </button>
+          <button
+            onClick={clearAllPortraits}
+            className="px-4 py-2 bg-black/50 text-[10px] text-red-200 rounded-full border border-red-900/60 uppercase font-semibold tracking-[0.2em] hover:bg-red-900/40 transition-all"
+          >
+            Clear Portraits
           </button>
         </div>
       </div>

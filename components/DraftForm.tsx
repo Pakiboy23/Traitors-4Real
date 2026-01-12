@@ -126,18 +126,18 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 px-2">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] md:text-xs">
-        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
-          <span className="block text-[color:var(--accent)] font-semibold">+10 PTS</span> Winner
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs md:text-sm">
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+10 PTS</span> Winner
         </div>
-        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
-          <span className="block text-[color:var(--accent)] font-semibold">+5 PTS</span> 1st Out
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+5 PTS</span> 1st Out
         </div>
-        <div className="p-2 bg-black/40 rounded border-l-2 border-l-[color:var(--accent)] text-center">
-          <span className="block text-[color:var(--accent)] font-semibold">+3 PTS</span> Traitor ID
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+3 PTS</span> Traitor ID
         </div>
-        <div className="p-2 bg-red-900/10 rounded border-l-2 border-l-red-600 text-center">
-          <span className="block text-red-500 font-bold">-2 PTS</span> Penalty
+        <div className="p-3 bg-red-950/40 rounded border border-red-600/40 text-center">
+          <span className="block text-red-500 font-bold text-sm md:text-base">-2 PTS</span> Penalty
         </div>
       </div>
 
@@ -162,36 +162,36 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                 <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em]">Seal each pick to finalize</span>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <button 
                 type="button" 
                 onClick={autoGeneratePicks}
-                className="text-[10px] font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-3 py-1.5 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.2em]"
+                className="text-xs md:text-sm font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-4 py-2 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.2em]"
               >
                 Auto-pick
               </button>
               <div className="flex flex-col items-end">
-                <span className="text-[9px] bg-red-900/60 px-2 py-1 rounded text-white font-semibold">Select 10</span>
-                <span className="text-[8px] text-zinc-600 mt-1 uppercase font-semibold">{sealedPicks.filter(Boolean).length}/10 sealed</span>
+                <span className="text-xs bg-red-900/60 px-3 py-1.5 rounded text-white font-semibold">Select 10</span>
+                <span className="text-[10px] text-zinc-600 mt-1 uppercase font-semibold">{sealedPicks.filter(Boolean).length}/10 sealed</span>
               </div>
             </div>
           </div>
           
-          <div className="grid grid-cols-1 gap-px bg-zinc-800">
+          <div className="grid grid-cols-2 gap-3 bg-transparent p-3">
             {picks.map((pick, i) => {
               const isDuplicate = pick.member !== '' && duplicateNames.includes(pick.member);
               const isSealed = sealedPicks[i];
               return (
                 <div 
                   key={i} 
-                  className={`flex flex-col md:flex-row md:items-center gap-3 p-4 transition-all duration-500 ${
+                  className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all duration-500 ${
                     isSealed 
-                      ? 'bg-black/80 border-l-4 border-l-zinc-700 opacity-90' 
+                      ? 'bg-black/80 border-zinc-700 opacity-90' 
                       : isDuplicate 
-                        ? 'bg-red-950/40 border-l-4 border-l-red-500' 
+                        ? 'bg-red-950/40 border-red-500' 
                         : pick.role === 'Traitor' 
-                          ? 'bg-red-900/10 shadow-[inset_0_0_15px_rgba(138,28,28,0.2)] border-l-4 border-l-red-600' 
-                          : 'bg-black/60 border-l-4 border-l-[color:var(--accent)]/40'
+                          ? 'bg-red-900/10 shadow-[inset_0_0_15px_rgba(138,28,28,0.2)] border-red-600' 
+                          : 'bg-black/60 border-[color:var(--accent)]/40'
                   }`}
                 >
                   <div className={`text-xs font-semibold ${isSealed ? 'text-zinc-600' : isDuplicate ? 'text-red-500' : pick.role === 'Traitor' ? 'text-red-500' : 'text-[color:var(--accent)]'} w-6`}>#{i+1}</div>
@@ -225,13 +225,13 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                         disabled={isSealed}
                         type="button"
                         onClick={() => updatePick(i, 'role', 'Faithful')}
-                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Faithful' ? 'bg-green-900/40 text-green-300' : 'text-zinc-600'}`}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Faithful' ? 'bg-cyan-500 text-black ring-4 ring-cyan-300/80 shadow-[0_0_24px_rgba(34,211,238,0.9)] scale-[1.06]' : 'text-zinc-600'}`}
                       >F</button>
                       <button 
                         disabled={isSealed}
                         type="button"
                         onClick={() => updatePick(i, 'role', 'Traitor')}
-                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Traitor' ? 'bg-red-900/40 text-red-300' : 'text-zinc-600'}`}
+                        className={`px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all ${pick.role === 'Traitor' ? 'bg-fuchsia-500 text-black ring-4 ring-fuchsia-300/80 shadow-[0_0_24px_rgba(232,121,249,0.9)] scale-[1.06]' : 'text-zinc-600'}`}
                       >T</button>
                     </div>
 

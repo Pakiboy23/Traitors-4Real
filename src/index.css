@@ -21,6 +21,10 @@ html, body, #root {
   height: 100%;
 }
 
+html {
+  font-size: 112.5%;
+}
+
 body {
   background:
     radial-gradient(900px 600px at 15% 5%, rgba(183, 44, 44, 0.18), transparent 60%),
@@ -29,6 +33,9 @@ body {
     linear-gradient(180deg, var(--bg-deep), #0b0f12 50%, #090b0e);
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
 }
 
 .gothic-font {
@@ -52,6 +59,25 @@ body {
   .accent-outline {
     border: 1px solid rgba(214, 178, 74, 0.4);
     box-shadow: 0 0 0 1px rgba(214, 178, 74, 0.1);
+  }
+}
+
+@layer base {
+  ::selection {
+    background: rgba(214, 178, 74, 0.25);
+    color: var(--text);
+  }
+
+  button {
+    transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  }
+
+  button:active {
+    transform: translateY(1px);
+  }
+
+  input, select, textarea {
+    border-radius: 0.75rem;
   }
 }
 
