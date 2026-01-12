@@ -71,7 +71,6 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!isAdminAuthenticated) return undefined;
     const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
     const unsubscribe = onSnapshot(
       docRef,
@@ -91,7 +90,7 @@ const App: React.FC = () => {
     return () => {
       unsubscribe();
     };
-  }, [isAdminAuthenticated]);
+  }, []);
 
   useEffect(() => {
     if (!isAdminAuthenticated) return undefined;
