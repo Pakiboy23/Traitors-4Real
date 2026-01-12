@@ -1,6 +1,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
 const KEY_STORAGE = "gemini_api_key";
+const ENV_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
 
 export const getApiKey = () => localStorage.getItem(KEY_STORAGE);
 export const setApiKey = (key: string) => localStorage.setItem(KEY_STORAGE, key.trim());
@@ -8,9 +9,9 @@ export const clearApiKey = () => localStorage.removeItem(KEY_STORAGE);
 
 // Create a new instance right before making calls to ensure it uses the latest key.
 const getAI = () => {
-  const apiKey = getApiKey();
+  const apiKey = ENV_API_KEY || getApiKey();
   if (!apiKey) {
-    throw new Error("Missing Gemini API key. Please set it in the Chat tab.");
+    throw new Error("Missing Gemini API key. Set VITE_GEMINI_API_KEY or use the Chat tab.");
   }
   return new GoogleGenAI({ apiKey });
 };
