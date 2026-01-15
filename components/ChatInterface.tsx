@@ -25,6 +25,14 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ gameState }) => {
     return CAST_NAMES.filter((name) => haystack.includes(name.toLowerCase()));
   };
 
+  const getSafeImageHref = (url: string) => {
+    const trimmed = (url || '').trim();
+    if (!trimmed) return '#';
+    if (trimmed.startsWith('/')) return trimmed;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+    return '#';
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -160,9 +168,9 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ gameState }) => {
               {m.type === 'image' ? (
                 <div className="space-y-3">
                   <div className="relative group w-2.5 h-2.5 mx-auto">
-                    <img src={m.content} alt="AI Prophecy" className="w-2.5 h-2.5 rounded-full object-cover border border-black shadow-inner" />
+                    <img src={getSafeImageHref(m.content)} alt="AI Prophecy" className="w-2.5 h-2.5 rounded-full object-cover border border-black shadow-inner" />
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                       <a href={m.content} download="traitor_prophecy.png" className="text-white text-xs underline gothic-font">Download Prophecy</a>
+                       <a href={getSafeImageHref(m.content)} download="traitor_prophecy.png" className="text-white text-xs underline gothic-font">Download Prophecy</a>
                     </div>
                   </div>
                   <p className="text-[10px] text-zinc-500 italic text-center uppercase tracking-widest">A visual from the shadows ({imageSize})</p>
