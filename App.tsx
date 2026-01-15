@@ -57,13 +57,25 @@ const App: React.FC = () => {
     setGameState(newState);
   };
 
+  const normalizeUndefined = (value: any): any => {
+    if (value === undefined) return null;
+    if (Array.isArray(value)) return value.map(normalizeUndefined);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, val]) => [key, normalizeUndefined(val)])
+      );
+    }
+    return value;
+  };
+
   const saveNow = async () => {
     if (!isAdminAuthenticated) return;
     try {
       const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
+      const safeState = normalizeUndefined(gameState);
       await setDoc(
         docRef,
-        { state: gameState, updatedAt: serverTimestamp() },
+        { state: safeState, updatedAt: serverTimestamp() },
         { merge: true }
       );
       setLastSavedAt(Date.now());
@@ -120,6 +132,7 @@ const App: React.FC = () => {
       unsubscribe();
     };
   }, []);
+
 
   useEffect(() => {
     if (!isAdminAuthenticated) return undefined;
@@ -208,7 +221,7 @@ const App: React.FC = () => {
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
       case "chat":
-        return <ChatInterface />;
+        return <ChatInterface gameState={gameState} />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel

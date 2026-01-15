@@ -1,15 +1,29 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { askGemini, generateTraitorImage, speakText, getApiKey, setApiKey } from '../services/gemini';
+import { streamAsk, generateTraitorImage, speakText, getApiKey, setApiKey } from '../services/gemini';
+import { CAST_NAMES, GameState } from '../types';
+import { getCastPortraitSrc } from "../src/castPortraits";
 
-const ChatInterface: React.FC = () => {
-  const [messages, setMessages] = useState<{role: string, content: string, type?: 'text'|'image'}[]>([]);
+interface ChatInterfaceProps {
+  gameState: GameState;
+}
+
+const ChatInterface: React.FC<ChatInterfaceProps> = ({ gameState }) => {
+  const [messages, setMessages] = useState<{id?: string, role: string, content: string, type?: 'text'|'image'}[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [apiKey, setApiKeyState] = useState(getApiKey() || "");
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K');
   const hasEnvKey = !!import.meta.env.VITE_GEMINI_API_KEY;
+  const hasProxy = !!import.meta.env.VITE_AI_ENDPOINT;
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const findCastMentions = (text: string) => {
+    const haystack = text.toLowerCase();
+    return CAST_NAMES.filter((name) => haystack.includes(name.toLowerCase()));
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,9 +36,12 @@ const ChatInterface: React.FC = () => {
     setMessages(prev => [...prev, { role: 'user', content: userMsg, type: 'text' }]);
     setInput('');
     setLoading(true);
+    setStreaming(false);
+    abortRef.current?.abort();
+    abortRef.current = null;
 
     try {
-      if (!getApiKey()) { throw new Error("Missing API key. Paste it above and click Save Key."); }
+      if (!getApiKey() && !hasEnvKey && !hasProxy) { throw new Error("Missing API key. Paste it above and click Save Key."); }
       if (userMsg.toLowerCase().startsWith('/image')) {
         const prompt = userMsg.substring(6).trim() || "A mysterious traitor lurking in the castle shadows";
         const imageUrl = await generateTraitorImage(prompt, imageSize);
@@ -35,15 +52,45 @@ const ChatInterface: React.FC = () => {
           setMessages(prev => [...prev, { role: 'ai', content: "The shadows did not yield an image. Try a different prompt.", type: 'text' }]);
         }
       } else {
-        const response = await askGemini(userMsg, []);
-        setMessages(prev => [...prev, { role: 'ai', content: response || 'The Game Master remains silent...', type: 'text' }]);
+        const aiId = crypto.randomUUID();
+        setMessages(prev => [...prev, { role: 'ai', content: '', type: 'text', id: aiId }]);
+
+        const controller = new AbortController();
+        abortRef.current = controller;
+        setStreaming(true);
+
+        try {
+          const full = await streamAsk(
+            userMsg,
+            (token) => {
+              setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: (m.content || '') + token } : m));
+            },
+            controller.signal
+          );
+
+          if (!full) {
+            setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: 'The Game Master remains silent...' } : m));
+          }
+        } finally {
+          setStreaming(false);
+          abortRef.current = null;
+        }
       }
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, { role: 'ai', content: "The ritual was interrupted. (API Error)", type: 'text' }]);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        setMessages(prev => [...prev, { role: 'ai', content: "The ritual was halted mid-omen.", type: 'text' }]);
+      } else {
+        console.error(err);
+        setMessages(prev => [...prev, { role: 'ai', content: "The ritual was interrupted. (API Error)", type: 'text' }]);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    setStreaming(false);
   };
 
   return (
@@ -54,7 +101,7 @@ const ChatInterface: React.FC = () => {
           <h3 className="gothic-font text-[color:var(--accent)] text-xl">The Cloistered Room</h3>
           <p className="text-[10px] text-zinc-500 uppercase tracking-[0.25em]">Strategy + Image prompts</p>
         </div>
-        {!hasEnvKey && (
+        {!hasEnvKey && !hasProxy && (
           <div className="flex items-center gap-2">
             <input
               value={apiKey}
@@ -101,7 +148,9 @@ const ChatInterface: React.FC = () => {
           </div>
         )}
 
-        {messages.map((m, i) => (
+        {messages.map((m, i) => {
+          const castMentions = m.type === 'text' ? findCastMentions(m.content) : [];
+          return (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
             <div className={`max-w-[85%] p-4 rounded-xl shadow-lg border ${
               m.role === 'user' 
@@ -121,6 +170,28 @@ const ChatInterface: React.FC = () => {
               ) : (
                 <div className="space-y-3">
                   <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                  {castMentions.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-800/70">
+                      {castMentions.map((name) => {
+                        const portrait = getCastPortraitSrc(
+                          name,
+                          gameState.castStatus[name]?.portraitUrl
+                        );
+                        return (
+                          <div key={name} className="flex items-center gap-2 rounded-full border border-zinc-800 px-2 py-1 bg-black/30">
+                            <div className="w-3 h-3 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[6px] text-zinc-600 font-bold uppercase">
+                              {portrait ? (
+                                <img src={portrait} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                name.charAt(0)
+                              )}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-wide text-zinc-400">{name}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   {m.role === 'ai' && (
                     <button 
                       onClick={() => speakText(m.content)}
@@ -136,7 +207,7 @@ const ChatInterface: React.FC = () => {
               )}
             </div>
           </div>
-        ))}
+        )})}
         
         {loading && (
           <div className="flex justify-start animate-pulse">
@@ -146,7 +217,9 @@ const ChatInterface: React.FC = () => {
                 <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
                 <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
               </div>
-              <span className="text-[10px] text-[#D4AF37] gothic-font uppercase tracking-[0.2em]">Consulting the Round Table...</span>
+              <span className="text-[10px] text-[#D4AF37] gothic-font uppercase tracking-[0.2em]">
+                {streaming ? 'Translating omens...' : 'Consulting the Round Table...'}
+              </span>
             </div>
           </div>
         )}
@@ -173,6 +246,14 @@ const ChatInterface: React.FC = () => {
           >
             Send
           </button>
+          {streaming && (
+            <button
+              onClick={handleCancel}
+              className="px-4 py-3 bg-zinc-900 border border-zinc-800 text-[11px] uppercase rounded-lg font-semibold hover:border-[#D4AF37] transition-colors"
+            >
+              Cancel
+            </button>
+          )}
         </div>
         <div className="flex justify-between items-center mt-3">
           <p className="text-[9px] text-zinc-600 uppercase tracking-tighter">

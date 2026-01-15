@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GameState, PlayerEntry } from '../types';
+import { getCastPortraitSrc } from "../src/castPortraits";
 
 interface LeaderboardProps {
   gameState: GameState;
@@ -139,14 +140,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                           {p.scoring.achievements.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                               {p.scoring.achievements.map((ach, i) => {
-                                const castPortrait = gameState.castStatus[ach.member]?.portraitUrl;
+                                const castPortrait = getCastPortraitSrc(
+                                  ach.member,
+                                  gameState.castStatus[ach.member]?.portraitUrl
+                                );
                                 return (
                                   <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-2 rounded relative group hover:border-[#D4AF37] transition-all">
-                                    <div className="w-2.5 h-2.5 rounded-full overflow-hidden bg-black mb-2">
+                                    <div className="w-3 h-3 rounded-full overflow-hidden bg-black mb-2">
                                       {castPortrait ? (
                                         <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[7px]">{ach.member.charAt(0)}</div>
+                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[6px]">{ach.member.charAt(0)}</div>
                                       )}
                                     </div>
                                     <div className="text-center">

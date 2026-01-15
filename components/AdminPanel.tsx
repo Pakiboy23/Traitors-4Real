@@ -1,6 +1,9 @@
 
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../src/lib/firebase";
+import { getCastPortraitSrc } from "../src/castPortraits";
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -24,12 +27,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     isFirstOut: false,
     isTraitor: false,
     isEliminated: false,
-    portraitUrl: undefined,
+    portraitUrl: null,
   };
   const [pasteContent, setPasteContent] = useState('');
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
   const [isManagingTome, setIsManagingTome] = useState(false);
+  const [isGeneratingPortraits, setIsGeneratingPortraits] = useState(false);
+  const [lastPortraitReport, setLastPortraitReport] = useState<{
+    status?: string;
+    generated?: number;
+    total?: number;
+    failed?: string[];
+    missingAfter?: string[];
+  } | null>(null);
 
   const parseAndAdd = () => {
     try {
@@ -142,18 +153,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const setCastPortrait = (name: string) => {
+    const current = gameState.castStatus[name]?.portraitUrl || "";
+    const url = prompt("Enter image URL for cast portrait:", current);
+    if (url === null) return;
+    const trimmed = url.trim();
+    updateCastMember(name, 'portraitUrl', trimmed ? trimmed : null);
+  };
+
   const clearAllPortraits = () => {
     if (!confirm("Remove all stored portraits?")) return;
     const updatedStatus = { ...gameState.castStatus };
     Object.keys(updatedStatus).forEach((name) => {
-      updatedStatus[name] = { ...updatedStatus[name], portraitUrl: undefined };
+      updatedStatus[name] = { ...updatedStatus[name], portraitUrl: null };
     });
     const updatedPlayers = gameState.players.map((p) => ({
       ...p,
-      portraitUrl: undefined,
+      portraitUrl: null,
     }));
     updateGameState({ ...gameState, castStatus: updatedStatus, players: updatedPlayers });
     setMsg({ text: "All portraits removed.", type: 'success' });
+  };
+
+  const generateCastPortraits = async () => {
+    if (!confirm("Generate portraits for all cast members? This may take a few minutes.")) return;
+    setIsGeneratingPortraits(true);
+    setMsg({ text: "Summoning portraits from the shadows...", type: 'success' });
+    try {
+      const callable = httpsCallable(functions, "generateCastPortraits");
+      const result = await callable({ force: true });
+      const payload = result.data as {
+        status?: string;
+        generated?: number;
+        total?: number;
+        failed?: string[];
+        missingAfter?: string[];
+      };
+      setLastPortraitReport(payload);
+      setMsg({ text: `Portrait ritual complete. Generated ${payload?.generated ?? 0}/${payload?.total ?? 0}.`, type: 'success' });
+    } catch (e: any) {
+      setMsg({ text: `Portrait ritual failed: ${e?.message || "Unknown error"}`, type: 'error' });
+    } finally {
+      setIsGeneratingPortraits(false);
+    }
   };
 
   const downloadGameState = () => {
@@ -194,7 +236,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {onSaveNow && (
             <button
               onClick={onSaveNow}
-              className="px-4 py-2 bg-black/60 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+              className="px-4 py-2 bg-black/60 text-[10px] text-zinc-200 rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
             >
               Save Now
             </button>
@@ -220,12 +262,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             Clear Portraits
           </button>
           <button
+            onClick={generateCastPortraits}
+            disabled={isGeneratingPortraits}
+            className={`px-4 py-2 text-[10px] rounded-full border uppercase font-semibold tracking-[0.2em] transition-all ${
+              isGeneratingPortraits
+                ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed'
+                : 'bg-black/50 text-zinc-200 border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)] hover:text-black'
+            }`}
+          >
+            {isGeneratingPortraits ? "Generating..." : "Generate Cast Portraits"}
+          </button>
+          <button
             onClick={downloadGameState}
-            className="px-4 py-2 bg-black/50 text-[10px] text-[color:var(--accent)] rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+            className="px-4 py-2 bg-black/50 text-[10px] text-zinc-200 rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
           >
             Download JSON
           </button>
         </div>
+        {lastPortraitReport && (
+          <div className="mt-4 text-[10px] text-zinc-400 uppercase tracking-[0.2em]">
+            {lastPortraitReport.failed?.length ? (
+              <span className="text-red-400">
+                Failed: {lastPortraitReport.failed.join(", ")}
+              </span>
+            ) : (
+              <span>All portraits generated.</span>
+            )}
+          </div>
+        )}
       </div>
 
       {isManagingTome && (
@@ -346,7 +410,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   {selectedPlayer.picks.map((pick, i) => (
                     <div key={i} className="flex justify-between items-center text-xs p-2 bg-zinc-900/40 border border-zinc-800 rounded">
                       <span className="text-zinc-500 font-bold w-6">#{i+1}</span>
-                      <span className="flex-1 text-zinc-200">{pick.member}</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[6px] text-zinc-600 font-bold uppercase">
+                          {getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl) ? (
+                            <img src={getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            pick.member.charAt(0)
+                          )}
+                        </div>
+                        <span className="text-zinc-200">{pick.member}</span>
+                      </div>
                       <span className={`px-2 py-0.5 rounded text-[8px] font-bold uppercase ${pick.role === 'Traitor' ? 'bg-red-900/40 text-red-400' : 'bg-green-900/40 text-green-400'}`}>
                         {pick.role}
                       </span>
@@ -371,6 +444,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {CAST_NAMES.map(name => {
             const status = gameState.castStatus[name] ?? defaultStatus;
+            const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
             const cardClass = status.isWinner
               ? "bg-black/75 border-lime-300/70 shadow-[0_0_24px_rgba(163,230,53,0.45)]"
               : status.isFirstOut
@@ -383,17 +457,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             return (
               <div key={name} className={`p-4 rounded-2xl border space-y-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ${cardClass}`}>
                 <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
-                    {status?.portraitUrl ? (
-                      <img src={status.portraitUrl} alt="" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setCastPortrait(name)}
+                    className="w-[22px] h-[22px] rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group"
+                    title="Set cast portrait"
+                  >
+                    {portraitSrc ? (
+                      <img src={portraitSrc} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[7px] text-zinc-700 font-bold uppercase">
                         {name.charAt(0)}
                       </div>
                     )}
-                  </div>
+                  </button>
                   <div className="flex-1">
                     <p className="text-[11px] font-bold text-white truncate">{name}</p>
+                    <button
+                      type="button"
+                      onClick={() => setCastPortrait(name)}
+                      className="text-[9px] uppercase font-semibold text-zinc-500 hover:text-[color:var(--accent)] transition-all"
+                    >
+                      Set Portrait
+                    </button>
                   </div>
                 </div>
                 

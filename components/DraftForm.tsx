@@ -1,13 +1,15 @@
 
 import React, { useState } from 'react';
-import { CAST_NAMES, PlayerEntry, DraftPick } from '../types';
+import { CAST_NAMES, GameState, PlayerEntry, DraftPick } from '../types';
 import ConfirmationCard from './ConfirmationCard';
+import { getCastPortraitSrc } from "../src/castPortraits";
 
 interface DraftFormProps {
+  gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
 }
 
-const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
+const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [playerName, setPlayerName] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
   const [picks, setPicks] = useState<DraftPick[]>(Array(10).fill({ member: '', rank: 1, role: 'Faithful' }));
@@ -181,6 +183,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
             {picks.map((pick, i) => {
               const isDuplicate = pick.member !== '' && duplicateNames.includes(pick.member);
               const isSealed = sealedPicks[i];
+              const castPortrait = pick.member
+                ? getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)
+                : undefined;
               return (
                 <div 
                   key={i} 
@@ -194,7 +199,16 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
                           : 'bg-black/60 border-[color:var(--accent)]/40'
                   }`}
                 >
-                  <div className={`text-xs font-semibold ${isSealed ? 'text-zinc-600' : isDuplicate ? 'text-red-500' : pick.role === 'Traitor' ? 'text-red-500' : 'text-[color:var(--accent)]'} w-6`}>#{i+1}</div>
+                  <div className="flex items-center justify-between">
+                    <div className={`text-xs font-semibold ${isSealed ? 'text-zinc-600' : isDuplicate ? 'text-red-500' : pick.role === 'Traitor' ? 'text-red-500' : 'text-[color:var(--accent)]'} w-6`}>#{i+1}</div>
+                    <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[6px] text-zinc-600 font-bold uppercase">
+                      {castPortrait ? (
+                        <img src={castPortrait} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        pick.member ? pick.member.charAt(0) : '?'
+                      )}
+                    </div>
+                  </div>
                   
                   <div className="flex-1">
                     <select 
