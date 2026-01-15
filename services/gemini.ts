@@ -1,7 +1,9 @@
 import { GoogleGenAI, Modality } from "@google/genai";
+import { auth } from "../src/lib/firebase";
 
 const KEY_STORAGE = "gemini_api_key";
 const ENV_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const AI_ENDPOINT = import.meta.env.VITE_AI_ENDPOINT;
 
 export const getApiKey = () => localStorage.getItem(KEY_STORAGE);
 export const setApiKey = (key: string) => localStorage.setItem(KEY_STORAGE, key.trim());
@@ -17,9 +19,69 @@ const getAI = () => {
 };
 
 const handleApiError = (error: any) => {
-  // Bubble up a readable error for UI
   const msg = typeof error?.message === "string" ? error.message : JSON.stringify(error);
   throw new Error(msg || "Unknown Gemini API error");
+};
+
+const parseSSE = (chunk: string, onData: (data: string) => void) => {
+  const lines = chunk.split("\n");
+  for (const line of lines) {
+    if (!line.startsWith("data:")) continue;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") continue;
+    onData(data);
+  }
+};
+
+const getProxyHeaders = async () => {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (!AI_ENDPOINT) return headers;
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Sign in required to use AI features.");
+  }
+  const token = await user.getIdToken();
+  headers.Authorization = `Bearer ${token}`;
+  return headers;
+};
+
+export const streamAsk = async (
+  prompt: string,
+  onToken: (token: string) => void,
+  signal?: AbortSignal
+): Promise<string> => {
+  if (!AI_ENDPOINT) {
+    const full = await askGemini(prompt, []);
+    onToken(full);
+    return full;
+  }
+
+  const res = await fetch(`${AI_ENDPOINT}/ask`, {
+    method: "POST",
+    headers: await getProxyHeaders(),
+    body: JSON.stringify({ prompt }),
+    signal,
+  });
+
+  if (!res.ok || !res.body) {
+    throw new Error("AI service unavailable");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let full = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    const chunk = decoder.decode(value, { stream: true });
+    parseSSE(chunk, (token) => {
+      full += token;
+      onToken(token);
+    });
+  }
+
+  return full;
 };
 
 export const askGemini = async (prompt: string, history: { role: string; parts: any[] }[]) => {
@@ -46,6 +108,18 @@ Scoring Rules:
 };
 
 export const generateTraitorImage = async (prompt: string, size: "1K" | "2K" | "4K" = "1K") => {
+  if (AI_ENDPOINT) {
+    const res = await fetch(`${AI_ENDPOINT}/image`, {
+      method: "POST",
+      headers: await getProxyHeaders(),
+      body: JSON.stringify({ prompt, size }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.imageDataUrl) return json.imageDataUrl as string;
+    }
+  }
+
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({
@@ -82,6 +156,22 @@ export const generateTraitorImage = async (prompt: string, size: "1K" | "2K" | "
 };
 
 export const speakText = async (text: string) => {
+  if (AI_ENDPOINT) {
+    const res = await fetch(`${AI_ENDPOINT}/speak`, {
+      method: "POST",
+      headers: await getProxyHeaders(),
+      body: JSON.stringify({ text }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.audioDataUrl) {
+        const audio = new Audio(json.audioDataUrl);
+        audio.play();
+        return;
+      }
+    }
+  }
+
   try {
     const ai = getAI();
     const response = await ai.models.generateContent({

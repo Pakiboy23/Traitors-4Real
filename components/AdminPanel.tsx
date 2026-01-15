@@ -1,8 +1,6 @@
 
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
-import { httpsCallable } from "firebase/functions";
-import { functions } from "../src/lib/firebase";
 import { getCastPortraitSrc } from "../src/castPortraits";
 
 interface AdminPanelProps {
@@ -33,14 +31,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
   const [isManagingTome, setIsManagingTome] = useState(false);
-  const [isGeneratingPortraits, setIsGeneratingPortraits] = useState(false);
-  const [lastPortraitReport, setLastPortraitReport] = useState<{
-    status?: string;
-    generated?: number;
-    total?: number;
-    failed?: string[];
-    missingAfter?: string[];
-  } | null>(null);
 
   const parseAndAdd = () => {
     try {
@@ -175,28 +165,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setMsg({ text: "All portraits removed.", type: 'success' });
   };
 
-  const generateCastPortraits = async () => {
-    if (!confirm("Generate portraits for all cast members? This may take a few minutes.")) return;
-    setIsGeneratingPortraits(true);
-    setMsg({ text: "Summoning portraits from the shadows...", type: 'success' });
-    try {
-      const callable = httpsCallable(functions, "generateCastPortraits");
-      const result = await callable({ force: true });
-      const payload = result.data as {
-        status?: string;
-        generated?: number;
-        total?: number;
-        failed?: string[];
-        missingAfter?: string[];
-      };
-      setLastPortraitReport(payload);
-      setMsg({ text: `Portrait ritual complete. Generated ${payload?.generated ?? 0}/${payload?.total ?? 0}.`, type: 'success' });
-    } catch (e: any) {
-      setMsg({ text: `Portrait ritual failed: ${e?.message || "Unknown error"}`, type: 'error' });
-    } finally {
-      setIsGeneratingPortraits(false);
-    }
-  };
 
   const downloadGameState = () => {
     const payload = JSON.stringify(gameState, null, 2);
@@ -251,7 +219,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           )}
           <button 
             onClick={() => setIsManagingTome(!isManagingTome)}
-            className="px-4 py-2 bg-black/50 text-[10px] text-zinc-400 rounded-full border border-zinc-700 uppercase font-semibold tracking-[0.2em] hover:text-[color:var(--accent)] transition-all"
+            className="px-4 py-2 bg-black/50 text-[10px] text-zinc-300 rounded-full border border-zinc-700 uppercase font-semibold tracking-[0.2em] hover:text-white transition-all"
           >
             {isManagingTome ? "Close Database Tools" : "Open Database Tools"}
           </button>
@@ -262,34 +230,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             Clear Portraits
           </button>
           <button
-            onClick={generateCastPortraits}
-            disabled={isGeneratingPortraits}
-            className={`px-4 py-2 text-[10px] rounded-full border uppercase font-semibold tracking-[0.2em] transition-all ${
-              isGeneratingPortraits
-                ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed'
-                : 'bg-black/50 text-zinc-200 border-[color:var(--accent)]/40 hover:bg-[color:var(--accent)] hover:text-black'
-            }`}
-          >
-            {isGeneratingPortraits ? "Generating..." : "Generate Cast Portraits"}
-          </button>
-          <button
             onClick={downloadGameState}
             className="px-4 py-2 bg-black/50 text-[10px] text-zinc-200 rounded-full border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.2em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
           >
             Download JSON
           </button>
         </div>
-        {lastPortraitReport && (
-          <div className="mt-4 text-[10px] text-zinc-400 uppercase tracking-[0.2em]">
-            {lastPortraitReport.failed?.length ? (
-              <span className="text-red-400">
-                Failed: {lastPortraitReport.failed.join(", ")}
-              </span>
-            ) : (
-              <span>All portraits generated.</span>
-            )}
-          </div>
-        )}
       </div>
 
       {isManagingTome && (
@@ -476,7 +422,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => setCastPortrait(name)}
-                      className="text-[9px] uppercase font-semibold text-zinc-500 hover:text-[color:var(--accent)] transition-all"
+                      className="text-[9px] uppercase font-semibold text-zinc-500 hover:text-zinc-200 transition-all"
                     >
                       Set Portrait
                     </button>
@@ -539,3 +485,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 };
 
 export default AdminPanel;
+ git config --global s.haarisshariff@gmail.com
+  git config --global user.name "Syed Shariff"
+  

@@ -195,7 +195,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ gameState }) => {
                   {m.role === 'ai' && (
                     <button 
                       onClick={() => speakText(m.content)}
-                      className="flex items-center gap-2 text-[10px] uppercase font-bold text-[#D4AF37] hover:text-white transition-colors pt-2 border-t border-zinc-800 w-full"
+                      className="flex items-center gap-2 text-[10px] uppercase font-bold text-zinc-200 hover:text-white transition-colors pt-2 border-t border-zinc-800 w-full"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217z" clipRule="evenodd" />
@@ -217,7 +217,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ gameState }) => {
                 <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></div>
                 <div className="w-1.5 h-1.5 bg-[#D4AF37] rounded-full animate-bounce" style={{ animationDelay: '400ms' }}></div>
               </div>
-              <span className="text-[10px] text-[#D4AF37] gothic-font uppercase tracking-[0.2em]">
+              <span className="text-[10px] text-zinc-200 gothic-font uppercase tracking-[0.2em]">
                 {streaming ? 'Translating omens...' : 'Consulting the Round Table...'}
               </span>
             </div>

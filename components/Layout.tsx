@@ -34,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
           <div className="absolute top-4 right-4 flex items-center gap-3">
             <button 
               onClick={toggleTheme}
-              className={`p-2 rounded-full border transition-all ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-black/50 border-zinc-700 text-[color:var(--accent)]'}`}
+              className={`p-2 rounded-full border transition-all ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-black/50 border-zinc-700 text-zinc-200'}`}
               title={isLightMode ? "Extinguish the Torches" : "Light the Torches"}
             >
               {isLightMode ? (

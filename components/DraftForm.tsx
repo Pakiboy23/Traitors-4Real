@@ -168,7 +168,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
               <button 
                 type="button" 
                 onClick={autoGeneratePicks}
-                className="text-xs md:text-sm font-semibold text-[color:var(--accent)] border border-[color:var(--accent)]/40 px-4 py-2 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.2em]"
+                className="text-xs md:text-sm font-semibold text-zinc-200 border border-[color:var(--accent)]/40 px-4 py-2 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.2em]"
               >
                 Auto-pick
               </button>
@@ -255,11 +255,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                       className={`ml-2 px-4 py-2 rounded-full text-[9px] font-semibold uppercase tracking-[0.2em] transition-all border ${
                         isSealed 
                           ? 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-red-400' 
-                          : 'bg-[color:var(--accent)]/10 border-[color:var(--accent)]/40 text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black'
-                      }`}
-                    >
-                      {isSealed ? 'Unseal' : 'Seal Pick'}
-                    </button>
+                        : 'bg-[color:var(--accent)]/10 border-[color:var(--accent)]/40 text-zinc-200 hover:bg-[color:var(--accent)] hover:text-black'
+                    }`}
+                  >
+                    {isSealed ? 'Unseal' : 'Seal Pick'}
+                  </button>
                   </div>
                 </div>
               );
