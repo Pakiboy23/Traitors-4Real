@@ -50,7 +50,11 @@ const App: React.FC = () => {
       };
     });
 
-    return { players: [], castStatus: initialCast } as GameState;
+    return {
+      players: [],
+      castStatus: initialCast,
+      weeklyResults: { nextBanished: "", nextMurdered: "" },
+    } as GameState;
   });
 
   const updateGameState = (newState: GameState) => {
