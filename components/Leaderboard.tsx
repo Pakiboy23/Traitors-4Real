@@ -26,7 +26,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       predWinner: false, 
       predFirstOut: false, 
       traitorBonus: [] as string[], 
-      penalty: false 
+      penalty: false,
+      weeklyCouncil: [] as { label: string; result: 'correct' | 'incorrect' }[],
     };
 
     player.picks.forEach(pick => {
@@ -61,6 +62,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     if (gameState.castStatus[player.predWinner]?.isFirstOut) {
       score -= 2;
       breakdown.penalty = true;
+    }
+
+    const weeklyResults = gameState.weeklyResults;
+    const weeklyPredictions = player.weeklyPredictions;
+
+    if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
+      if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
+        score += 1;
+        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'correct' });
+        achievements.push({
+          member: weeklyPredictions.nextBanished,
+          type: 'Weekly: Banished',
+          points: 1,
+          icon: '⚖️',
+        });
+      } else {
+        score -= 0.5;
+        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'incorrect' });
+      }
+    }
+
+    if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
+      if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
+        score += 1;
+        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'correct' });
+        achievements.push({
+          member: weeklyPredictions.nextMurdered,
+          type: 'Weekly: Murdered',
+          points: 1,
+          icon: '🗡️',
+        });
+      } else {
+        score -= 0.5;
+        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'incorrect' });
+      }
     }
 
     return { total: score, breakdown, achievements };

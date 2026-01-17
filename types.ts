@@ -13,6 +13,16 @@ export interface DraftPick {
   role: 'Faithful' | 'Traitor';
 }
 
+export interface WeeklyPredictions {
+  nextBanished: string;
+  nextMurdered: string;
+}
+
+export interface WeeklyResults {
+  nextBanished?: string;
+  nextMurdered?: string;
+}
+
 export interface PlayerEntry {
   id: string;
   name: string;
@@ -23,11 +33,13 @@ export interface PlayerEntry {
   predTraitors: string[];
   totalScore?: number;
   portraitUrl?: string;
+  weeklyPredictions?: WeeklyPredictions;
 }
 
 export interface GameState {
   players: PlayerEntry[];
   castStatus: Record<string, CastMemberStatus>;
+  weeklyResults?: WeeklyResults;
 }
 
 export const CAST_NAMES = [
