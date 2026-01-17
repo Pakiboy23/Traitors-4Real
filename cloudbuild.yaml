@@ -1,6 +1,6 @@
 # cloudbuild.yaml
 options:
-  logging: CLOUD_LOGGING_ONLY
+  logging: CLOUD_LOGGING_ONLY  # or NONE, or specify build_logs_bucket: gs://your-bucket
 
 steps:
   - name: 'gcr.io/cloud-builders/npm'
@@ -8,13 +8,11 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'
     args:
-      [
-        'run',
-        'deploy',
-        'traitors-4real',
-        '--source=.',
-        '--region=us-central1',
-        '--platform=managed',
-        '--allow-unauthenticated',
-        '--project=gen-lang-client-0180159729'
-      ]
+      - 'run'
+      - 'deploy'
+      - 'traitors-4real'
+      - '--source=.'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--project=gen-lang-client-0180159729'
