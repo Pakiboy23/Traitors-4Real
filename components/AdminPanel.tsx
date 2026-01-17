@@ -2,8 +2,6 @@
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
-import { generateTraitorImage } from '../services/gemini';
-import { savePlayerPortrait } from '../services/firebase';
 
 interface AdminPanelProps {
   gameState: GameState;
