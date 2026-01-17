@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
+import { generateTraitorImage } from '../services/gemini';
+import { savePlayerPortrait } from '../services/firebase';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -153,8 +155,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       p.id === playerId ? { ...p, portraitUrl: url } : p
     );
     updateGameState({ ...gameState, players: updatedPlayers });
+    const targetPlayer = updatedPlayers.find(p => p.id === playerId);
     if (selectedPlayer?.id === playerId) {
       setSelectedPlayer(prev => prev ? { ...prev, portraitUrl: url } : null);
+    }
+    if (targetPlayer?.email) {
+      savePlayerPortrait(targetPlayer.email, targetPlayer.name, url).catch((err) => {
+        console.error("Failed to persist player portrait:", err);
+        setMsg({ text: "Portrait saved locally. Firestore writes are blocked until auth is added.", type: 'error' });
+      });
     }
   };
 

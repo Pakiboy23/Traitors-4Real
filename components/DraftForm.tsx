@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CAST_NAMES, GameState, PlayerEntry, DraftPick } from '../types';
+import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
 

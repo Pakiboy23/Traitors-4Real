@@ -14,6 +14,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
+import { fetchPlayerPortraits, normalizeEmail } from "./services/firebase";
 
 const STORAGE_KEY = "traitors_db_v4";
 const FIRESTORE_COLLECTION = "games";
@@ -182,6 +183,29 @@ const App: React.FC = () => {
       }
     };
   }, [gameState, isAdminAuthenticated]);
+  useEffect(() => {
+    let isMounted = true;
+    const hydratePortraits = async () => {
+      try {
+        const portraits = await fetchPlayerPortraits();
+        if (!isMounted || Object.keys(portraits).length === 0) return;
+        setGameState((prev) => {
+          const updatedPlayers = prev.players.map((player) => {
+            const key = normalizeEmail(player.email || "");
+            const portraitUrl = portraits[key];
+            return portraitUrl ? { ...player, portraitUrl } : player;
+          });
+          return { ...prev, players: updatedPlayers };
+        });
+      } catch (err) {
+        console.error("Failed to load player portraits:", err);
+      }
+    };
+    hydratePortraits();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleAddEntry = (entry: PlayerEntry) => {
     const updatedPlayers = [
