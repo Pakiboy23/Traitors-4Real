@@ -137,7 +137,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         nextMurdered: weeklyMurdered,
       },
     }).catch((err) => {
+      const message =
+        typeof err?.message === "string" && err.message.length
+          ? err.message
+          : "Weekly votes could not be submitted. Please try again.";
       console.warn("Weekly council submission failed:", err);
+      alert(message);
     });
 
     const body = encodeURIComponent(getWeeklyCouncilData());
