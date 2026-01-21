@@ -1046,6 +1046,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button onClick={() => setSelectedPlayer(null)} className="text-zinc-600 hover:text-white text-xl">&times;</button>
               </div>
 
+              <div className="p-4 bg-black/40 border border-zinc-800 rounded">
+                <p className="text-[11px] text-zinc-500 font-bold mb-3 uppercase tracking-widest">Edit Player Info</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-zinc-400 font-semibold mb-1 uppercase tracking-[0.2em]">Name</label>
+                    <input
+                      value={playerNameEdit}
+                      onChange={(e) => setPlayerNameEdit(e.target.value)}
+                      className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
+                      placeholder="Player name"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-zinc-400 font-semibold mb-1 uppercase tracking-[0.2em]">Email</label>
+                    <input
+                      value={playerEmailEdit}
+                      onChange={(e) => setPlayerEmailEdit(e.target.value)}
+                      className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
+                      placeholder="Email"
+                      type="email"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-col sm:flex-row gap-2">
+                  <button
+                    onClick={savePlayerInfo}
+                    className="px-3 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.25em] border border-[color:var(--accent)]/40 text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+                  >
+                    Save Player Info
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPlayerNameEdit(selectedPlayer.name || '');
+                      setPlayerEmailEdit(selectedPlayer.email || '');
+                    }}
+                    className="px-3 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.25em] border border-zinc-800 text-zinc-400 hover:text-white transition-all"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-red-900/10 border border-red-900/20 rounded">
                   <p className="text-xs text-red-400 font-bold uppercase mb-1">💀 1st Out</p>
