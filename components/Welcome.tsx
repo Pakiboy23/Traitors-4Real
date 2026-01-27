@@ -50,7 +50,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
 
       {/* Feature List */}
       <section className="glass-panel border-y border-zinc-800 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-4 text-center">
           <div className="space-y-2">
             <span className="text-2xl">✍️</span>
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Strategic Drafting</p>
@@ -58,10 +58,6 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
           <div className="space-y-2">
             <span className="text-2xl">📊</span>
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Live Leaderboard</p>
-          </div>
-          <div className="space-y-2">
-            <span className="text-2xl">🎨</span>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Portrait Generation</p>
           </div>
         </div>
       </section>
