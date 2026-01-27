@@ -26,7 +26,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       predWinner: false, 
       predFirstOut: false, 
       traitorBonus: [] as string[], 
-      penalty: false 
+      penalty: false,
+      weeklyCouncil: [] as { label: string; result: 'correct' | 'incorrect' }[],
     };
 
     player.picks.forEach(pick => {
@@ -63,6 +64,41 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       breakdown.penalty = true;
     }
 
+    const weeklyResults = gameState.weeklyResults;
+    const weeklyPredictions = player.weeklyPredictions;
+
+    if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
+      if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
+        score += 1;
+        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'correct' });
+        achievements.push({
+          member: weeklyPredictions.nextBanished,
+          type: 'Weekly: Banished',
+          points: 1,
+          icon: '⚖️',
+        });
+      } else {
+        score -= 0.5;
+        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'incorrect' });
+      }
+    }
+
+    if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
+      if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
+        score += 1;
+        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'correct' });
+        achievements.push({
+          member: weeklyPredictions.nextMurdered,
+          type: 'Weekly: Murdered',
+          points: 1,
+          icon: '🗡️',
+        });
+      } else {
+        score -= 0.5;
+        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'incorrect' });
+      }
+    }
+
     return { total: score, breakdown, achievements };
   };
 
@@ -76,16 +112,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
   };
 
   return (
-    <div className={`glass-panel p-4 md:p-6 rounded-2xl border transition-all duration-1000 overflow-hidden ${isSyncing ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)]' : 'border-[color:var(--accent)]/40'}`}>
-      <div className="flex justify-between items-center mb-8 relative">
+    <div className={`glass-panel p-6 md:p-8 rounded-3xl border transition-all duration-1000 overflow-hidden ${isSyncing ? 'border-green-500 shadow-[0_0_24px_rgba(34,197,94,0.22)]' : 'border-[color:var(--accent)]/30'}`}>
+      <div className="flex justify-between items-center mb-10 relative">
         <div className="flex-1 text-center">
-          <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)]">🏆 Official Standings</h3>
-          <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1">Live updates as results land</p>
+          <h3 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)]">🏆 Official Standings</h3>
+          <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-2">Live updates as results land</p>
         </div>
         {isSyncing && (
-           <div className="absolute right-0 top-0 flex items-center gap-2 px-2 py-1 bg-green-900/20 rounded border border-green-900/30 animate-in fade-in zoom-in duration-300">
-             <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-             <span className="text-[8px] font-black text-green-500 uppercase tracking-widest">Live Sync</span>
+           <div className="absolute right-0 top-0 flex items-center gap-2 px-3 py-1.5 bg-green-900/20 rounded-full border border-green-900/30 animate-in fade-in zoom-in duration-300">
+             <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
+             <span className="text-xs font-black text-green-500 uppercase tracking-widest">Live Sync</span>
            </div>
         )}
       </div>
@@ -93,10 +129,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-gray-800 text-gray-400 text-[10px] uppercase tracking-wider">
-              <th className="p-4">Rank</th>
-              <th className="p-4">Player</th>
-              <th className="p-4 text-right text-[color:var(--accent)] text-lg">Total</th>
+            <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+              <th className="p-5">Rank</th>
+              <th className="p-5">Player</th>
+              <th className="p-5 text-right text-[color:var(--accent)] text-xl">Total</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-800">
@@ -106,12 +142,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   onClick={() => toggleExpand(p.id)}
                   className={`cursor-pointer transition-all duration-300 ${expandedPlayerId === p.id ? 'bg-[#D4AF37]/10' : 'hover:bg-black/40'}`}
                 >
-                  <td className="p-4">
-                    <span className="flex items-center gap-2 text-xs">
+                  <td className="p-5">
+                    <span className="flex items-center gap-2 text-sm">
                       {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
                     </span>
                   </td>
-                  <td className="p-4">
+                  <td className="p-5">
                     <div className="flex items-center gap-3">
                       <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
                         {p.portraitUrl ? (
@@ -123,39 +159,39 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                         )}
                       </div>
                       <div className="flex flex-col">
-                        <span className="font-bold text-gray-100 text-sm">{p.name}</span>
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-tighter">View Scroll</span>
+                        <span className="font-bold text-gray-100 text-base md:text-lg">{p.name}</span>
+                        <span className="text-xs text-zinc-500 uppercase tracking-tighter">View Scroll</span>
                       </div>
                     </div>
                   </td>
-                  <td className="p-4 text-right font-black text-xl text-[#D4AF37]">{p.scoring.total}</td>
+                  <td className="p-5 text-right font-black text-2xl md:text-3xl text-[#D4AF37]">{p.scoring.total}</td>
                 </tr>
                 
                 {expandedPlayerId === p.id && (
                   <tr className="bg-black/60 animate-in slide-in-from-top-2 duration-300">
-                    <td colSpan={3} className="p-6 border-l-2 border-[#D4AF37]">
+                    <td colSpan={3} className="p-8 border-l-2 border-[#D4AF37]">
                       <div className="space-y-8">
                         <div>
-                          <h4 className="text-[10px] font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-4 border-b border-[#D4AF37]/20 pb-2">The Hall of Victory</h4>
+                          <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">The Hall of Victory</h4>
                           {p.scoring.achievements.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
                               {p.scoring.achievements.map((ach, i) => {
                                 const castPortrait = getCastPortraitSrc(
                                   ach.member,
                                   gameState.castStatus[ach.member]?.portraitUrl
                                 );
                                 return (
-                                  <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-2 rounded relative group hover:border-[#D4AF37] transition-all">
-                                    <div className="w-3 h-3 rounded-full overflow-hidden bg-black mb-2">
+                                  <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-3 rounded-2xl relative group hover:border-[#D4AF37] transition-all">
+                                    <div className="w-4 h-4 rounded-full overflow-hidden bg-black mb-3">
                                       {castPortrait ? (
                                         <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[6px]">{ach.member.charAt(0)}</div>
+                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[8px]">{ach.member.charAt(0)}</div>
                                       )}
                                     </div>
                                     <div className="text-center">
-                                      <p className="text-[10px] font-bold text-white truncate">{ach.member}</p>
-                                      <p className={`text-[8px] uppercase font-black tracking-tighter ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
+                                      <p className="text-xs font-bold text-white truncate">{ach.member}</p>
+                                      <p className={`text-[10px] uppercase font-black tracking-tighter ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
                                         {ach.icon} {ach.type}
                                       </p>
                                     </div>
@@ -164,7 +200,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                               })}
                             </div>
                           ) : (
-                            <p className="text-zinc-600 italic text-xs">No triumphs yet revealed.</p>
+                            <p className="text-zinc-600 italic text-sm">No triumphs yet revealed.</p>
                           )}
                         </div>
                       </div>

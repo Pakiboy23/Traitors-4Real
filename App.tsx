@@ -4,7 +4,6 @@ import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
-import ChatInterface from "./components/ChatInterface";
 import AdminAuth from "./components/AdminAuth";
 import { CAST_NAMES, GameState, PlayerEntry } from "./types";
 import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
@@ -14,6 +13,7 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
+import { fetchPlayerPortraits, normalizeEmail } from "./services/firebase";
 
 const STORAGE_KEY = "traitors_db_v4";
 const FIRESTORE_COLLECTION = "games";
@@ -50,7 +50,11 @@ const App: React.FC = () => {
       };
     });
 
-    return { players: [], castStatus: initialCast } as GameState;
+    return {
+      players: [],
+      castStatus: initialCast,
+      weeklyResults: { nextBanished: "", nextMurdered: "" },
+    } as GameState;
   });
 
   const updateGameState = (newState: GameState) => {
@@ -178,6 +182,29 @@ const App: React.FC = () => {
       }
     };
   }, [gameState, isAdminAuthenticated]);
+  useEffect(() => {
+    let isMounted = true;
+    const hydratePortraits = async () => {
+      try {
+        const portraits = await fetchPlayerPortraits();
+        if (!isMounted || Object.keys(portraits).length === 0) return;
+        setGameState((prev) => {
+          const updatedPlayers = prev.players.map((player) => {
+            const key = normalizeEmail(player.email || "");
+            const portraitUrl = portraits[key];
+            return portraitUrl ? { ...player, portraitUrl } : player;
+          });
+          return { ...prev, players: updatedPlayers };
+        });
+      } catch (err) {
+        console.error("Failed to load player portraits:", err);
+      }
+    };
+    hydratePortraits();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleAddEntry = (entry: PlayerEntry) => {
     const updatedPlayers = [
@@ -220,8 +247,6 @@ const App: React.FC = () => {
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
-      case "chat":
-        return <ChatInterface gameState={gameState} />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel
