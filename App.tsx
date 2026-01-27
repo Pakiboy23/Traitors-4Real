@@ -4,7 +4,6 @@ import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
-import ChatInterface from "./components/ChatInterface";
 import AdminAuth from "./components/AdminAuth";
 import { CAST_NAMES, GameState, PlayerEntry } from "./types";
 
@@ -64,15 +63,13 @@ const authenticateAdmin = (password: string): boolean => {
   const content = useMemo(() => {
     switch (activeTab) {
       case "home":
-        return <Welcome />;
+        return <Welcome onStart={() => setActiveTab("draft")} />;
       case "draft":
         // If DraftForm doesn't take these props, the build will tell us.
         return <DraftForm gameState={gameState} onAddEntry={handleAddEntry} />;
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
-      case "chat":
-        return <ChatInterface />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel gameState={gameState} updateGameState={updateGameState} />
@@ -81,7 +78,7 @@ const authenticateAdmin = (password: string): boolean => {
           <AdminAuth onAuthenticate={authenticateAdmin} />
         );
       default:
-        return <Welcome />;
+        return <Welcome onStart={() => setActiveTab("draft")} />;
     }
   }, [activeTab, gameState, isAdminAuthenticated]);
 

@@ -101,9 +101,10 @@ const DraftForm: React.FC<DraftFormProps> = ({ onAddEntry }) => {
     onAddEntry(newEntry);
     setIsSubmitted(true);
 
+    // Open email in new window so user doesn't lose confirmation
     const body = encodeURIComponent(getFormData());
     const subject = encodeURIComponent(`Traitors Draft Picks - ${playerName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
+    window.open(`mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`, '_blank');
   };
 
   if (isSubmitted) {

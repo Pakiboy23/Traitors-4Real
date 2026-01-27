@@ -71,19 +71,13 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
             >
               The Draft
             </button>
-            <button 
+            <button
               onClick={() => onTabChange('leaderboard')}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'leaderboard' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[#D4AF37] text-black border-[#D4AF37]') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-[#D4AF37]')}`}
             >
               Leaderboard
             </button>
-            <button 
-              onClick={() => onTabChange('chat')}
-              className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'chat' ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[#D4AF37] text-black border-[#D4AF37]') : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-[#D4AF37]')}`}
-            >
-              The Cloistered Room
-            </button>
-            <button 
+            <button
               onClick={() => onTabChange('admin')}
               className={`px-3 md:px-4 py-2 text-xs md:text-sm rounded-full border transition-all ${activeTab === 'admin' ? 'bg-red-900 text-white border-red-900' : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-gray-700 hover:border-red-900')}`}
             >

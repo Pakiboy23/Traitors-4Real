@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
-import { generateTraitorImage } from '../services/gemini';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -13,8 +12,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
   const [isManagingTome, setIsManagingTome] = useState(false);
-  const [isGenerating, setIsGenerating] = useState<string | null>(null);
-  const [isGeneratingPlayer, setIsGeneratingPlayer] = useState(false);
 
   const parseAndAdd = () => {
     try {
@@ -117,56 +114,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
   };
 
   const updatePlayerAvatar = (playerId: string, url: string) => {
-    const updatedPlayers = gameState.players.map(p => 
+    const updatedPlayers = gameState.players.map(p =>
       p.id === playerId ? { ...p, portraitUrl: url } : p
     );
     updateGameState({ ...gameState, players: updatedPlayers });
     if (selectedPlayer?.id === playerId) {
       setSelectedPlayer(prev => prev ? { ...prev, portraitUrl: url } : null);
     }
-  };
-
-  const handleGeneratePortrait = async (name: string) => {
-    setIsGenerating(name);
-    try {
-      const imageUrl = await generateTraitorImage(name, '1K');
-      if (imageUrl) {
-        updateCastMember(name, 'portraitUrl', imageUrl);
-        setMsg({ text: `Portrait of ${name} revealed.`, type: 'success' });
-      }
-    } catch (err) {
-      setMsg({ text: "The shadows refused to reveal a portrait.", type: 'error' });
-    } finally {
-      setIsGenerating(null);
-    }
-  };
-
-  const handleGeneratePlayerAvatar = async () => {
-    if (!selectedPlayer) return;
-    setIsGeneratingPlayer(true);
-    try {
-      const prompt = `A mysterious fantasy character avatar for player named ${selectedPlayer.name}, dark academic aesthetic, high fashion cloak, moody lighting, the traitors tv show style.`;
-      const imageUrl = await generateTraitorImage(prompt, '1K');
-      if (imageUrl) {
-        updatePlayerAvatar(selectedPlayer.id, imageUrl);
-        setMsg({ text: `Avatar for ${selectedPlayer.name} summoned.`, type: 'success' });
-      }
-    } catch (err) {
-      setMsg({ text: "Could not summon player avatar.", type: 'error' });
-    } finally {
-      setIsGeneratingPlayer(false);
-    }
-  };
-
-  const handleGenerateAllPortraits = async () => {
-    if (!confirm("This will summon portraits for the entire cast. Continue?")) return;
-    setMsg({ text: "Invoking portraits for the assembly...", type: 'success' });
-    for (const name of CAST_NAMES) {
-      if (!(gameState.castStatus[name] as any)?.portraitUrl) {
-        await handleGeneratePortrait(name);
-      }
-    }
-    setMsg({ text: "The gallery is complete.", type: 'success' });
   };
 
   const handleTomeImport = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -186,13 +140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-3xl gothic-font text-[#D4AF37]">Management Vault</h2>
         <div className="flex gap-2">
-          <button 
-            onClick={handleGenerateAllPortraits}
-            className="px-4 py-2 bg-zinc-900 text-[10px] text-[#D4AF37] rounded border border-[#D4AF37]/30 uppercase font-bold tracking-widest hover:bg-[#D4AF37] hover:text-black transition-all"
-          >
-            🎨 Summon All Cast Portraits
-          </button>
-          <button 
+          <button
             onClick={() => setIsManagingTome(!isManagingTome)}
             className="px-4 py-2 bg-zinc-800 text-[10px] text-zinc-400 rounded border border-zinc-700 uppercase font-bold tracking-widest hover:text-[#D4AF37] transition-all"
           >
@@ -283,23 +231,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
                         <span className="text-2xl text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
                       )}
                     </div>
-                    {isGeneratingPlayer && (
-                      <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center">
-                        <div className="w-5 h-5 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
                   </div>
                   <div>
                     <h3 className="text-2xl gothic-font text-[#D4AF37]">{selectedPlayer.name}</h3>
                     <div className="flex gap-2 mt-2">
-                      <button 
-                        disabled={isGeneratingPlayer}
-                        onClick={handleGeneratePlayerAvatar}
-                        className="text-[9px] uppercase font-bold text-[#D4AF37] border border-[#D4AF37]/30 px-2 py-1 rounded hover:bg-[#D4AF37] hover:text-black transition-all"
-                      >
-                        {isGeneratingPlayer ? 'Summoning...' : 'Summon Avatar'}
-                      </button>
-                      <button 
+                      <button
                         onClick={() => {
                           const url = prompt("Enter image URL for player avatar:", selectedPlayer.portraitUrl || "");
                           if (url !== null) updatePlayerAvatar(selectedPlayer.id, url);
@@ -359,7 +295,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
             return (
               <div key={name} className="bg-black/40 p-4 rounded border border-zinc-800 space-y-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group">
+                  <div className="w-10 h-10 rounded overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0">
                     {status?.portraitUrl ? (
                       <img src={status.portraitUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -367,20 +303,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ gameState, updateGameState }) =
                         {name.charAt(0)}
                       </div>
                     )}
-                    {isGenerating === name && (
-                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                        <div className="w-4 h-4 border-2 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
                   </div>
                   <div className="flex-1">
                     <p className="text-[11px] font-bold text-white truncate">{name}</p>
-                    <button 
-                      onClick={() => handleGeneratePortrait(name)}
-                      className="text-[8px] uppercase font-bold text-[#D4AF37] hover:underline"
-                    >
-                      {status?.portraitUrl ? 'Regenerate' : 'Summon Portrait'}
-                    </button>
                   </div>
                 </div>
                 

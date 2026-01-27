@@ -40,6 +40,10 @@ const ConfirmationCard: React.FC<ConfirmationCardProps> = ({ playerName, onReset
         <p className="gothic-font text-[10px] sm:text-xs text-red-700 font-bold tracking-[0.3em] uppercase opacity-80">
           Trust No One • Season 4
         </p>
+
+        <p className="text-[10px] text-zinc-500 mt-4 max-w-[280px]">
+          Your entry has been saved to the Leaderboard. An email confirmation may have opened in a new window.
+        </p>
       </div>
 
       <button 

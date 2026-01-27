@@ -41,8 +41,8 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
           <div className="absolute top-0 left-0 w-1 h-full bg-red-600 opacity-50"></div>
           <h3 className="gothic-font text-red-500 text-xl mb-4 uppercase tracking-widest">The Architect</h3>
           <p className="text-zinc-300 text-sm leading-relaxed">
-            Crafted for the elite members of the Titanic Swim Team league. I built this application to bring the mystery 
-            and treachery of the castle into our own hands. From real-time scoring to AI-generated "Prophecies," 
+            Crafted for the elite members of the Titanic Swim Team league. I built this application to bring the mystery
+            and treachery of the castle into our own hands. From real-time scoring to strategic predictions,
             this tool is designed to track our collective descent into chaos.
           </p>
         </div>
@@ -60,12 +60,12 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Live Leaderboard</p>
           </div>
           <div className="space-y-2">
-            <span className="text-2xl">🧙‍♂️</span>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">AI Chat Advisor</p>
+            <span className="text-2xl">🎯</span>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Traitor Predictions</p>
           </div>
           <div className="space-y-2">
-            <span className="text-2xl">🎨</span>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Portrait Generation</p>
+            <span className="text-2xl">🏆</span>
+            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Live Scoring</p>
           </div>
         </div>
       </section>
