@@ -90,16 +90,6 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
               Leaderboard
             </button>
             <button 
-              onClick={() => onTabChange('chat')}
-              className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
-                activeTab === 'chat'
-                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
-                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
-              }`}
-            >
-              The Cloistered Room
-            </button>
-            <button 
               onClick={() => onTabChange('admin')}
               className={`px-4 py-2 text-[11px] rounded-full border transition-all ${
                 activeTab === 'admin'

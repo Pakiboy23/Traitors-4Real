@@ -4,7 +4,6 @@ import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
-import ChatInterface from "./components/ChatInterface";
 import AdminAuth from "./components/AdminAuth";
 import { CAST_NAMES, GameState, PlayerEntry } from "./types";
 import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
@@ -248,8 +247,6 @@ const App: React.FC = () => {
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
-      case "chat":
-        return <ChatInterface gameState={gameState} />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel
