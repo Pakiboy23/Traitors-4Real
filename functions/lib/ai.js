@@ -2,6 +2,7 @@ import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { initializeApp as initializeAdminApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
 import { randomUUID } from "crypto";
 import sharp from "sharp";
@@ -21,6 +22,7 @@ const CAST_NAMES = [
 ].sort();
 const adminApp = initializeAdminApp();
 const adminDb = getFirestore(adminApp);
+const adminAuth = getAdminAuth(adminApp);
 const adminStorage = getStorage(adminApp);
 const genAI = new GoogleGenAI({
     apiKey: process.env.GENAI_API_KEY || "",
@@ -33,19 +35,78 @@ Personality:
 
 Scoring Rules:
 - Winner +10, 1st Out +5, Traitor ID +3, Penalty -2.`;
-const allowCors = (res) => {
-    res.set("Access-Control-Allow-Origin", "*");
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const EMULATOR_ALLOWED_ORIGINS = ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"];
+const getAllowedOrigins = () => {
+    if (ALLOWED_ORIGINS.length)
+        return ALLOWED_ORIGINS;
+    if (process.env.FUNCTIONS_EMULATOR === "true")
+        return EMULATOR_ALLOWED_ORIGINS;
+    return [];
+};
+const allowCors = (req, res) => {
+    const origin = req.headers?.origin;
+    const allowedOrigins = getAllowedOrigins();
+    if (origin) {
+        if (!allowedOrigins.includes(origin)) {
+            return false;
+        }
+        res.set("Access-Control-Allow-Origin", origin);
+        res.set("Vary", "Origin");
+    }
     res.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    return true;
 };
-export const ask = onRequest({ cors: true, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
-    allowCors(res);
+const requireAuth = async (req) => {
+    const authHeader = req.headers?.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (!token) {
+        throw new HttpsError("unauthenticated", "Sign in required.");
+    }
+    const decoded = await adminAuth.verifyIdToken(token);
+    return decoded.uid;
+};
+const RATE_LIMITS = {
+    ask: { key: "ask", limit: 60, windowSec: 60 },
+    image: { key: "image", limit: 12, windowSec: 60 },
+    speak: { key: "speak", limit: 20, windowSec: 60 },
+};
+export const ask = onRequest({ cors: false, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
+    if (!allowCors(req, res)) {
+        res.status(403).json({ error: "Origin not allowed" });
+        return;
+    }
     if (req.method === "OPTIONS") {
         res.status(204).send("");
         return;
     }
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
+        return;
+    }
+    let uid = "";
+    try {
+        uid = await requireAuth(req);
+        await adminDb.runTransaction(async (tx) => {
+            const cfg = RATE_LIMITS.ask;
+            const window = Math.floor(Date.now() / 1000 / cfg.windowSec);
+            const docId = `${uid}_${cfg.key}_${window}`;
+            const ref = adminDb.collection("rateLimits").doc(docId);
+            const snap = await tx.get(ref);
+            const count = snap.exists ? Number(snap.data()?.count || 0) : 0;
+            if (count >= cfg.limit) {
+                throw new HttpsError("resource-exhausted", "Rate limit exceeded.");
+            }
+            tx.set(ref, { count: FieldValue.increment(1), uid, key: cfg.key, window }, { merge: true });
+        });
+    }
+    catch (err) {
+        const status = err instanceof HttpsError && err.code === "resource-exhausted" ? 429 : 401;
+        res.status(status).json({ error: err?.message || "Unauthorized" });
         return;
     }
     const prompt = (req.body?.prompt || "").toString();
@@ -74,14 +135,37 @@ export const ask = onRequest({ cors: true, secrets: ["GENAI_API_KEY"] }, async (
         res.status(500).json({ error: err?.message || "AI error" });
     }
 });
-export const image = onRequest({ cors: true, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
-    allowCors(res);
+export const image = onRequest({ cors: false, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
+    if (!allowCors(req, res)) {
+        res.status(403).json({ error: "Origin not allowed" });
+        return;
+    }
     if (req.method === "OPTIONS") {
         res.status(204).send("");
         return;
     }
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
+        return;
+    }
+    try {
+        const uid = await requireAuth(req);
+        await adminDb.runTransaction(async (tx) => {
+            const cfg = RATE_LIMITS.image;
+            const window = Math.floor(Date.now() / 1000 / cfg.windowSec);
+            const docId = `${uid}_${cfg.key}_${window}`;
+            const ref = adminDb.collection("rateLimits").doc(docId);
+            const snap = await tx.get(ref);
+            const count = snap.exists ? Number(snap.data()?.count || 0) : 0;
+            if (count >= cfg.limit) {
+                throw new HttpsError("resource-exhausted", "Rate limit exceeded.");
+            }
+            tx.set(ref, { count: FieldValue.increment(1), uid, key: cfg.key, window }, { merge: true });
+        });
+    }
+    catch (err) {
+        const status = err instanceof HttpsError && err.code === "resource-exhausted" ? 429 : 401;
+        res.status(status).json({ error: err?.message || "Unauthorized" });
         return;
     }
     const prompt = (req.body?.prompt || "").toString();
@@ -118,14 +202,37 @@ export const image = onRequest({ cors: true, secrets: ["GENAI_API_KEY"] }, async
         res.status(500).json({ error: err?.message || "Image error" });
     }
 });
-export const speak = onRequest({ cors: true, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
-    allowCors(res);
+export const speak = onRequest({ cors: false, secrets: ["GENAI_API_KEY"] }, async (req, res) => {
+    if (!allowCors(req, res)) {
+        res.status(403).json({ error: "Origin not allowed" });
+        return;
+    }
     if (req.method === "OPTIONS") {
         res.status(204).send("");
         return;
     }
     if (req.method !== "POST") {
         res.status(405).send("Method not allowed");
+        return;
+    }
+    try {
+        const uid = await requireAuth(req);
+        await adminDb.runTransaction(async (tx) => {
+            const cfg = RATE_LIMITS.speak;
+            const window = Math.floor(Date.now() / 1000 / cfg.windowSec);
+            const docId = `${uid}_${cfg.key}_${window}`;
+            const ref = adminDb.collection("rateLimits").doc(docId);
+            const snap = await tx.get(ref);
+            const count = snap.exists ? Number(snap.data()?.count || 0) : 0;
+            if (count >= cfg.limit) {
+                throw new HttpsError("resource-exhausted", "Rate limit exceeded.");
+            }
+            tx.set(ref, { count: FieldValue.increment(1), uid, key: cfg.key, window }, { merge: true });
+        });
+    }
+    catch (err) {
+        const status = err instanceof HttpsError && err.code === "resource-exhausted" ? 429 : 401;
+        res.status(status).json({ error: err?.message || "Unauthorized" });
         return;
     }
     const text = (req.body?.text || "").toString();
@@ -226,7 +333,11 @@ export const generateCastPortraits = onCall({ secrets: ["GENAI_API_KEY"], timeou
         total: CAST_NAMES.length,
     };
 });
-export const ensureCastPortraits = onCall({ secrets: ["GENAI_API_KEY"], timeoutSeconds: 300, memory: "1GiB" }, async () => {
+export const ensureCastPortraits = onCall({ secrets: ["GENAI_API_KEY"], timeoutSeconds: 300, memory: "1GiB" }, async (request) => {
+    const email = request.auth?.token?.email;
+    if (!email || !ADMIN_EMAILS.includes(String(email).toLowerCase())) {
+        throw new HttpsError("permission-denied", "Admin access required.");
+    }
     const docRef = adminDb.collection("games").doc("default");
     const lockWindowMs = 15 * 60 * 1000;
     const now = Date.now();

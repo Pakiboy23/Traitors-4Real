@@ -50,7 +50,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
 
       {/* Feature List */}
       <section className="glass-panel border-y border-zinc-800 py-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-center">
           <div className="space-y-2">
             <span className="text-2xl">✍️</span>
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Strategic Drafting</p>
@@ -58,10 +58,6 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
           <div className="space-y-2">
             <span className="text-2xl">📊</span>
             <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">Live Leaderboard</p>
-          </div>
-          <div className="space-y-2">
-            <span className="text-2xl">🧙‍♂️</span>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em]">AI Chat Advisor</p>
           </div>
           <div className="space-y-2">
             <span className="text-2xl">🎨</span>
@@ -74,7 +70,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
       <div className="flex flex-col items-center pt-8">
         <button 
           onClick={onStart}
-          className="group relative px-14 py-6 bg-[color:var(--accent)] text-black font-bold gothic-font uppercase tracking-[0.3em] text-base md:text-lg hover:bg-[color:var(--accent-strong)] transition-all hover:scale-[1.06] active:scale-95 rounded-full shadow-[0_12px_40px_rgba(214,178,74,0.4)]"
+          className="group relative px-14 py-6 bg-[color:var(--accent)] text-black font-bold gothic-font uppercase tracking-[0.3em] text-base md:text-lg hover:bg-[color:var(--accent-strong)] transition-all hover:scale-[1.06] active:scale-95 rounded-full shadow-[0_12px_40px_rgba(201,165,77,0.38)]"
         >
           <span className="relative z-10">Enter the Castle</span>
           <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
