@@ -5,16 +5,16 @@
 @tailwind utilities;
 
 :root {
-  --bg-deep: #07090b;
-  --bg-emerald: #0b1512;
-  --panel: rgba(6, 8, 10, 0.88);
-  --panel-strong: rgba(4, 6, 8, 0.94);
-  --stroke: rgba(201, 165, 77, 0.28);
-  --accent: #c9a54d;
-  --accent-strong: #e3c47a;
-  --crimson: #8e1f24;
+  --bg-deep: #15121c;
+  --bg-emerald: #1b1824;
+  --panel: rgba(36, 28, 52, 0.72);
+  --panel-strong: rgba(28, 22, 42, 0.82);
+  --stroke: rgba(217, 221, 227, 0.12);
+  --accent: #d9dde3;
+  --accent-strong: #f3f5f8;
+  --crimson: #7a1822;
   --text: #e9e5dc;
-  --muted: #b7a68a;
+  --muted: #aeb4be;
 }
 
 html, body, #root {
@@ -22,15 +22,15 @@ html, body, #root {
 }
 
 html {
-  font-size: 112.5%;
+  font-size: 120%;
 }
 
 body {
   background:
-    radial-gradient(900px 600px at 15% 5%, rgba(183, 44, 44, 0.2), transparent 60%),
-    radial-gradient(800px 640px at 85% 10%, rgba(201, 165, 77, 0.18), transparent 55%),
-    radial-gradient(900px 900px at 50% 90%, rgba(11, 21, 18, 0.92), transparent 60%),
-    linear-gradient(180deg, var(--bg-deep), #0b0f12 50%, #090b0e);
+    radial-gradient(900px 600px at 12% 4%, rgba(122, 24, 34, 0.26), transparent 64%),
+    radial-gradient(1000px 720px at 88% 6%, rgba(217, 221, 227, 0.2), transparent 60%),
+    radial-gradient(1200px 900px at 50% 96%, rgba(34, 24, 46, 0.9), transparent 66%),
+    linear-gradient(180deg, var(--bg-deep) 0%, #1a1724 48%, #221a2e 100%);
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
   line-height: 1.5;
@@ -50,21 +50,21 @@ body {
 
 @layer components {
   .glass-panel {
-    background: var(--panel-strong);
-    border: 1px solid var(--stroke);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(18px);
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 
   .accent-outline {
-    border: 1px solid rgba(201, 165, 77, 0.55);
-    box-shadow: 0 0 0 1px rgba(201, 165, 77, 0.2);
+    border: 1px solid rgba(217, 221, 227, 0.62);
+    box-shadow: 0 0 0 1px rgba(217, 221, 227, 0.24);
   }
 }
 
 @layer base {
   ::selection {
-    background: rgba(201, 165, 77, 0.3);
+    background: rgba(217, 221, 227, 0.36);
     color: var(--text);
   }
 
