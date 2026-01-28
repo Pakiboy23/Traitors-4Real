@@ -27,5 +27,6 @@ dist-ssr
 # PocketBase
 pb_data
 pb_public
+bin
 bin/pocketbase
 bin/pocketbase.exe

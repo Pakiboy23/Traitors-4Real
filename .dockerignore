@@ -1,0 +1,6 @@
+node_modules
+dist
+pb_data
+pb_public
+.git
+.DS_Store
