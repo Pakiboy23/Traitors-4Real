@@ -5,16 +5,16 @@
 @tailwind utilities;
 
 :root {
-  --bg-deep: #07090b;
-  --bg-emerald: #0b1512;
-  --panel: rgba(6, 8, 10, 0.88);
-  --panel-strong: rgba(4, 6, 8, 0.94);
-  --stroke: rgba(214, 178, 74, 0.18);
-  --accent: #d6b24a;
-  --accent-strong: #f5d76e;
-  --crimson: #b72c2c;
+  --bg-deep: #15121c;
+  --bg-emerald: #1b1824;
+  --panel: rgba(36, 28, 52, 0.72);
+  --panel-strong: rgba(28, 22, 42, 0.82);
+  --stroke: rgba(217, 221, 227, 0.12);
+  --accent: #d9dde3;
+  --accent-strong: #f3f5f8;
+  --crimson: #7a1822;
   --text: #e9e5dc;
-  --muted: #98a2b3;
+  --muted: #aeb4be;
 }
 
 html, body, #root {
@@ -22,15 +22,15 @@ html, body, #root {
 }
 
 html {
-  font-size: 112.5%;
+  font-size: 120%;
 }
 
 body {
   background:
-    radial-gradient(900px 600px at 15% 5%, rgba(183, 44, 44, 0.18), transparent 60%),
-    radial-gradient(800px 640px at 85% 10%, rgba(214, 178, 74, 0.12), transparent 55%),
-    radial-gradient(900px 900px at 50% 90%, rgba(11, 21, 18, 0.9), transparent 60%),
-    linear-gradient(180deg, var(--bg-deep), #0b0f12 50%, #090b0e);
+    radial-gradient(900px 600px at 12% 4%, rgba(122, 24, 34, 0.26), transparent 64%),
+    radial-gradient(1000px 720px at 88% 6%, rgba(217, 221, 227, 0.2), transparent 60%),
+    radial-gradient(1200px 900px at 50% 96%, rgba(34, 24, 46, 0.9), transparent 66%),
+    linear-gradient(180deg, var(--bg-deep) 0%, #1a1724 48%, #221a2e 100%);
   color: var(--text);
   font-family: "Space Grotesk", sans-serif;
   line-height: 1.5;
@@ -50,21 +50,22 @@ body {
 
 @layer components {
   .glass-panel {
-    background: var(--panel-strong);
-    border: 1px solid var(--stroke);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-    backdrop-filter: blur(18px);
+    background: rgba(36, 28, 52, 0.65);
+    border: 1px solid rgba(217, 221, 227, 0.12);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(180%);
   }
 
   .accent-outline {
-    border: 1px solid rgba(214, 178, 74, 0.4);
-    box-shadow: 0 0 0 1px rgba(214, 178, 74, 0.1);
+    border: 1px solid rgba(217, 221, 227, 0.62);
+    box-shadow: 0 0 0 1px rgba(217, 221, 227, 0.24);
   }
 }
 
 @layer base {
   ::selection {
-    background: rgba(214, 178, 74, 0.25);
+    background: rgba(217, 221, 227, 0.36);
     color: var(--text);
   }
 
@@ -79,9 +80,20 @@ body {
   input, select, textarea {
     border-radius: 0.75rem;
   }
+
+  /* Focus states for accessibility */
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(217, 221, 227, 0.2);
+  }
 }
 
-/* AdminAuth shake animation */
+/* Animations */
 @layer utilities {
   .animate-shake {
     animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
@@ -91,5 +103,19 @@ body {
     20%, 80% { transform: translate3d(2px, 0, 0); }
     30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
     40%, 60% { transform: translate3d(4px, 0, 0); }
+  }
+
+  /* Loading spinner */
+  .loading-spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 }

@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 /.env
+
+# PocketBase
+pb_data
+pb_public
+bin/pocketbase
+bin/pocketbase.exe

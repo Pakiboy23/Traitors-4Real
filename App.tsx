@@ -4,22 +4,20 @@ import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
-import ChatInterface from "./components/ChatInterface";
 import AdminAuth from "./components/AdminAuth";
 import { CAST_NAMES, GameState, PlayerEntry } from "./types";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
-import { auth, db } from "./src/lib/firebase";
 import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-} from "firebase/auth";
-import { fetchPlayerPortraits, normalizeEmail } from "./services/firebase";
+  fetchGameState,
+  fetchPlayerPortraits,
+  normalizeEmail,
+  onAdminAuthChange,
+  saveGameState,
+  signInAdmin,
+  signOutAdmin,
+  subscribeToGameState,
+} from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
-const FIRESTORE_COLLECTION = "games";
-const FIRESTORE_DOC_ID = "default";
-const ADMIN_EMAILS = ["s.haarisshariff@gmail.com"];
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -76,20 +74,18 @@ const App: React.FC = () => {
   const saveNow = async () => {
     if (!isAdminAuthenticated) return;
     try {
-      const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
       const safeState = normalizeUndefined(gameState);
-      await setDoc(
-        docRef,
-        { state: safeState, updatedAt: serverTimestamp() },
-        { merge: true }
-      );
-      setLastSavedAt(Date.now());
+      const record = await saveGameState(safeState as GameState);
+      const updatedAt = record?.updated
+        ? new Date(record.updated as string).getTime()
+        : Date.now();
+      setLastSavedAt(updatedAt);
       setLastWriteError(null);
     } catch (error) {
       setLastWriteError(
         error instanceof Error ? error.message : String(error)
       );
-      console.warn("Manual Firestore save failed:", error);
+      console.warn("Manual save failed:", error);
     }
   };
 
@@ -98,43 +94,46 @@ const App: React.FC = () => {
   }, [gameState]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      const email = user?.email?.toLowerCase();
-      const isAdmin =
-        !!email &&
-        ADMIN_EMAILS.some((allowed) => allowed.toLowerCase() === email);
-      setIsAdminAuthenticated(isAdmin);
+    const unsubscribe = onAdminAuthChange((isAuthed) => {
+      setIsAdminAuthenticated(isAuthed);
     });
     return () => {
-      unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
   useEffect(() => {
-    const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
-    const unsubscribe = onSnapshot(
-      docRef,
-      (snapshot) => {
+    let isMounted = true;
+    const loadRemote = async () => {
+      try {
+        const remote = await fetchGameState();
         hasRemoteSnapshotRef.current = true;
-        remoteExistsRef.current = snapshot.exists();
-        if (!snapshot.exists()) return;
-        const data = snapshot.data();
-        if (!data?.state) return;
-        const remoteState = data.state as GameState;
-        const remoteUpdatedAt = data.updatedAt?.toMillis?.();
-        if (typeof remoteUpdatedAt === "number") {
-          setLastSavedAt(remoteUpdatedAt);
-        }
-        const serialized = JSON.stringify(remoteState);
+        remoteExistsRef.current = !!remote;
+        if (!remote || !isMounted) return;
+        const serialized = JSON.stringify(remote.state);
         lastRemoteStateRef.current = serialized;
-        setGameState(remoteState);
-      },
-      (error) => {
-        console.warn("Firestore realtime sync failed:", error);
+        setGameState(remote.state);
+        if (typeof remote.updatedAt === "number") {
+          setLastSavedAt(remote.updatedAt);
+        }
+      } catch (error) {
+        console.warn("PocketBase sync failed:", error);
       }
-    );
+    };
+    loadRemote();
+    const unsubscribe = subscribeToGameState((remoteState, updatedAt) => {
+      hasRemoteSnapshotRef.current = true;
+      remoteExistsRef.current = true;
+      const serialized = JSON.stringify(remoteState);
+      lastRemoteStateRef.current = serialized;
+      setGameState(remoteState);
+      if (typeof updatedAt === "number") {
+        setLastSavedAt(updatedAt);
+      }
+    });
     return () => {
-      unsubscribe();
+      isMounted = false;
+      unsubscribe?.();
     };
   }, []);
 
@@ -156,17 +155,16 @@ const App: React.FC = () => {
       return () => undefined;
     }
     writeTimerRef.current = window.setTimeout(() => {
-      const docRef = doc(db, FIRESTORE_COLLECTION, FIRESTORE_DOC_ID);
       pendingWriteRef.current = serialized;
-      setDoc(
-        docRef,
-        { state: gameState, updatedAt: serverTimestamp() },
-        { merge: true }
-      )
-        .then(() => {
+      const safeState = normalizeUndefined(gameState);
+      saveGameState(safeState as GameState)
+        .then((record) => {
           lastRemoteStateRef.current = serialized;
           pendingWriteRef.current = null;
-          setLastSavedAt(Date.now());
+          const updatedAt = record?.updated
+            ? new Date(record.updated as string).getTime()
+            : Date.now();
+          setLastSavedAt(updatedAt);
           setLastWriteError(null);
         })
         .catch((error) => {
@@ -174,7 +172,7 @@ const App: React.FC = () => {
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );
-          console.warn("Firestore write failed:", error);
+          console.warn("PocketBase write failed:", error);
         });
     }, 500);
     return () => {
@@ -219,24 +217,15 @@ const App: React.FC = () => {
     password: string
   ): Promise<boolean> => {
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const authedEmail = result.user.email?.toLowerCase();
-      const isAdmin =
-        !!authedEmail &&
-        ADMIN_EMAILS.some(
-          (allowed) => allowed.toLowerCase() === authedEmail
-        );
-      if (!isAdmin) {
-        await signOut(auth);
-      }
-      return isAdmin;
+      const success = await signInAdmin(email, password);
+      return success;
     } catch {
       return false;
     }
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    signOutAdmin();
   };
   const content = useMemo(() => {
     switch (activeTab) {
@@ -248,8 +237,6 @@ const App: React.FC = () => {
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
-      case "chat":
-        return <ChatInterface gameState={gameState} />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel
