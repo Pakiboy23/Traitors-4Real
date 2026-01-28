@@ -15,12 +15,10 @@ View your app in AI Studio: https://ai.studio/apps/drive/1x7fQsJeDPeXMHWLokiShFF
 
 1. Install dependencies:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+2. Set `VITE_POCKETBASE_URL` in [.env.local](.env.local) if you’re not using the default (`http://127.0.0.1:8090`).
 3. Run the app:
    `npm run dev`
    
-If you use `VITE_AI_ENDPOINT`, it expects Firebase auth tokens. Leave it unset to use direct Gemini API calls with `VITE_GEMINI_API_KEY`.
-
 ## PocketBase (Auth + Realtime + DB)
 
 1. Download PocketBase from https://pocketbase.io/docs/ and unzip it in the repo root.
@@ -36,4 +34,3 @@ If you use `VITE_AI_ENDPOINT`, it expects Firebase auth tokens. Leave it unset t
 `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`
 
 ### Migrate from Firestore (optional)
-`FIREBASE_SERVICE_ACCOUNT=/path/to/serviceAccount.json POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/migrate-firestore-to-pocketbase.mjs`
