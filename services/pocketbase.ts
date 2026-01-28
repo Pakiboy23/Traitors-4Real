@@ -1,0 +1,137 @@
+import type { GameState } from "../types";
+import { pb } from "../src/lib/pocketbase";
+
+const GAME_COLLECTION = "games";
+const GAME_SLUG = "default";
+const PORTRAITS_COLLECTION = "playerPortraits";
+const ADMIN_COLLECTION = "admins";
+
+const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
+
+const isNotFound = (error: any) =>
+  error?.status === 404 || error?.response?.code === 404;
+
+export const normalizeEmail = (email: string) => email.trim().toLowerCase();
+
+export const onAdminAuthChange = (callback: (isAuthed: boolean) => void) => {
+  return pb.authStore.onChange(() => {
+    callback(pb.authStore.isValid);
+  }, true);
+};
+
+export const signInAdmin = async (email: string, password: string) => {
+  await pb.collection(ADMIN_COLLECTION).authWithPassword(email, password);
+  return pb.authStore.isValid;
+};
+
+export const signOutAdmin = () => {
+  pb.authStore.clear();
+};
+
+export const fetchGameState = async (): Promise<{
+  state: GameState;
+  updatedAt?: number;
+} | null> => {
+  try {
+    const record = await pb
+      .collection(GAME_COLLECTION)
+      .getFirstListItem(`slug="${GAME_SLUG}"`);
+    const updatedAt = record.updated
+      ? new Date(record.updated as string).getTime()
+      : undefined;
+    return { state: record.state as GameState, updatedAt };
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw error;
+  }
+};
+
+export const saveGameState = async (state: GameState) => {
+  let existing: { id: string } | null = null;
+  try {
+    const record = await pb
+      .collection(GAME_COLLECTION)
+      .getFirstListItem(`slug="${GAME_SLUG}"`);
+    existing = { id: record.id };
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
+
+  if (existing) {
+    return pb.collection(GAME_COLLECTION).update(existing.id, {
+      slug: GAME_SLUG,
+      state,
+    });
+  }
+  return pb.collection(GAME_COLLECTION).create({
+    slug: GAME_SLUG,
+    state,
+  });
+};
+
+export const subscribeToGameState = (
+  handler: (state: GameState, updatedAt?: number) => void
+) => {
+  const callback = (event: any) => {
+    if (!event?.record) return;
+    if (event.record.slug !== GAME_SLUG) return;
+    const updatedAt = event.record.updated
+      ? new Date(event.record.updated as string).getTime()
+      : undefined;
+    handler(event.record.state as GameState, updatedAt);
+  };
+
+  pb.collection(GAME_COLLECTION).subscribe("*", callback).catch((error) => {
+    console.warn("PocketBase subscription failed:", error);
+  });
+
+  return () => {
+    pb.collection(GAME_COLLECTION).unsubscribe("*").catch(() => undefined);
+  };
+};
+
+export const fetchPlayerPortraits = async () => {
+  const records = await pb.collection(PORTRAITS_COLLECTION).getFullList({
+    perPage: 500,
+  });
+  const portraits: Record<string, string> = {};
+  records.forEach((record: any) => {
+    const email = normalizeEmail(record.email || "");
+    if (email && record.portraitUrl) {
+      portraits[email] = record.portraitUrl as string;
+    }
+  });
+  return portraits;
+};
+
+export const savePlayerPortrait = async (
+  email: string,
+  name: string,
+  portraitUrl: string
+) => {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return;
+  let existing: { id: string } | null = null;
+  try {
+    const record = await pb
+      .collection(PORTRAITS_COLLECTION)
+      .getFirstListItem(`email="${escapeFilterValue(normalized)}"`);
+    existing = { id: record.id };
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
+
+  if (existing) {
+    await pb.collection(PORTRAITS_COLLECTION).update(existing.id, {
+      email: normalized,
+      name,
+      portraitUrl,
+    });
+  } else {
+    await pb.collection(PORTRAITS_COLLECTION).create({
+      email: normalized,
+      name,
+      portraitUrl,
+    });
+  }
+};

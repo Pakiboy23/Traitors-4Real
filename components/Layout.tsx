@@ -27,7 +27,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
   const toggleTheme = () => setIsLightMode(!isLightMode);
 
   return (
-    <div className={`min-h-screen p-6 md:p-14 flex flex-col items-center transition-colors duration-500`}>
+    <div className={`min-h-screen p-4 sm:p-6 md:p-10 lg:p-14 flex flex-col items-center transition-colors duration-500`}>
       <div className="max-w-7xl xl:max-w-[1400px] w-full space-y-12">
         <header className={`text-center space-y-5 py-10 md:py-12 relative overflow-hidden rounded-2xl transition-all duration-500 glass-panel`}>
           {/* Live Sync Badge & Theme Toggle */}
@@ -58,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
           <h1 className={`text-4xl md:text-6xl font-black uppercase drop-shadow-lg gothic-font transition-colors ${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]'}`}>The Traitors</h1>
           <h2 className={`text-base md:text-xl font-light gothic-font transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
 
-          <nav className="flex flex-wrap justify-center gap-3 md:gap-3.5 mt-8">
+          <nav className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-3.5 mt-6 md:mt-8 px-4">
             <button 
               onClick={() => onTabChange('home')}
               className={`px-5 py-2.5 text-xs md:text-sm rounded-full border transition-all ${

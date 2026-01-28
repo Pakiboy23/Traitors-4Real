@@ -187,12 +187,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-24 px-6 md:px-10">
+    <div className="max-w-7xl mx-auto pb-24 px-4 sm:px-6 md:px-10">
       <form
         onSubmit={handleSubmit}
         className="space-y-12"
       >
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+        <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-10">
           <div className="glass-panel p-8 rounded-3xl">
             <h3 className="text-xl text-[color:var(--accent)] mb-5 gothic-font uppercase text-center tracking-[0.22em]">
               Identify Yourself
@@ -353,7 +353,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     }`}
                   >
                     <div className="flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[5px] text-zinc-600 font-bold uppercase">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xs text-zinc-600 font-bold uppercase">
                         {castPortrait ? (
                           <img src={castPortrait} alt="" className="w-full h-full object-cover" />
                         ) : pick.member ? (

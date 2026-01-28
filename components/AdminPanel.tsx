@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { generateTraitorImage } from '../services/gemini';
-import { savePlayerPortrait } from '../services/firebase';
+import { savePlayerPortrait } from '../services/pocketbase';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -162,7 +162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (targetPlayer?.email) {
       savePlayerPortrait(targetPlayer.email, targetPlayer.name, url).catch((err) => {
         console.error("Failed to persist player portrait:", err);
-        setMsg({ text: "Portrait saved locally. Firestore writes are blocked until auth is added.", type: 'error' });
+        setMsg({ text: "Portrait saved locally. PocketBase writes failed.", type: 'error' });
       });
     }
   };
@@ -221,8 +221,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="w-full max-w-[960px] mx-auto space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h2 className="text-4xl gothic-font text-[color:var(--accent)]">Admin Console</h2>
-          <div className="flex gap-2">
-            <div className="text-xs text-zinc-500 uppercase tracking-[0.2em] self-center">
+          <div className="flex flex-wrap gap-2 justify-start md:justify-end">
+            <div className="text-xs text-zinc-500 uppercase tracking-[0.2em] self-center w-full md:w-auto mb-2 md:mb-0">
               {lastWriteError
                 ? `Save failed: ${lastWriteError}`
                 : lastSavedAt
@@ -232,7 +232,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {onSaveNow && (
               <button
                 onClick={onSaveNow}
-                className="min-w-[150px] px-6 py-3 bg-black/60 text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+                className="px-4 py-2 md:px-6 md:py-3 bg-black/60 text-xs md:text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
               >
                 Save Now
               </button>
@@ -240,26 +240,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             {onSignOut && (
               <button
                 onClick={onSignOut}
-                className="min-w-[150px] px-6 py-3 bg-black/60 text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.16em] hover:bg-red-900/40 transition-all"
+                className="px-4 py-2 md:px-6 md:py-3 bg-black/60 text-xs md:text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-red-900/40 transition-all"
               >
                 Sign Out
               </button>
             )}
-            <button 
+            <button
               onClick={() => setIsManagingTome(!isManagingTome)}
-              className="min-w-[170px] px-6 py-3 bg-black/50 text-sm text-zinc-300 rounded-2xl border border-zinc-700 uppercase font-semibold tracking-[0.16em] hover:text-white transition-all"
+              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-zinc-300 rounded-2xl border border-zinc-700 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:text-white transition-all"
             >
-              {isManagingTome ? "Close Database Tools" : "Open Database Tools"}
+              {isManagingTome ? "Close DB" : "DB Tools"}
             </button>
             <button
               onClick={clearAllPortraits}
-              className="min-w-[160px] px-6 py-3 bg-black/50 text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.16em] hover:bg-red-900/40 transition-all"
+              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-red-900/40 transition-all"
             >
               Clear Portraits
             </button>
             <button
               onClick={downloadGameState}
-              className="min-w-[160px] px-6 py-3 bg-black/50 text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
+              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
             >
               Download JSON
             </button>
@@ -334,11 +334,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => setSelectedPlayer(player)}
               >
                 <div className="flex items-center gap-3">
-                   <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
+                   <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
                       {player.portraitUrl ? (
                         <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-zinc-600 font-bold uppercase text-[7px]">{player.name.charAt(0)}</span>
+                        <span className="text-zinc-600 font-bold uppercase text-sm">{player.name.charAt(0)}</span>
                       )}
                    </div>
                    <div>
@@ -386,11 +386,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="border-b border-zinc-800 pb-4 flex justify-between items-start">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full border border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
                       {selectedPlayer.portraitUrl ? (
                         <img src={selectedPlayer.portraitUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-[7px] text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
+                        <span className="text-base text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
                       )}
                     </div>
                   </div>
@@ -441,7 +441,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <div key={i} className="flex justify-between items-center text-sm p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl">
                       <span className="text-zinc-500 font-bold w-6">#{i+1}</span>
                       <div className="flex items-center gap-2 flex-1">
-                        <div className="w-4 h-4 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[6px] text-zinc-600 font-bold uppercase">
+                        <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xs text-zinc-600 font-bold uppercase">
                           {getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl) ? (
                             <img src={getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)} alt="" className="w-full h-full object-cover" />
                           ) : (
@@ -471,7 +471,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       <div className="glass-panel py-6 px-12 rounded-2xl mt-12">
         <h3 className="text-2xl gothic-font text-[color:var(--accent)] mb-8">Cast Status</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 md:gap-6 lg:gap-8">
           {CAST_NAMES.map(name => {
             const status = gameState.castStatus[name] ?? defaultStatus;
             const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
@@ -496,7 +496,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {portraitSrc ? (
                       <img src={portraitSrc} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[7px] text-zinc-700 font-bold uppercase">
+                      <div className="w-full h-full flex items-center justify-center text-xs text-zinc-700 font-bold uppercase">
                         {name.charAt(0)}
                       </div>
                     )}

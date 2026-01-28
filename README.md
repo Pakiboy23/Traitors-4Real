@@ -18,3 +18,22 @@ View your app in AI Studio: https://ai.studio/apps/drive/1x7fQsJeDPeXMHWLokiShFF
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+   
+If you use `VITE_AI_ENDPOINT`, it expects Firebase auth tokens. Leave it unset to use direct Gemini API calls with `VITE_GEMINI_API_KEY`.
+
+## PocketBase (Auth + Realtime + DB)
+
+1. Download PocketBase from https://pocketbase.io/docs/ and unzip it in the repo root.
+2. Start PocketBase:
+   `./pocketbase serve --http=127.0.0.1:8090`
+3. Create the PocketBase superuser in the admin UI (first run).
+4. Initialize collections + rules:
+   `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/pocketbase-init.mjs`
+   - Optional: add `POCKETBASE_APP_ADMIN_EMAIL` + `POCKETBASE_APP_ADMIN_PASSWORD` to seed a login for the app.
+5. Set `VITE_POCKETBASE_URL` in `.env.local` (default `http://127.0.0.1:8090`).
+
+### Restore game state from a backup
+`POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`
+
+### Migrate from Firestore (optional)
+`FIREBASE_SERVICE_ACCOUNT=/path/to/serviceAccount.json POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/migrate-firestore-to-pocketbase.mjs`

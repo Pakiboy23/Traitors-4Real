@@ -149,11 +149,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   </td>
                   <td className="p-5">
                     <div className="flex items-center gap-3">
-                      <div className="w-2.5 h-2.5 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
                         {p.portraitUrl ? (
                           <img src={p.portraitUrl} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[7px] text-zinc-600 font-bold uppercase">
+                          <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase">
                             {p.name.charAt(0)}
                           </div>
                         )}
@@ -182,16 +182,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                                 );
                                 return (
                                   <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-3 rounded-2xl relative group hover:border-[#D4AF37] transition-all">
-                                    <div className="w-4 h-4 rounded-full overflow-hidden bg-black mb-3">
+                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-black mb-3">
                                       {castPortrait ? (
                                         <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                       ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-[8px]">{ach.member.charAt(0)}</div>
+                                        <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-xs">{ach.member.charAt(0)}</div>
                                       )}
                                     </div>
                                     <div className="text-center">
                                       <p className="text-xs font-bold text-white truncate">{ach.member}</p>
-                                      <p className={`text-[10px] uppercase font-black tracking-tighter ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
+                                      <p className={`text-xs uppercase font-black tracking-tight ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
                                         {ach.icon} {ach.type}
                                       </p>
                                     </div>
