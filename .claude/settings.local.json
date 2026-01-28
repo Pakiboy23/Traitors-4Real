@@ -6,7 +6,9 @@
       "Bash(git rev-parse:*)",
       "Bash(git reset:*)",
       "Bash(npm run build:*)",
-      "Bash(firebase deploy:*)"
+      "Bash(firebase deploy:*)",
+      "Bash(git show:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
