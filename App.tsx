@@ -5,7 +5,7 @@ import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
 import AdminAuth from "./components/AdminAuth";
-import { CAST_NAMES, GameState, PlayerEntry } from "./types";
+import { CastMemberStatus, CAST_NAMES, GameState, PlayerEntry } from "./types";
 import {
   fetchGameState,
   fetchPlayerPortraits,
@@ -18,6 +18,62 @@ import {
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
+const DEFAULT_WEEKLY_RESULTS = { nextBanished: "", nextMurdered: "" };
+
+const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
+  const castStatus: GameState["castStatus"] = {};
+  const incomingCast: Record<string, Partial<CastMemberStatus>> =
+    input?.castStatus ?? {};
+
+  CAST_NAMES.forEach((name) => {
+    const current = incomingCast[name] ?? {};
+    castStatus[name] = {
+      isWinner: Boolean(current.isWinner),
+      isFirstOut: Boolean(current.isFirstOut),
+      isTraitor: Boolean(current.isTraitor),
+      isEliminated: Boolean(current.isEliminated),
+      portraitUrl:
+        typeof current.portraitUrl === "string" && current.portraitUrl.trim()
+          ? current.portraitUrl
+          : null,
+    };
+  });
+
+  const players = Array.isArray(input?.players) ? input!.players : [];
+  const normalizedPlayers = players.map((player, index) => {
+    const safeName = typeof player.name === "string" ? player.name : "";
+    const safeEmail = typeof player.email === "string" ? player.email : "";
+    const fallbackIdSeed =
+      normalizeEmail(safeEmail) ||
+      safeName.trim().toLowerCase().replace(/\s+/g, "-");
+    const safeId =
+      typeof player.id === "string" && player.id.trim()
+        ? player.id
+        : fallbackIdSeed || `player-${index + 1}`;
+
+    return {
+      ...player,
+      id: safeId,
+      name: safeName,
+      email: safeEmail,
+      picks: Array.isArray(player.picks) ? player.picks : [],
+      predTraitors: Array.isArray(player.predTraitors)
+        ? player.predTraitors
+        : [],
+      weeklyPredictions: player.weeklyPredictions ?? {
+        nextBanished: "",
+        nextMurdered: "",
+      },
+    } as PlayerEntry;
+  });
+
+  return {
+    players: normalizedPlayers,
+    castStatus,
+    weeklyResults: input?.weeklyResults ?? DEFAULT_WEEKLY_RESULTS,
+  };
+};
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
@@ -34,30 +90,16 @@ const App: React.FC = () => {
       const saved = localStorage.getItem(STORAGE_KEY);
 
 
-      if (saved) return JSON.parse(saved);
+      if (saved) return normalizeGameState(JSON.parse(saved));
     } catch {
       // ignore corrupted localStorage
     }
 
-    const initialCast: Record<string, any> = {};
-    CAST_NAMES.forEach((name) => {
-      initialCast[name] = {
-        isWinner: false,
-        isFirstOut: false,
-        isTraitor: false,
-        isEliminated: false,
-      };
-    });
-
-    return {
-      players: [],
-      castStatus: initialCast,
-      weeklyResults: { nextBanished: "", nextMurdered: "" },
-    } as GameState;
+    return normalizeGameState({ players: [] });
   });
 
   const updateGameState = (newState: GameState) => {
-    setGameState(newState);
+    setGameState(normalizeGameState(newState));
   };
 
   const normalizeUndefined = (value: any): any => {
@@ -112,7 +154,7 @@ const App: React.FC = () => {
         if (!remote || !isMounted) return;
         const serialized = JSON.stringify(remote.state);
         lastRemoteStateRef.current = serialized;
-        setGameState(remote.state);
+        setGameState(normalizeGameState(remote.state));
         if (typeof remote.updatedAt === "number") {
           setLastSavedAt(remote.updatedAt);
         }
@@ -126,7 +168,7 @@ const App: React.FC = () => {
       remoteExistsRef.current = true;
       const serialized = JSON.stringify(remoteState);
       lastRemoteStateRef.current = serialized;
-      setGameState(remoteState);
+      setGameState(normalizeGameState(remoteState));
       if (typeof updatedAt === "number") {
         setLastSavedAt(updatedAt);
       }
