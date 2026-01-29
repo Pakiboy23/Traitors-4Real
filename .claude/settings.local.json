@@ -8,7 +8,8 @@
       "Bash(npm run build:*)",
       "Bash(firebase deploy:*)",
       "Bash(git show:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
