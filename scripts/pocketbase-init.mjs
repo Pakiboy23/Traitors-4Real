@@ -107,6 +107,60 @@ try {
     deleteRule: '@request.auth.collectionName = "admins"',
   });
 
+  await ensureCollection("submissions", {
+    name: "submissions",
+    type: "base",
+    fields: [
+      {
+        name: "name",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 200, pattern: "" },
+      },
+      {
+        name: "email",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 3, max: 200, pattern: "" },
+      },
+      {
+        name: "kind",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 50, pattern: "" },
+      },
+      {
+        name: "weeklyBanished",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 200, pattern: "" },
+      },
+      {
+        name: "weeklyMurdered",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 200, pattern: "" },
+      },
+      {
+        name: "payload",
+        type: "json",
+        required: false,
+        unique: false,
+        options: { maxSize: 5000000 },
+      },
+    ],
+    listRule: '@request.auth.collectionName = "admins"',
+    viewRule: '@request.auth.collectionName = "admins"',
+    createRule: "",
+    updateRule: '@request.auth.collectionName = "admins"',
+    deleteRule: '@request.auth.collectionName = "admins"',
+  });
+
   if (seedEmail && seedPassword) {
     try {
       await pb.collection("admins").create({

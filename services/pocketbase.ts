@@ -5,6 +5,7 @@ const GAME_COLLECTION = "games";
 const GAME_SLUG = "default";
 const PORTRAITS_COLLECTION = "playerPortraits";
 const ADMIN_COLLECTION = "admins";
+const SUBMISSIONS_COLLECTION = "submissions";
 
 const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
 
@@ -134,4 +135,69 @@ export const savePlayerPortrait = async (
       portraitUrl,
     });
   }
+};
+
+export interface SubmissionRecord {
+  id: string;
+  name: string;
+  email: string;
+  kind: string;
+  weeklyBanished?: string;
+  weeklyMurdered?: string;
+  payload?: unknown;
+  created?: string;
+  updated?: string;
+}
+
+export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
+  const records = await pb.collection(SUBMISSIONS_COLLECTION).getFullList({
+    sort: "-created",
+    filter: 'kind="weekly"',
+  });
+  return records as SubmissionRecord[];
+};
+
+export const deleteSubmission = async (id: string) => {
+  await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
+};
+
+export const submitWeeklyCouncilVote = async (input: {
+  name: string;
+  email: string;
+  weeklyPredictions: { nextBanished: string; nextMurdered: string };
+}) => {
+  const normalizedEmail = normalizeEmail(input.email || "");
+  return pb.collection(SUBMISSIONS_COLLECTION).create({
+    name: input.name,
+    email: normalizedEmail,
+    kind: "weekly",
+    weeklyBanished: input.weeklyPredictions?.nextBanished || "",
+    weeklyMurdered: input.weeklyPredictions?.nextMurdered || "",
+    payload: {
+      weeklyPredictions: {
+        nextBanished: input.weeklyPredictions?.nextBanished || "",
+        nextMurdered: input.weeklyPredictions?.nextMurdered || "",
+      },
+    },
+  });
+};
+
+export const submitDraftEntry = async (entry: {
+  name: string;
+  email: string;
+  picks?: unknown;
+  predFirstOut?: string;
+  predWinner?: string;
+  predTraitors?: unknown;
+  weeklyPredictions?: { nextBanished: string; nextMurdered: string };
+}) => {
+  const normalizedEmail = normalizeEmail(entry.email || "");
+  return pb.collection(SUBMISSIONS_COLLECTION).create({
+    name: entry.name,
+    email: normalizedEmail,
+    kind: "draft",
+    weeklyBanished: entry.weeklyPredictions?.nextBanished || "",
+    weeklyMurdered: entry.weeklyPredictions?.nextMurdered || "",
+    payload: entry,
+  });
 };

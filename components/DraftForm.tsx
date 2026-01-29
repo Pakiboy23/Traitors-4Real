@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
+import { submitDraftEntry, submitWeeklyCouncilVote } from '../services/pocketbase';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
 
@@ -83,12 +84,19 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     if (!playerName && !playerEmail) return undefined;
     const normalizedEmail = playerEmail.trim().toLowerCase();
     const normalizedName = playerName.trim().toLowerCase();
-    return gameState.players.find(player => {
-      if (normalizedEmail) {
-        return player.email.trim().toLowerCase() === normalizedEmail;
-      }
-      return player.name.trim().toLowerCase() === normalizedName;
-    });
+    if (normalizedEmail) {
+      const matchByEmail = gameState.players.find((player) => {
+        const playerEmail = (player.email || "").trim().toLowerCase();
+        return playerEmail && playerEmail === normalizedEmail;
+      });
+      if (matchByEmail) return matchByEmail;
+    }
+    if (normalizedName) {
+      return gameState.players.find(
+        (player) => player.name.trim().toLowerCase() === normalizedName
+      );
+    }
+    return undefined;
   };
 
   const handleWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -121,6 +129,16 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
     onAddEntry(updatedEntry);
     setIsSubmitted(true);
+    submitWeeklyCouncilVote({
+      name: playerName,
+      email: playerEmail,
+      weeklyPredictions: {
+        nextBanished: weeklyBanished,
+        nextMurdered: weeklyMurdered,
+      },
+    }).catch((err) => {
+      console.warn("Weekly council submission failed:", err);
+    });
 
     const body = encodeURIComponent(getWeeklyCouncilData());
     const subject = encodeURIComponent(`Traitors Weekly Council - ${playerName}`);
@@ -160,6 +178,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
     onAddEntry(newEntry);
     setIsSubmitted(true);
+    submitDraftEntry(newEntry).catch((err) => {
+      console.warn("Draft submission failed:", err);
+    });
 
     const body = encodeURIComponent(getFormData());
     const subject = encodeURIComponent(`Traitors Draft Picks - ${playerName}`);

@@ -1,8 +1,13 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
-import { savePlayerPortrait } from '../services/pocketbase';
+import {
+  deleteSubmission,
+  fetchWeeklySubmissions,
+  savePlayerPortrait,
+  SubmissionRecord,
+} from '../services/pocketbase';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -32,6 +37,73 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [msg, setMsg] = useState({ text: '', type: '' });
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerEntry | null>(null);
   const [isManagingTome, setIsManagingTome] = useState(false);
+  const [submissions, setSubmissions] = useState<SubmissionRecord[]>([]);
+  const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState<string | null>(null);
+  const [editPlayerName, setEditPlayerName] = useState("");
+  const [editPlayerEmail, setEditPlayerEmail] = useState("");
+  const [editWeeklyBanished, setEditWeeklyBanished] = useState("");
+  const [editWeeklyMurdered, setEditWeeklyMurdered] = useState("");
+  const [inlineEdits, setInlineEdits] = useState<Record<string, {
+    name: string;
+    email: string;
+    weeklyBanished: string;
+    weeklyMurdered: string;
+  }>>({});
+
+  const normalize = (value: string) => value.trim().toLowerCase();
+
+  const findPlayerMatch = (
+    players: PlayerEntry[],
+    submission: SubmissionRecord
+  ) => {
+    const email = normalize(submission.email || "");
+    if (email) {
+      const idx = players.findIndex(
+        (p) => normalize(p.email || "") === email
+      );
+      if (idx !== -1) return { index: idx, type: "email" as const };
+    }
+    const name = normalize(submission.name || "");
+    if (name) {
+      const idx = players.findIndex(
+        (p) => normalize(p.name || "") === name
+      );
+      if (idx !== -1) return { index: idx, type: "name" as const };
+    }
+    return null;
+  };
+
+  const refreshSubmissions = async () => {
+    setIsLoadingSubmissions(true);
+    setSubmissionsError(null);
+    try {
+      const records = await fetchWeeklySubmissions();
+      setSubmissions(records);
+    } catch (error: any) {
+      setSubmissionsError(error?.message || String(error));
+    } finally {
+      setIsLoadingSubmissions(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshSubmissions();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedPlayer) {
+      setEditPlayerName("");
+      setEditPlayerEmail("");
+      setEditWeeklyBanished("");
+      setEditWeeklyMurdered("");
+      return;
+    }
+    setEditPlayerName(selectedPlayer.name || "");
+    setEditPlayerEmail(selectedPlayer.email || "");
+    setEditWeeklyBanished(selectedPlayer.weeklyPredictions?.nextBanished || "");
+    setEditWeeklyMurdered(selectedPlayer.weeklyPredictions?.nextMurdered || "");
+  }, [selectedPlayer?.id]);
 
   const parseAndAdd = () => {
     try {
@@ -212,6 +284,208 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
+  const applySubmissionToPlayers = (
+    players: PlayerEntry[],
+    submission: SubmissionRecord
+  ) => {
+    const match = findPlayerMatch(players, submission);
+    if (!match) return { matched: false as const, players };
+    const updatedPlayers = players.map((player, idx) => {
+      if (idx !== match.index) return player;
+      return {
+        ...player,
+        name: submission.name || player.name,
+        email: submission.email || player.email,
+        weeklyPredictions: {
+          nextBanished: submission.weeklyBanished || "",
+          nextMurdered: submission.weeklyMurdered || "",
+        },
+      };
+    });
+    return { matched: true as const, players: updatedPlayers, match };
+  };
+
+  const mergeSubmission = async (submission: SubmissionRecord) => {
+    const result = applySubmissionToPlayers(gameState.players, submission);
+    if (!result.matched) {
+      setMsg({
+        text: `No matching player found for ${submission.name}.`,
+        type: "error",
+      });
+      return;
+    }
+    updateGameState({ ...gameState, players: result.players });
+    try {
+      await deleteSubmission(submission.id);
+      setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+      setMsg({
+        text: `Merged weekly vote for ${submission.name}.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setMsg({
+        text: `Merged weekly vote, but failed to clear submission: ${err?.message || err}`,
+        type: "error",
+      });
+    }
+  };
+
+  const dismissSubmission = async (submission: SubmissionRecord) => {
+    if (!confirm(`Dismiss submission from ${submission.name}?`)) return;
+    try {
+      await deleteSubmission(submission.id);
+      setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+    } catch (err: any) {
+      setMsg({
+        text: `Failed to dismiss submission: ${err?.message || err}`,
+        type: "error",
+      });
+    }
+  };
+
+  const mergeAllSubmissions = async () => {
+    if (submissions.length === 0) return;
+    let updatedPlayers = gameState.players;
+    const mergedIds: string[] = [];
+    let skipped = 0;
+
+    submissions.forEach((submission) => {
+      const result = applySubmissionToPlayers(updatedPlayers, submission);
+      if (result.matched) {
+        updatedPlayers = result.players;
+        mergedIds.push(submission.id);
+      } else {
+        skipped += 1;
+      }
+    });
+
+    if (mergedIds.length > 0) {
+      updateGameState({ ...gameState, players: updatedPlayers });
+    }
+
+    try {
+      await Promise.all(mergedIds.map((id) => deleteSubmission(id)));
+      setSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
+      setMsg({
+        text: `Merged ${mergedIds.length} weekly votes${skipped ? `, skipped ${skipped}` : ""}.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setMsg({
+        text: `Merged weekly votes, but failed to clear some submissions: ${err?.message || err}`,
+        type: "error",
+      });
+    }
+  };
+
+  const updateSelectedPlayer = (updates: Partial<PlayerEntry>) => {
+    if (!selectedPlayer) return;
+    const updatedPlayers = gameState.players.map((player) =>
+      player.id === selectedPlayer.id ? { ...player, ...updates } : player
+    );
+    updateGameState({ ...gameState, players: updatedPlayers });
+    const nextSelected = updatedPlayers.find((p) => p.id === selectedPlayer.id) || null;
+    setSelectedPlayer(nextSelected);
+  };
+
+  const saveWeeklyEdits = () => {
+    if (!selectedPlayer) return;
+    updateSelectedPlayer({
+      weeklyPredictions: {
+        nextBanished: editWeeklyBanished,
+        nextMurdered: editWeeklyMurdered,
+      },
+    });
+    setMsg({
+      text: `Weekly council updated for ${selectedPlayer.name}.`,
+      type: "success",
+    });
+  };
+
+  const savePlayerEdits = () => {
+    if (!selectedPlayer) return;
+    const nextName = editPlayerName.trim();
+    const nextEmail = editPlayerEmail.trim();
+    if (!nextName) {
+      setMsg({ text: "Player name is required.", type: "error" });
+      return;
+    }
+    updateSelectedPlayer({
+      name: nextName,
+      email: nextEmail,
+    });
+    setMsg({
+      text: `Player details updated for ${nextName}.`,
+      type: "success",
+    });
+  };
+
+  const buildInlineEdit = (player: PlayerEntry) => ({
+    name: player.name || "",
+    email: player.email || "",
+    weeklyBanished: player.weeklyPredictions?.nextBanished || "",
+    weeklyMurdered: player.weeklyPredictions?.nextMurdered || "",
+  });
+
+  const updateInlineEdit = (
+    player: PlayerEntry,
+    updates: Partial<{
+      name: string;
+      email: string;
+      weeklyBanished: string;
+      weeklyMurdered: string;
+    }>
+  ) => {
+    setInlineEdits((prev) => {
+      const base = prev[player.id] ?? buildInlineEdit(player);
+      return {
+        ...prev,
+        [player.id]: { ...base, ...updates },
+      };
+    });
+  };
+
+  const saveInlineEdit = (player: PlayerEntry) => {
+    const edit = inlineEdits[player.id] ?? buildInlineEdit(player);
+    const nextName = edit.name.trim();
+    if (!nextName) {
+      setMsg({ text: "Player name is required.", type: "error" });
+      return;
+    }
+    const nextEmail = edit.email.trim();
+    const updatedPlayers = gameState.players.map((p) =>
+      p.id === player.id
+        ? {
+            ...p,
+            name: nextName,
+            email: nextEmail,
+            weeklyPredictions: {
+              nextBanished: edit.weeklyBanished,
+              nextMurdered: edit.weeklyMurdered,
+            },
+          }
+        : p
+    );
+    updateGameState({ ...gameState, players: updatedPlayers });
+    if (selectedPlayer?.id === player.id) {
+      const updated = updatedPlayers.find((p) => p.id === player.id) || null;
+      setSelectedPlayer(updated);
+    }
+    setInlineEdits((prev) => ({
+      ...prev,
+      [player.id]: {
+        name: nextName,
+        email: nextEmail,
+        weeklyBanished: edit.weeklyBanished,
+        weeklyMurdered: edit.weeklyMurdered,
+      },
+    }));
+    setMsg({
+      text: `Saved updates for ${nextName}.`,
+      type: "success",
+    });
+  };
+
   return (
     <div
       className="w-full animate-in fade-in duration-500"
@@ -322,41 +596,205 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score weekly council picks</p>
       </div>
 
+      <div className="glass-panel py-6 px-12 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Submissions</h3>
+            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">New council votes</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={refreshSubmissions}
+              className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={mergeAllSubmissions}
+              disabled={submissions.length === 0}
+              className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
+                submissions.length === 0
+                  ? 'bg-zinc-900 text-zinc-600 border border-zinc-800'
+                  : 'bg-[color:var(--accent)] text-black border border-[color:var(--accent)] hover:bg-[color:var(--accent-strong)]'
+              }`}
+            >
+              Merge All
+            </button>
+          </div>
+        </div>
+
+        {isLoadingSubmissions && (
+          <p className="text-xs text-zinc-500 mt-4">Loading submissions...</p>
+        )}
+        {submissionsError && (
+          <p className="text-xs text-red-400 mt-4">{submissionsError}</p>
+        )}
+        {!isLoadingSubmissions && submissions.length === 0 && (
+          <p className="text-xs text-zinc-500 mt-4">No submissions yet.</p>
+        )}
+
+        <div className="mt-4 space-y-3">
+          {submissions.map((submission) => {
+            const match = findPlayerMatch(gameState.players, submission);
+            const createdLabel = submission.created
+              ? new Date(submission.created).toLocaleString()
+              : "";
+            return (
+              <div
+                key={submission.id}
+                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+              >
+                <div className="space-y-1">
+                  <p className="text-sm text-white font-semibold">
+                    {submission.name}
+                    {submission.email ? (
+                      <span className="text-xs text-zinc-500 ml-2">
+                        {submission.email}
+                      </span>
+                    ) : null}
+                  </p>
+                  <p className="text-xs text-zinc-400">
+                    Banished:{" "}
+                    <span className="text-zinc-200">
+                      {submission.weeklyBanished || "None"}
+                    </span>{" "}
+                    · Murdered:{" "}
+                    <span className="text-zinc-200">
+                      {submission.weeklyMurdered || "None"}
+                    </span>
+                  </p>
+                  <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
+                    {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
+                    {match ? ` · Match by ${match.type}` : " · No match"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => mergeSubmission(submission)}
+                    disabled={!match}
+                    className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
+                      match
+                        ? 'bg-emerald-400 text-black hover:bg-emerald-300'
+                        : 'bg-zinc-900 text-zinc-600 border border-zinc-800'
+                    }`}
+                  >
+                    Merge
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dismissSubmission(submission)}
+                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] text-red-400 border border-red-900/40 hover:bg-red-900/20"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-10">
         <div className="glass-panel py-6 px-12 rounded-2xl">
           <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-4">League Roster</h3>
           <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-            {gameState.players.map(player => (
-              <div 
-                key={player.id} 
-                className={`flex justify-between items-center p-3 rounded border transition-all cursor-pointer ${selectedPlayer?.id === player.id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'bg-black/40 border-zinc-800 hover:border-zinc-700'}`} 
-                onClick={() => setSelectedPlayer(player)}
-              >
-                <div className="flex items-center gap-3">
-                   <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
-                      {player.portraitUrl ? (
-                        <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-zinc-600 font-bold uppercase text-sm">{player.name.charAt(0)}</span>
-                      )}
-                   </div>
-                   <div>
-                    <p className="text-gray-100 font-bold text-base">{player.name}</p>
-                    <p className="text-xs text-gray-500">{player.email}</p>
-                   </div>
-                </div>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    updateGameState({ ...gameState, players: gameState.players.filter(p => p.id !== player.id) });
-                    if(selectedPlayer?.id === player.id) setSelectedPlayer(null);
-                  }}
-                  className="text-red-500 hover:bg-red-900/20 p-2 rounded text-xs"
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
+            {gameState.players.map((player) => {
+              const edit = inlineEdits[player.id] ?? buildInlineEdit(player);
+              return (
+                <React.Fragment key={player.id}>
+                  <div
+                    className={`flex justify-between items-center p-3 rounded border transition-all cursor-pointer ${selectedPlayer?.id === player.id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'bg-black/40 border-zinc-800 hover:border-zinc-700'}`}
+                    onClick={() => setSelectedPlayer(player)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
+                        {player.portraitUrl ? (
+                          <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-zinc-600 font-bold uppercase text-sm">{player.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-gray-100 font-bold text-base">{player.name}</p>
+                        <p className="text-xs text-gray-500">{player.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          updateGameState({ ...gameState, players: gameState.players.filter(p => p.id !== player.id) });
+                          if (selectedPlayer?.id === player.id) setSelectedPlayer(null);
+                        }}
+                        className="text-red-500 hover:bg-red-900/20 p-2 rounded text-xs"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className="mt-2 mb-4 rounded-2xl border border-zinc-800 bg-black/30 p-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+                      <input
+                        type="text"
+                        value={edit.name}
+                        onChange={(e) => updateInlineEdit(player, { name: e.target.value })}
+                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        placeholder="Name"
+                      />
+                      <input
+                        type="email"
+                        value={edit.email}
+                        onChange={(e) => updateInlineEdit(player, { email: e.target.value })}
+                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        placeholder="Email"
+                      />
+                      <select
+                        value={edit.weeklyBanished}
+                        onChange={(e) => updateInlineEdit(player, { weeklyBanished: e.target.value })}
+                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                      >
+                        <option value="">Next Banished</option>
+                        {CAST_NAMES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={edit.weeklyMurdered}
+                        onChange={(e) => updateInlineEdit(player, { weeklyMurdered: e.target.value })}
+                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                      >
+                        <option value="">Next Murdered</option>
+                        {CAST_NAMES.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          saveInlineEdit(player);
+                        }}
+                        className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
+                      >
+                        Save Row
+                      </button>
+                    </div>
+                  </div>
+                </React.Fragment>
+              );
+            })}
             {gameState.players.length === 0 && <p className="text-gray-500 text-center py-4 text-xs">No entries yet.</p>}
           </div>
           
@@ -422,6 +860,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
+              <div className="p-4 rounded-2xl border border-zinc-800 bg-black/40">
+                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Player</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-zinc-400 font-semibold mb-2 uppercase tracking-[0.18em]">
+                      Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editPlayerName}
+                      onChange={(e) => setEditPlayerName(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-400 font-semibold mb-2 uppercase tracking-[0.18em]">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={editPlayerEmail}
+                      onChange={(e) => setEditPlayerEmail(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={savePlayerEdits}
+                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
+                  >
+                    Save Player
+                  </button>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
                   <p className="text-xs text-red-400 font-bold uppercase mb-1">⚖️ Next Banished</p>
@@ -430,6 +905,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
                   <p className="text-xs text-fuchsia-300 font-bold uppercase mb-1">🗡️ Next Murdered</p>
                   <p className="text-base text-white">{selectedPlayer.weeklyPredictions?.nextMurdered || 'None'}</p>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl border border-zinc-800 bg-black/40">
+                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Weekly Council</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em]">
+                      ⚖️ Next Banished
+                    </label>
+                    <select
+                      value={editWeeklyBanished}
+                      onChange={(e) => setEditWeeklyBanished(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                    >
+                      <option value="">Select...</option>
+                      {CAST_NAMES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em]">
+                      🗡️ Next Murdered
+                    </label>
+                    <select
+                      value={editWeeklyMurdered}
+                      onChange={(e) => setEditWeeklyMurdered(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                    >
+                      <option value="">Select...</option>
+                      {CAST_NAMES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={saveWeeklyEdits}
+                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
+                  >
+                    Save Weekly Vote
+                  </button>
                 </div>
               </div>
 

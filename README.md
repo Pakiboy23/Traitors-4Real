@@ -30,6 +30,31 @@ View your app in AI Studio: https://ai.studio/apps/drive/1x7fQsJeDPeXMHWLokiShFF
    - Optional: add `POCKETBASE_APP_ADMIN_EMAIL` + `POCKETBASE_APP_ADMIN_PASSWORD` to seed a login for the app.
 5. Set `VITE_POCKETBASE_URL` in `.env.local` (default `http://127.0.0.1:8090`).
 
+## Deploy on Fly.io
+
+### Backend (PocketBase)
+- Uses `fly.toml` + `Dockerfile`
+- Deploy:
+  `flyctl deploy -a traitorsfantasydraft-pb`
+
+### Frontend (Vite)
+- Uses `fly.frontend.toml` + `Dockerfile.frontend`
+- The frontend image bakes `VITE_POCKETBASE_URL` at build time.
+- Deploy:
+  `flyctl deploy -c fly.frontend.toml -a traitorsfantasydraft-web`
+
+### Domains
+- Frontend:
+  - `traitorsfantasydraft.online` (A + AAAA)
+  - `www.traitorsfantasydraft.online` (CNAME)
+- Backend API:
+  - `api.traitorsfantasydraft.online` (CNAME → `traitorsfantasydraft-pb.fly.dev`)
+
+## Weekly Council Submissions
+
+Weekly council votes are stored in the `submissions` collection (public create, admin-only read).
+Admins can merge weekly votes into the main `games` record from the Admin panel.
+
 ### Restore game state from a backup
 `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`
 
