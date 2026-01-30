@@ -39,27 +39,27 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
 
       <div className="space-y-12 mt-16 lg:mt-0 lg:col-span-5">
         {(mvp || weeklyMvp) && (
-          <div className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-[32px] border-0 bg-[radial-gradient(120%_120%_at_50%_0%,_rgba(212,175,55,0.2)_0%,_rgba(0,0,0,0.92)_55%)] p-12 shadow-[0_35px_90px_rgba(0,0,0,0.7)] text-center">
-            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.16),_transparent_70%)] blur-2xl"></div>
-            <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(212,175,55,0.28),_transparent_70%)] blur-2xl"></div>
+          <div className="relative mx-auto w-full max-w-[560px] overflow-hidden rounded-[36px] border-0 bg-[radial-gradient(120%_120%_at_50%_0%,_rgba(214,179,106,0.24)_0%,_rgba(6,5,10,0.95)_58%)] p-12 shadow-[0_40px_110px_rgba(0,0,0,0.75)] text-center">
+            <div className="absolute -top-28 -right-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.16),_transparent_70%)] blur-2xl"></div>
+            <div className="absolute -bottom-36 -left-20 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.28),_transparent_70%)] blur-2xl"></div>
             <div className="absolute inset-0 border border-white/5 rounded-[32px] pointer-events-none"></div>
-            <div className="relative space-y-8">
+            <div className="relative space-y-9">
               <div className="flex flex-col items-center justify-center gap-3">
                 <div>
-                  <p className="text-[12px] uppercase tracking-[0.3em] text-zinc-400 font-black">Unmissable</p>
-                  <h3 className="text-4xl md:text-5xl uppercase tracking-[0.1em] font-black text-zinc-100">
+                  <p className="text-[13px] uppercase tracking-[0.34em] text-zinc-400 font-black">Unmissable</p>
+                  <h3 className="text-5xl md:text-6xl uppercase tracking-[0.08em] font-black text-zinc-100">
                     MVP Spotlight
                   </h3>
                 </div>
                 <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-                  <span className="h-2 w-2 rounded-full bg-[#D4AF37] animate-ping"></span>
+                  <span className="h-2 w-2 rounded-full bg-[color:var(--accent)] animate-ping"></span>
                   Live Leader
                 </div>
               </div>
               <div className="space-y-4">
                 {weeklyMvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-[linear-gradient(130deg,_rgba(255,255,255,0.06)_0%,_rgba(0,0,0,0.7)_55%,_rgba(212,175,55,0.12)_100%)] p-7 shadow-[0_0_40px_rgba(212,175,55,0.35)]">
-                    <div className="w-16 h-16 rounded-full border-0 overflow-hidden bg-black/70 flex items-center justify-center text-[#D4AF37] shadow-[0_0_25px_rgba(212,175,55,0.55)]">
+                  <div className="flex flex-col items-center gap-4 rounded-3xl border-0 bg-[linear-gradient(135deg,_rgba(255,255,255,0.08)_0%,_rgba(0,0,0,0.75)_60%,_rgba(214,179,106,0.16)_100%)] p-7 shadow-[0_0_45px_rgba(214,179,106,0.35)]">
+                    <div className="w-20 h-20 rounded-full border border-[color:var(--accent)]/30 overflow-hidden bg-black/70 flex items-center justify-center text-[color:var(--accent)] shadow-[0_0_30px_rgba(214,179,106,0.6)]">
                       {weeklyMvp.portraitUrl ? (
                         <img
                           src={weeklyMvp.portraitUrl}
@@ -67,33 +67,42 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <svg viewBox="0 0 64 64" className="w-10 h-10 text-[#D4AF37]" aria-hidden="true">
-                          <path d="M32 6 41 15 32 46 23 15Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-                          <path d="M20 16H44" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-                          <path d="M32 46V58" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-                          <circle cx="32" cy="58" r="3.2" fill="currentColor" />
+                        <svg viewBox="0 0 64 64" className="w-12 h-12 text-[color:var(--accent)]" aria-hidden="true">
+                          <path
+                            fill="currentColor"
+                            d="M32 6 40 18 32 48 24 18Z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M20 18h24v4H20z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M30 48h4v9h-4z"
+                          />
+                          <circle cx="32" cy="58" r="3" fill="currentColor" />
                         </svg>
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[12px] uppercase tracking-[0.28em] text-[#D4AF37]/70 font-black">
+                      <p className="text-[13px] uppercase tracking-[0.32em] text-[color:var(--accent)]/70 font-black">
                         {weeklyMvp.label}
                       </p>
-                      <p className="text-3xl md:text-4xl font-black text-zinc-100">
+                      <p className="text-4xl md:text-5xl font-black text-zinc-100">
                         {weeklyMvp.name}
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[12px] text-[#D4AF37]/70 uppercase tracking-[0.28em] font-black">Week Gain</p>
-                      <p className="text-4xl md:text-5xl font-black text-[#D4AF37]">
+                      <p className="text-[13px] text-[color:var(--accent)]/70 uppercase tracking-[0.32em] font-black">Week Gain</p>
+                      <p className="text-5xl md:text-6xl font-black text-[color:var(--accent)]">
                         +{formatScore(weeklyMvp.score)}
                       </p>
                     </div>
                   </div>
                 )}
                 {mvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-[linear-gradient(120deg,_rgba(255,255,255,0.06)_0%,_rgba(0,0,0,0.8)_70%)] p-7">
-                    <div className="w-16 h-16 rounded-full border-0 overflow-hidden bg-black/70 flex items-center justify-center text-[#D4AF37] shadow-[0_0_22px_rgba(212,175,55,0.4)]">
+                  <div className="flex flex-col items-center gap-4 rounded-3xl border-0 bg-[linear-gradient(120deg,_rgba(255,255,255,0.08)_0%,_rgba(0,0,0,0.82)_70%)] p-7">
+                    <div className="w-20 h-20 rounded-full border border-[color:var(--accent)]/25 overflow-hidden bg-black/70 flex items-center justify-center text-[color:var(--accent)] shadow-[0_0_26px_rgba(214,179,106,0.45)]">
                       {mvp.portraitUrl ? (
                         <img
                           src={mvp.portraitUrl}
@@ -101,21 +110,30 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <svg viewBox="0 0 64 64" className="w-10 h-10 text-[#D4AF37]" aria-hidden="true">
-                          <path d="M32 6 41 15 32 46 23 15Z" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinejoin="round" />
-                          <path d="M20 16H44" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-                          <path d="M32 46V58" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-                          <circle cx="32" cy="58" r="3.2" fill="currentColor" />
+                        <svg viewBox="0 0 64 64" className="w-12 h-12 text-[color:var(--accent)]" aria-hidden="true">
+                          <path
+                            fill="currentColor"
+                            d="M32 6 40 18 32 48 24 18Z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M20 18h24v4H20z"
+                          />
+                          <path
+                            fill="currentColor"
+                            d="M30 48h4v9h-4z"
+                          />
+                          <circle cx="32" cy="58" r="3" fill="currentColor" />
                         </svg>
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[12px] uppercase tracking-[0.28em] text-zinc-400 font-black">{mvp.label}</p>
-                      <p className="text-3xl md:text-4xl font-black text-zinc-100">{mvp.name}</p>
+                      <p className="text-[13px] uppercase tracking-[0.32em] text-zinc-400 font-black">{mvp.label}</p>
+                      <p className="text-4xl md:text-5xl font-black text-zinc-100">{mvp.name}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[12px] text-zinc-400 uppercase tracking-[0.28em] font-black">Total</p>
-                      <p className="text-4xl md:text-5xl font-black text-[#D4AF37]">
+                      <p className="text-[13px] text-zinc-400 uppercase tracking-[0.32em] font-black">Total</p>
+                      <p className="text-5xl md:text-6xl font-black text-[color:var(--accent)]">
                         {formatScore(mvp.score)}
                       </p>
                     </div>

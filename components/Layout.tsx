@@ -54,9 +54,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
             </div>
           </div>
 
-          <p className={`${isLightMode ? 'text-red-900' : 'text-red-500'} tracking-[0.35em] text-xs uppercase font-semibold transition-colors`}>Titanic Swim Team Edition</p>
+          <p className={`${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]/80'} tracking-[0.32em] text-xs uppercase font-semibold transition-colors`}>Titanic Swim Team Edition</p>
           <h1 className={`text-4xl md:text-6xl font-black uppercase drop-shadow-lg gothic-font transition-colors ${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]'}`}>The Traitors</h1>
-          <h2 className={`text-base md:text-xl font-light gothic-font transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
+          <h2 className={`text-base md:text-xl font-medium transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
 
           <nav className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-3.5 mt-6 md:mt-8 px-4">
             <button 
