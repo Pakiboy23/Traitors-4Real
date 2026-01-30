@@ -39,64 +39,79 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
 
       <div className="space-y-12 mt-16 lg:mt-0 lg:col-span-5">
         {(mvp || weeklyMvp) && (
-          <div className="glass-panel p-8 rounded-3xl relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[color:var(--accent)] opacity-60"></div>
-            <h3 className="gothic-font text-[color:var(--accent)] text-2xl mb-6 uppercase tracking-[0.2em]">
-              MVP Spotlight
-            </h3>
-            <div className="space-y-4">
-              {weeklyMvp && (
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-zinc-800">
-                  <div className="w-12 h-12 rounded-full border border-[#D4AF37]/40 overflow-hidden bg-black flex items-center justify-center text-sm font-bold text-zinc-600">
-                    {weeklyMvp.portraitUrl ? (
-                      <img
-                        src={weeklyMvp.portraitUrl}
-                        alt={weeklyMvp.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      weeklyMvp.name.charAt(0)
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
-                      {weeklyMvp.label}
-                    </p>
-                    <p className="text-lg font-bold text-zinc-100">{weeklyMvp.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-400 uppercase tracking-[0.16em]">Week Gain</p>
-                    <p className="text-xl font-black text-[color:var(--accent)]">
-                      +{formatScore(weeklyMvp.score)}
-                    </p>
-                  </div>
+          <div className="relative overflow-hidden rounded-[32px] border-2 border-[color:var(--accent)]/60 bg-[radial-gradient(ellipse_at_top,_rgba(217,221,227,0.18),_rgba(0,0,0,0.9)_62%)] p-8 shadow-[0_35px_90px_rgba(0,0,0,0.65)]">
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(217,221,227,0.35),_transparent_70%)] blur-2xl"></div>
+            <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(176,74,74,0.4),_transparent_70%)] blur-2xl"></div>
+            <div className="absolute inset-0 border border-white/5 rounded-[32px] pointer-events-none"></div>
+            <div className="relative space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.4em] text-zinc-500">Unmissable</p>
+                  <h3 className="gothic-font text-[color:var(--accent)] text-3xl md:text-4xl uppercase tracking-[0.28em]">
+                    MVP Spotlight
+                  </h3>
                 </div>
-              )}
-              {mvp && (
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-zinc-800">
-                  <div className="w-12 h-12 rounded-full border border-[#D4AF37]/40 overflow-hidden bg-black flex items-center justify-center text-sm font-bold text-zinc-600">
-                    {mvp.portraitUrl ? (
-                      <img
-                        src={mvp.portraitUrl}
-                        alt={mvp.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      mvp.name.charAt(0)
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{mvp.label}</p>
-                    <p className="text-lg font-bold text-zinc-100">{mvp.name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-zinc-400 uppercase tracking-[0.16em]">Total</p>
-                    <p className="text-xl font-black text-[color:var(--accent)]">
-                      {formatScore(mvp.score)}
-                    </p>
-                  </div>
+                <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
+                  <span className="h-2 w-2 rounded-full bg-[color:var(--accent)] animate-ping"></span>
+                  Live
                 </div>
-              )}
+              </div>
+              <div className="space-y-4">
+                {weeklyMvp && (
+                  <div className="flex items-center gap-4 rounded-2xl border border-amber-400/40 bg-gradient-to-r from-amber-400/15 via-black/40 to-black/70 p-5 shadow-[0_0_30px_rgba(212,175,55,0.25)]">
+                    <div className="w-14 h-14 rounded-full border-2 border-amber-300/70 overflow-hidden bg-black flex items-center justify-center text-base font-black text-amber-200">
+                      {weeklyMvp.portraitUrl ? (
+                        <img
+                          src={weeklyMvp.portraitUrl}
+                          alt={weeklyMvp.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        weeklyMvp.name.charAt(0)
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200/70">
+                        {weeklyMvp.label}
+                      </p>
+                      <p className="text-2xl md:text-3xl font-black text-zinc-100">
+                        {weeklyMvp.name}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-amber-200/70 uppercase tracking-[0.3em]">Week Gain</p>
+                      <p className="text-3xl md:text-4xl font-black text-amber-300">
+                        +{formatScore(weeklyMvp.score)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {mvp && (
+                  <div className="flex items-center gap-4 rounded-2xl border border-zinc-700 bg-gradient-to-r from-zinc-800/80 via-black/50 to-black/70 p-5">
+                    <div className="w-14 h-14 rounded-full border-2 border-[#D4AF37]/70 overflow-hidden bg-black flex items-center justify-center text-base font-black text-[#D4AF37]">
+                      {mvp.portraitUrl ? (
+                        <img
+                          src={mvp.portraitUrl}
+                          alt={mvp.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        mvp.name.charAt(0)
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-400">{mvp.label}</p>
+                      <p className="text-2xl md:text-3xl font-black text-zinc-100">{mvp.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[11px] text-zinc-400 uppercase tracking-[0.3em]">Total</p>
+                      <p className="text-3xl md:text-4xl font-black text-[color:var(--accent)]">
+                        {formatScore(mvp.score)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
