@@ -6,8 +6,10 @@ import {
   PlayerEntry,
   DraftPick,
   WeeklySubmissionHistoryEntry,
+  WeeklyScoreSnapshot,
 } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
+import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 import {
   deleteSubmission,
   fetchWeeklySubmissions,
@@ -52,6 +54,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editWeeklyBanished, setEditWeeklyBanished] = useState("");
   const [editWeeklyMurdered, setEditWeeklyMurdered] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [showAllScoreHistory, setShowAllScoreHistory] = useState(false);
   const [inlineEdits, setInlineEdits] = useState<Record<string, {
     name: string;
     email: string;
@@ -602,6 +605,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     : [];
   const visibleHistory = showAllHistory ? history : history.slice(0, 20);
 
+  const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(
+    gameState.weeklyScoreHistory
+  )
+    ? gameState.weeklyScoreHistory
+    : [];
+  const visibleScoreHistory = showAllScoreHistory
+    ? scoreHistory
+    : scoreHistory.slice(-6);
+
+  const archiveWeeklyScores = () => {
+    if (gameState.players.length === 0) {
+      setMsg({ text: "No players to score yet.", type: "error" });
+      return;
+    }
+    const defaultLabel = `Week ${scoreHistory.length + 1}`;
+    const labelInput = prompt("Label this week:", defaultLabel);
+    if (labelInput === null) return;
+    const label = labelInput.trim() || defaultLabel;
+    const totals: Record<string, number> = {};
+    gameState.players.forEach((player) => {
+      totals[player.id] = calculatePlayerScore(gameState, player).total;
+    });
+    const snapshot: WeeklyScoreSnapshot = {
+      id: `week-${Date.now()}`,
+      label,
+      createdAt: new Date().toISOString(),
+      weeklyResults: gameState.weeklyResults,
+      totals,
+    };
+    const nextHistory = [...scoreHistory, snapshot].slice(-52);
+    const nextState = { ...gameState, weeklyScoreHistory: nextHistory };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
+    setMsg({ text: `Archived scores for ${label}.`, type: "success" });
+  };
+
+  const getScoreTopper = (snapshot: WeeklyScoreSnapshot) => {
+    let topId: string | null = null;
+    let topScore = -Infinity;
+    Object.entries(snapshot.totals || {}).forEach(([id, total]) => {
+      if (typeof total !== "number") return;
+      if (total > topScore) {
+        topScore = total;
+        topId = id;
+      }
+    });
+    if (!topId) return null;
+    const player = gameState.players.find((p) => p.id === topId);
+    return player ? { name: player.name, score: topScore } : null;
+  };
+
   return (
     <div
       className="w-full animate-in fade-in duration-500"
@@ -710,6 +764,63 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
         <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score weekly council picks</p>
+      </div>
+
+      <div className="glass-panel py-6 px-12 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Score Tracking</h3>
+            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
+              Archive weekly totals to show progress in the leaderboard
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {scoreHistory.length > 6 && (
+              <button
+                type="button"
+                onClick={() => setShowAllScoreHistory((prev) => !prev)}
+                className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
+              >
+                {showAllScoreHistory ? "Show Recent" : "Show All"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={archiveWeeklyScores}
+              className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black border border-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] transition-all"
+            >
+              Archive Week
+            </button>
+          </div>
+        </div>
+
+        {scoreHistory.length === 0 ? (
+          <p className="text-xs text-zinc-500 mt-4">
+            No weekly snapshots yet. Archive after each episode to track progress.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {visibleScoreHistory.map((snapshot) => {
+              const topper = getScoreTopper(snapshot);
+              return (
+                <div
+                  key={snapshot.id}
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm text-white font-semibold">{snapshot.label}</p>
+                    <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
+                      Archived {new Date(snapshot.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="text-xs text-zinc-400 uppercase tracking-[0.16em]">
+                    {topper ? `Top: ${topper.name} (${formatScore(topper.score)})` : "Top: —"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="glass-panel py-6 px-12 rounded-2xl">
@@ -1044,48 +1155,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
                 <button onClick={() => setSelectedPlayer(null)} className="text-zinc-600 hover:text-white text-xl">&times;</button>
-              </div>
-
-              <div className="p-4 bg-black/40 border border-zinc-800 rounded">
-                <p className="text-[11px] text-zinc-500 font-bold mb-3 uppercase tracking-widest">Edit Player Info</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] text-zinc-400 font-semibold mb-1 uppercase tracking-[0.2em]">Name</label>
-                    <input
-                      value={playerNameEdit}
-                      onChange={(e) => setPlayerNameEdit(e.target.value)}
-                      className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-                      placeholder="Player name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-zinc-400 font-semibold mb-1 uppercase tracking-[0.2em]">Email</label>
-                    <input
-                      value={playerEmailEdit}
-                      onChange={(e) => setPlayerEmailEdit(e.target.value)}
-                      className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-                      placeholder="Email"
-                      type="email"
-                    />
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                  <button
-                    onClick={savePlayerInfo}
-                    className="px-3 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.25em] border border-[color:var(--accent)]/40 text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black transition-all"
-                  >
-                    Save Player Info
-                  </button>
-                  <button
-                    onClick={() => {
-                      setPlayerNameEdit(selectedPlayer.name || '');
-                      setPlayerEmailEdit(selectedPlayer.email || '');
-                    }}
-                    className="px-3 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.25em] border border-zinc-800 text-zinc-400 hover:text-white transition-all"
-                  >
-                    Reset
-                  </button>
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

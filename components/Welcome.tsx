@@ -1,11 +1,23 @@
 
 import React from 'react';
 
-interface WelcomeProps {
-  onStart: () => void;
+export interface MvpHighlight {
+  name: string;
+  score: number;
+  label: string;
+  portraitUrl?: string;
 }
 
-const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
+interface WelcomeProps {
+  onStart: () => void;
+  mvp?: MvpHighlight | null;
+  weeklyMvp?: MvpHighlight | null;
+}
+
+const formatScore = (value: number) =>
+  Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+
+const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
   return (
     <div className="max-w-7xl mx-auto py-16 md:py-24 animate-in fade-in duration-1000 lg:grid lg:grid-cols-12 lg:gap-16 lg:items-start">
       {/* Hero Section */}
@@ -26,6 +38,68 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart }) => {
       </section>
 
       <div className="space-y-12 mt-16 lg:mt-0 lg:col-span-5">
+        {(mvp || weeklyMvp) && (
+          <div className="glass-panel p-8 rounded-3xl relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-[color:var(--accent)] opacity-60"></div>
+            <h3 className="gothic-font text-[color:var(--accent)] text-2xl mb-6 uppercase tracking-[0.2em]">
+              MVP Spotlight
+            </h3>
+            <div className="space-y-4">
+              {weeklyMvp && (
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-zinc-800">
+                  <div className="w-12 h-12 rounded-full border border-[#D4AF37]/40 overflow-hidden bg-black flex items-center justify-center text-sm font-bold text-zinc-600">
+                    {weeklyMvp.portraitUrl ? (
+                      <img
+                        src={weeklyMvp.portraitUrl}
+                        alt={weeklyMvp.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      weeklyMvp.name.charAt(0)
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                      {weeklyMvp.label}
+                    </p>
+                    <p className="text-lg font-bold text-zinc-100">{weeklyMvp.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-zinc-400 uppercase tracking-[0.16em]">Week Gain</p>
+                    <p className="text-xl font-black text-[color:var(--accent)]">
+                      +{formatScore(weeklyMvp.score)}
+                    </p>
+                  </div>
+                </div>
+              )}
+              {mvp && (
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-black/40 border border-zinc-800">
+                  <div className="w-12 h-12 rounded-full border border-[#D4AF37]/40 overflow-hidden bg-black flex items-center justify-center text-sm font-bold text-zinc-600">
+                    {mvp.portraitUrl ? (
+                      <img
+                        src={mvp.portraitUrl}
+                        alt={mvp.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      mvp.name.charAt(0)
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">{mvp.label}</p>
+                    <p className="text-lg font-bold text-zinc-100">{mvp.name}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-zinc-400 uppercase tracking-[0.16em]">Total</p>
+                    <p className="text-xl font-black text-[color:var(--accent)]">
+                      {formatScore(mvp.score)}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         {/* App Explanation */}
         <div className="grid grid-cols-1 gap-6">
           <div className="glass-panel p-9 rounded-3xl relative overflow-hidden group hover:accent-outline transition-all">

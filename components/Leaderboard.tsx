@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { GameState, PlayerEntry } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { GameState, WeeklyScoreSnapshot } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
+import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 
 interface LeaderboardProps {
   gameState: GameState;
@@ -18,94 +19,42 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     return () => clearTimeout(timer);
   }, [gameState]);
 
-  const calculateScore = (player: PlayerEntry) => {
-    let score = 0;
-    const achievements = [] as { member: string; type: string; points: number; icon: string }[];
-    const breakdown = { 
-      draftWinners: [] as string[], 
-      predWinner: false, 
-      predFirstOut: false, 
-      traitorBonus: [] as string[], 
-      penalty: false,
-      weeklyCouncil: [] as { label: string; result: 'correct' | 'incorrect' }[],
-    };
+  const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(
+    gameState.weeklyScoreHistory
+  )
+    ? gameState.weeklyScoreHistory
+    : [];
 
-    player.picks.forEach(pick => {
-      const status = gameState.castStatus[pick.member];
-      if (status?.isWinner) {
-        score += 10;
-        breakdown.draftWinners.push(pick.member);
-        achievements.push({ member: pick.member, type: 'Winner', points: 10, icon: '🏆' });
-      }
+  const scoredPlayers = gameState.players
+    .map((player) => ({
+      ...player,
+      scoring: calculatePlayerScore(gameState, player),
+    }))
+    .sort((a, b) => b.scoring.total - a.scoring.total);
+
+  const weeklyDeltaById = useMemo(() => {
+    if (scoreHistory.length < 2) return {};
+    const last = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
+    const prev = scoreHistory[scoreHistory.length - 2]?.totals ?? {};
+    const delta: Record<string, number> = {};
+    Object.keys(last).forEach((id) => {
+      if (typeof last[id] !== "number" || typeof prev[id] !== "number") return;
+      delta[id] = Number(last[id]) - Number(prev[id]);
     });
+    return delta;
+  }, [scoreHistory]);
 
-    if (gameState.castStatus[player.predWinner]?.isWinner) {
-      score += 10;
-      breakdown.predWinner = true;
-      achievements.push({ member: player.predWinner, type: 'Prophecy: Winner', points: 10, icon: '✨' });
-    }
+  const getHistoryLabel = (snapshot: WeeklyScoreSnapshot) =>
+    snapshot.label?.trim() ||
+    new Date(snapshot.createdAt).toLocaleDateString();
 
-    if (gameState.castStatus[player.predFirstOut]?.isFirstOut) {
-      score += 5;
-      breakdown.predFirstOut = true;
-      achievements.push({ member: player.predFirstOut, type: 'Prophecy: 1st Out', points: 5, icon: '💀' });
-    }
-
-    player.predTraitors.forEach(guess => {
-      if (gameState.castStatus[guess]?.isTraitor) {
-        score += 3;
-        breakdown.traitorBonus.push(guess);
-        achievements.push({ member: guess, type: 'Unmasked Traitor', points: 3, icon: '🎭' });
-      }
-    });
-
-    if (gameState.castStatus[player.predWinner]?.isFirstOut) {
-      score -= 2;
-      breakdown.penalty = true;
-    }
-
-    const weeklyResults = gameState.weeklyResults;
-    const weeklyPredictions = player.weeklyPredictions;
-
-    if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
-      if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
-        score += 1;
-        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'correct' });
-        achievements.push({
-          member: weeklyPredictions.nextBanished,
-          type: 'Weekly: Banished',
-          points: 1,
-          icon: '⚖️',
-        });
-      } else {
-        score -= 0.5;
-        breakdown.weeklyCouncil.push({ label: 'Next Banished', result: 'incorrect' });
-      }
-    }
-
-    if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
-      if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
-        score += 1;
-        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'correct' });
-        achievements.push({
-          member: weeklyPredictions.nextMurdered,
-          type: 'Weekly: Murdered',
-          points: 1,
-          icon: '🗡️',
-        });
-      } else {
-        score -= 0.5;
-        breakdown.weeklyCouncil.push({ label: 'Next Murdered', result: 'incorrect' });
-      }
-    }
-
-    return { total: score, breakdown, achievements };
-  };
-
-  const scoredPlayers = gameState.players.map(p => ({
-    ...p,
-    scoring: calculateScore(p)
-  })).sort((a, b) => b.scoring.total - a.scoring.total);
+  const getPlayerTimeline = (playerId: string) =>
+    scoreHistory
+      .map((snapshot) => ({
+        label: getHistoryLabel(snapshot),
+        total: snapshot.totals?.[playerId],
+      }))
+      .filter((entry) => typeof entry.total === "number");
 
   const toggleExpand = (id: string) => {
     setExpandedPlayerId(expandedPlayerId === id ? null : id);
@@ -164,7 +113,23 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="p-5 text-right font-black text-2xl md:text-3xl text-[#D4AF37]">{p.scoring.total}</td>
+                    <td className="p-5 text-right font-black text-2xl md:text-3xl text-[#D4AF37]">
+                      <div className="flex flex-col items-end">
+                        <span>{formatScore(p.scoring.total)}</span>
+                        {weeklyDeltaById[p.id] !== undefined && (
+                          <span
+                            className={`text-xs font-bold uppercase tracking-[0.2em] ${
+                              weeklyDeltaById[p.id] >= 0
+                                ? "text-emerald-400"
+                                : "text-red-400"
+                            }`}
+                          >
+                            {weeklyDeltaById[p.id] >= 0 ? "+" : ""}
+                            {formatScore(weeklyDeltaById[p.id])} wk
+                          </span>
+                        )}
+                      </div>
+                    </td>
                 </tr>
                 
                 {expandedPlayerId === p.id && (
@@ -201,6 +166,32 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                             </div>
                           ) : (
                             <p className="text-zinc-600 italic text-sm">No triumphs yet revealed.</p>
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
+                            Weekly Progress
+                          </h4>
+                          {scoreHistory.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {getPlayerTimeline(p.id).slice(-6).map((entry, i) => (
+                                <div
+                                  key={`${p.id}-history-${i}`}
+                                  className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3"
+                                >
+                                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
+                                    {entry.label}
+                                  </p>
+                                  <p className="text-lg font-black text-zinc-100">
+                                    {formatScore(entry.total as number)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-zinc-600 italic text-sm">
+                              Weekly totals will appear once the Admin archives each week.
+                            </p>
                           )}
                         </div>
                       </div>

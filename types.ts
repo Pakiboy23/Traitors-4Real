@@ -23,6 +23,14 @@ export interface WeeklyResults {
   nextMurdered?: string;
 }
 
+export interface WeeklyScoreSnapshot {
+  id: string;
+  label: string;
+  createdAt: string;
+  weeklyResults?: WeeklyResults;
+  totals: Record<string, number>;
+}
+
 export interface WeeklySubmissionHistoryEntry {
   id: string;
   name: string;
@@ -51,6 +59,7 @@ export interface GameState {
   castStatus: Record<string, CastMemberStatus>;
   weeklyResults?: WeeklyResults;
   weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
+  weeklyScoreHistory?: WeeklyScoreSnapshot[];
 }
 
 export const CAST_NAMES = [
