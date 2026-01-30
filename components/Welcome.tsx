@@ -39,15 +39,15 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
 
       <div className="space-y-12 mt-16 lg:mt-0 lg:col-span-5">
         {(mvp || weeklyMvp) && (
-          <div className="relative overflow-hidden rounded-[32px] border-0 bg-[radial-gradient(ellipse_at_top,_rgba(217,221,227,0.18),_rgba(0,0,0,0.9)_62%)] p-8 shadow-[0_35px_90px_rgba(0,0,0,0.65)] text-center">
+          <div className="relative mx-auto w-full max-w-[520px] overflow-hidden rounded-[32px] border-0 bg-[radial-gradient(ellipse_at_top,_rgba(217,221,227,0.18),_rgba(0,0,0,0.9)_62%)] p-10 shadow-[0_35px_90px_rgba(0,0,0,0.65)] text-center">
             <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(217,221,227,0.35),_transparent_70%)] blur-2xl"></div>
             <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(176,74,74,0.4),_transparent_70%)] blur-2xl"></div>
             <div className="absolute inset-0 border border-white/5 rounded-[32px] pointer-events-none"></div>
             <div className="relative space-y-6">
               <div className="flex flex-col items-center justify-center gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.4em] text-zinc-500">Unmissable</p>
-                  <h3 className="gothic-font text-[color:var(--accent)] text-3xl md:text-4xl uppercase tracking-[0.28em]">
+                  <p className="text-[11px] uppercase tracking-[0.32em] text-zinc-500 font-black">Unmissable</p>
+                  <h3 className="text-[color:var(--accent)] text-3xl md:text-4xl uppercase tracking-[0.14em] font-black">
                     MVP Spotlight
                   </h3>
                 </div>
@@ -58,8 +58,8 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
               </div>
               <div className="space-y-4">
                 {weeklyMvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-gradient-to-r from-amber-400/15 via-black/40 to-black/70 p-5 shadow-[0_0_30px_rgba(212,175,55,0.25)]">
-                    <div className="w-14 h-14 rounded-full border-0 overflow-hidden bg-black flex items-center justify-center text-base font-black text-amber-200">
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-gradient-to-r from-amber-400/15 via-black/40 to-black/70 p-6 shadow-[0_0_30px_rgba(212,175,55,0.25)]">
+                    <div className="w-16 h-16 rounded-full border-0 overflow-hidden bg-black flex items-center justify-center text-amber-200 shadow-[0_0_25px_rgba(212,175,55,0.45)]">
                       {weeklyMvp.portraitUrl ? (
                         <img
                           src={weeklyMvp.portraitUrl}
@@ -67,11 +67,16 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        weeklyMvp.name.charAt(0)
+                        <svg viewBox="0 0 64 64" className="w-9 h-9 text-amber-200">
+                          <path
+                            fill="currentColor"
+                            d="M36.5 8.5c2.5-2.5 6.6-2.5 9.1 0 2.5 2.5 2.5 6.6 0 9.1L30.3 32.9l5.4 5.4-4.2 4.2-5.4-5.4-9.1 9.1-8.5 1.4 1.4-8.5 9.1-9.1-5.4-5.4 4.2-4.2 5.4 5.4L36.5 8.5Z"
+                          />
+                        </svg>
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-amber-200/70">
+                      <p className="text-[11px] uppercase tracking-[0.26em] text-amber-200/70 font-black">
                         {weeklyMvp.label}
                       </p>
                       <p className="text-2xl md:text-3xl font-black text-zinc-100">
@@ -79,7 +84,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                       </p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] text-amber-200/70 uppercase tracking-[0.3em]">Week Gain</p>
+                      <p className="text-[11px] text-amber-200/70 uppercase tracking-[0.26em] font-black">Week Gain</p>
                       <p className="text-3xl md:text-4xl font-black text-amber-300">
                         +{formatScore(weeklyMvp.score)}
                       </p>
@@ -87,8 +92,8 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                   </div>
                 )}
                 {mvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-gradient-to-r from-zinc-800/80 via-black/50 to-black/70 p-5">
-                    <div className="w-14 h-14 rounded-full border-0 overflow-hidden bg-black flex items-center justify-center text-base font-black text-[#D4AF37]">
+                  <div className="flex flex-col items-center gap-4 rounded-2xl border-0 bg-gradient-to-r from-zinc-800/80 via-black/50 to-black/70 p-6">
+                    <div className="w-16 h-16 rounded-full border-0 overflow-hidden bg-black flex items-center justify-center text-[#D4AF37] shadow-[0_0_22px_rgba(212,175,55,0.35)]">
                       {mvp.portraitUrl ? (
                         <img
                           src={mvp.portraitUrl}
@@ -96,15 +101,20 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        mvp.name.charAt(0)
+                        <svg viewBox="0 0 64 64" className="w-9 h-9 text-[#D4AF37]">
+                          <path
+                            fill="currentColor"
+                            d="M36.5 8.5c2.5-2.5 6.6-2.5 9.1 0 2.5 2.5 2.5 6.6 0 9.1L30.3 32.9l5.4 5.4-4.2 4.2-5.4-5.4-9.1 9.1-8.5 1.4 1.4-8.5 9.1-9.1-5.4-5.4 4.2-4.2 5.4 5.4L36.5 8.5Z"
+                          />
+                        </svg>
                       )}
                     </div>
                     <div className="flex-1">
-                      <p className="text-[11px] uppercase tracking-[0.3em] text-zinc-400">{mvp.label}</p>
+                      <p className="text-[11px] uppercase tracking-[0.26em] text-zinc-400 font-black">{mvp.label}</p>
                       <p className="text-2xl md:text-3xl font-black text-zinc-100">{mvp.name}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-[11px] text-zinc-400 uppercase tracking-[0.3em]">Total</p>
+                      <p className="text-[11px] text-zinc-400 uppercase tracking-[0.26em] font-black">Total</p>
                       <p className="text-3xl md:text-4xl font-black text-[color:var(--accent)]">
                         {formatScore(mvp.score)}
                       </p>
