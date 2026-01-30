@@ -5,7 +5,13 @@ import DraftForm from "./components/DraftForm";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
 import AdminAuth from "./components/AdminAuth";
-import { CastMemberStatus, CAST_NAMES, GameState, PlayerEntry } from "./types";
+import {
+  CastMemberStatus,
+  CAST_NAMES,
+  GameState,
+  PlayerEntry,
+  WeeklySubmissionHistoryEntry,
+} from "./types";
 import {
   fetchGameState,
   fetchPlayerPortraits,
@@ -67,10 +73,15 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     } as PlayerEntry;
   });
 
+  const history = Array.isArray(input?.weeklySubmissionHistory)
+    ? (input!.weeklySubmissionHistory as WeeklySubmissionHistoryEntry[])
+    : [];
+
   return {
     players: normalizedPlayers,
     castStatus,
     weeklyResults: input?.weeklyResults ?? DEFAULT_WEEKLY_RESULTS,
+    weeklySubmissionHistory: history,
   };
 };
 

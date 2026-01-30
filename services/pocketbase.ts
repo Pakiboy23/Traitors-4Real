@@ -1,3 +1,4 @@
+import type { RecordModel } from "pocketbase";
 import type { GameState } from "../types";
 import { pb } from "../src/lib/pocketbase";
 
@@ -137,7 +138,7 @@ export const savePlayerPortrait = async (
   }
 };
 
-export interface SubmissionRecord {
+export interface SubmissionRecord extends RecordModel {
   id: string;
   name: string;
   email: string;
@@ -150,11 +151,13 @@ export interface SubmissionRecord {
 }
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
-  const records = await pb.collection(SUBMISSIONS_COLLECTION).getFullList({
-    sort: "-created",
-    filter: 'kind="weekly"',
-  });
-  return records as SubmissionRecord[];
+  const records = await pb
+    .collection(SUBMISSIONS_COLLECTION)
+    .getFullList<SubmissionRecord>({
+      sort: "-created",
+      filter: 'kind="weekly"',
+    });
+  return records;
 };
 
 export const subscribeToWeeklySubmissions = (

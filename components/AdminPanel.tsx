@@ -1,6 +1,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
+import {
+  GameState,
+  CAST_NAMES,
+  PlayerEntry,
+  DraftPick,
+  WeeklySubmissionHistoryEntry,
+} from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import {
   deleteSubmission,
@@ -45,6 +51,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editPlayerEmail, setEditPlayerEmail] = useState("");
   const [editWeeklyBanished, setEditWeeklyBanished] = useState("");
   const [editWeeklyMurdered, setEditWeeklyMurdered] = useState("");
+  const [showAllHistory, setShowAllHistory] = useState(false);
   const [inlineEdits, setInlineEdits] = useState<Record<string, {
     name: string;
     email: string;
@@ -58,6 +65,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const HISTORY_LIMIT = 200;
+
+  const buildHistoryEntry = (
+    submission: SubmissionRecord
+  ): WeeklySubmissionHistoryEntry => ({
+    id: submission.id,
+    name: submission.name || "",
+    email: submission.email || "",
+    weeklyBanished: submission.weeklyBanished || "",
+    weeklyMurdered: submission.weeklyMurdered || "",
+    created: submission.created,
+    mergedAt: new Date().toISOString(),
+  });
+
+  const mergeHistoryEntries = (
+    existing: WeeklySubmissionHistoryEntry[],
+    additions: WeeklySubmissionHistoryEntry[]
+  ) => {
+    if (additions.length === 0) return existing;
+    const seen = new Set(existing.map((entry) => entry.id));
+    const merged = [...existing];
+    additions.forEach((entry) => {
+      if (seen.has(entry.id)) return;
+      merged.unshift(entry);
+      seen.add(entry.id);
+    });
+    return merged.slice(0, HISTORY_LIMIT);
+  };
 
   const findPlayerMatch = (
     players: PlayerEntry[],
@@ -340,7 +375,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       return;
     }
-    const nextState = { ...currentState, players: result.players };
+    const historyEntry = buildHistoryEntry(submission);
+    const nextHistory = mergeHistoryEntries(
+      Array.isArray(currentState.weeklySubmissionHistory)
+        ? currentState.weeklySubmissionHistory
+        : [],
+      [historyEntry]
+    );
+    const nextState = {
+      ...currentState,
+      players: result.players,
+      weeklySubmissionHistory: nextHistory,
+    };
     gameStateRef.current = nextState;
     updateGameState(nextState);
     try {
@@ -369,6 +415,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (list.length === 0) return;
     let updatedPlayers = gameStateRef.current.players;
     const mergedIds: string[] = [];
+    const historyAdds: WeeklySubmissionHistoryEntry[] = [];
     let skipped = 0;
 
     list.forEach((submission) => {
@@ -376,13 +423,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (result.matched) {
         updatedPlayers = result.players;
         mergedIds.push(submission.id);
+        historyAdds.push(buildHistoryEntry(submission));
       } else {
         skipped += 1;
       }
     });
 
     if (mergedIds.length > 0) {
-      const nextState = { ...gameStateRef.current, players: updatedPlayers };
+      const nextHistory = mergeHistoryEntries(
+        Array.isArray(gameStateRef.current.weeklySubmissionHistory)
+          ? gameStateRef.current.weeklySubmissionHistory
+          : [],
+        historyAdds
+      );
+      const nextState = {
+        ...gameStateRef.current,
+        players: updatedPlayers,
+        weeklySubmissionHistory: nextHistory,
+      };
       gameStateRef.current = nextState;
       updateGameState(nextState);
     }
@@ -530,6 +588,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       type: "success",
     });
   };
+
+  const clearHistory = () => {
+    if (!confirm("Clear merged submission history?")) return;
+    const nextState = { ...gameState, weeklySubmissionHistory: [] };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
+    setMsg({ text: "Merged history cleared.", type: "success" });
+  };
+
+  const history = Array.isArray(gameState.weeklySubmissionHistory)
+    ? gameState.weeklySubmissionHistory
+    : [];
+  const visibleHistory = showAllHistory ? history : history.slice(0, 20);
 
   return (
     <div
@@ -740,6 +811,87 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             );
           })}
         </div>
+      </div>
+
+      <div className="glass-panel py-6 px-12 rounded-2xl">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Merged History</h3>
+            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
+              {history.length} merged submissions
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {history.length > 20 && (
+              <button
+                type="button"
+                onClick={() => setShowAllHistory((prev) => !prev)}
+                className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
+              >
+                {showAllHistory ? "Show Recent" : "Show All"}
+              </button>
+            )}
+            {history.length > 0 && (
+              <button
+                type="button"
+                onClick={clearHistory}
+                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] text-red-400 border border-red-900/40 hover:bg-red-900/20"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+
+        {history.length === 0 ? (
+          <p className="text-xs text-zinc-500 mt-4">
+            No merged submissions yet. New merges will appear here.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-3">
+            {visibleHistory.map((entry) => {
+              const mergedLabel = entry.mergedAt
+                ? new Date(entry.mergedAt).toLocaleString()
+                : "";
+              const createdLabel = entry.created
+                ? new Date(entry.created).toLocaleString()
+                : "";
+              return (
+                <div
+                  key={entry.id}
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+                >
+                  <div className="space-y-1">
+                    <p className="text-sm text-white font-semibold">
+                      {entry.name}
+                      {entry.email ? (
+                        <span className="text-xs text-zinc-500 ml-2">
+                          {entry.email}
+                        </span>
+                      ) : null}
+                    </p>
+                    <p className="text-xs text-zinc-400">
+                      Banished:{" "}
+                      <span className="text-zinc-200">
+                        {entry.weeklyBanished || "None"}
+                      </span>{" "}
+                      · Murdered:{" "}
+                      <span className="text-zinc-200">
+                        {entry.weeklyMurdered || "None"}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
+                      {createdLabel
+                        ? `Submitted ${createdLabel}`
+                        : "Submitted"}
+                      {mergedLabel ? ` · Merged ${mergedLabel}` : ""}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-10">
