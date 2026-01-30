@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import {
@@ -7,6 +7,7 @@ import {
   fetchWeeklySubmissions,
   savePlayerPortrait,
   SubmissionRecord,
+  subscribeToWeeklySubmissions,
 } from '../services/pocketbase';
 
 interface AdminPanelProps {
@@ -50,6 +51,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     weeklyBanished: string;
     weeklyMurdered: string;
   }>>({});
+  const gameStateRef = useRef(gameState);
+
+  useEffect(() => {
+    gameStateRef.current = gameState;
+  }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
 
@@ -80,6 +86,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const records = await fetchWeeklySubmissions();
       setSubmissions(records);
+      if (records.length > 0) {
+        await mergeSubmissionList(records, { announce: false });
+      }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
@@ -89,6 +98,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     refreshSubmissions();
+    const unsubscribe = subscribeToWeeklySubmissions((submission) => {
+      setSubmissions((prev) =>
+        prev.some((existing) => existing.id === submission.id)
+          ? prev
+          : [submission, ...prev]
+      );
+      mergeSubmissionRecord(submission, { announce: false });
+    });
+    return () => {
+      unsubscribe?.();
+    };
   }, []);
 
   useEffect(() => {
@@ -305,28 +325,84 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return { matched: true as const, players: updatedPlayers, match };
   };
 
-  const mergeSubmission = async (submission: SubmissionRecord) => {
-    const result = applySubmissionToPlayers(gameState.players, submission);
+  const mergeSubmissionRecord = async (
+    submission: SubmissionRecord,
+    { announce = true }: { announce?: boolean } = {}
+  ) => {
+    const currentState = gameStateRef.current;
+    const result = applySubmissionToPlayers(currentState.players, submission);
     if (!result.matched) {
-      setMsg({
-        text: `No matching player found for ${submission.name}.`,
-        type: "error",
-      });
+      if (announce) {
+        setMsg({
+          text: `No matching player found for ${submission.name}.`,
+          type: "error",
+        });
+      }
       return;
     }
-    updateGameState({ ...gameState, players: result.players });
+    const nextState = { ...currentState, players: result.players };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
-      setMsg({
-        text: `Merged weekly vote for ${submission.name}.`,
-        type: "success",
-      });
+      if (announce) {
+        setMsg({
+          text: `Merged weekly vote for ${submission.name}.`,
+          type: "success",
+        });
+      }
     } catch (err: any) {
-      setMsg({
-        text: `Merged weekly vote, but failed to clear submission: ${err?.message || err}`,
-        type: "error",
-      });
+      if (announce) {
+        setMsg({
+          text: `Merged weekly vote, but failed to clear submission: ${err?.message || err}`,
+          type: "error",
+        });
+      }
+    }
+  };
+
+  const mergeSubmissionList = async (
+    list: SubmissionRecord[],
+    { announce = true }: { announce?: boolean } = {}
+  ) => {
+    if (list.length === 0) return;
+    let updatedPlayers = gameStateRef.current.players;
+    const mergedIds: string[] = [];
+    let skipped = 0;
+
+    list.forEach((submission) => {
+      const result = applySubmissionToPlayers(updatedPlayers, submission);
+      if (result.matched) {
+        updatedPlayers = result.players;
+        mergedIds.push(submission.id);
+      } else {
+        skipped += 1;
+      }
+    });
+
+    if (mergedIds.length > 0) {
+      const nextState = { ...gameStateRef.current, players: updatedPlayers };
+      gameStateRef.current = nextState;
+      updateGameState(nextState);
+    }
+
+    try {
+      await Promise.all(mergedIds.map((id) => deleteSubmission(id)));
+      setSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
+      if (announce) {
+        setMsg({
+          text: `Merged ${mergedIds.length} weekly votes${skipped ? `, skipped ${skipped}` : ""}.`,
+          type: "success",
+        });
+      }
+    } catch (err: any) {
+      if (announce) {
+        setMsg({
+          text: `Merged weekly votes, but failed to clear some submissions: ${err?.message || err}`,
+          type: "error",
+        });
+      }
     }
   };
 
@@ -344,38 +420,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const mergeAllSubmissions = async () => {
-    if (submissions.length === 0) return;
-    let updatedPlayers = gameState.players;
-    const mergedIds: string[] = [];
-    let skipped = 0;
-
-    submissions.forEach((submission) => {
-      const result = applySubmissionToPlayers(updatedPlayers, submission);
-      if (result.matched) {
-        updatedPlayers = result.players;
-        mergedIds.push(submission.id);
-      } else {
-        skipped += 1;
-      }
-    });
-
-    if (mergedIds.length > 0) {
-      updateGameState({ ...gameState, players: updatedPlayers });
-    }
-
-    try {
-      await Promise.all(mergedIds.map((id) => deleteSubmission(id)));
-      setSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
-      setMsg({
-        text: `Merged ${mergedIds.length} weekly votes${skipped ? `, skipped ${skipped}` : ""}.`,
-        type: "success",
-      });
-    } catch (err: any) {
-      setMsg({
-        text: `Merged weekly votes, but failed to clear some submissions: ${err?.message || err}`,
-        type: "error",
-      });
-    }
+    await mergeSubmissionList(submissions);
   };
 
   const updateSelectedPlayer = (updates: Partial<PlayerEntry>) => {
@@ -673,7 +718,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => mergeSubmission(submission)}
+                    onClick={() => mergeSubmissionRecord(submission)}
                     disabled={!match}
                     className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
                       match

@@ -157,6 +157,25 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
   return records as SubmissionRecord[];
 };
 
+export const subscribeToWeeklySubmissions = (
+  handler: (submission: SubmissionRecord) => void
+) => {
+  const callback = (event: any) => {
+    const record = event?.record as SubmissionRecord | undefined;
+    if (!record || record.kind !== "weekly") return;
+    if (event?.action !== "create") return;
+    handler(record);
+  };
+
+  pb.collection(SUBMISSIONS_COLLECTION).subscribe("*", callback).catch((error) => {
+    console.warn("PocketBase submission subscription failed:", error);
+  });
+
+  return () => {
+    pb.collection(SUBMISSIONS_COLLECTION).unsubscribe("*").catch(() => undefined);
+  };
+};
+
 export const deleteSubmission = async (id: string) => {
   await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
 };
