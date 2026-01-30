@@ -102,8 +102,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
           </nav>
         </header>
 
-        <main className={`glass-panel p-8 md:p-12 rounded-2xl min-h-[60vh] transition-colors duration-500`}>
-          {children}
+        <main className={`glass-panel p-6 md:p-10 rounded-2xl min-h-[60vh] transition-colors duration-500`}>
+          <div className="page-shell">
+            {children}
+          </div>
         </main>
 
         <footer className={`text-center text-xs md:text-sm py-10 border-t transition-colors duration-500 ${isLightMode ? 'text-zinc-500 border-red-100' : 'text-gray-600 border-gray-900'}`}>

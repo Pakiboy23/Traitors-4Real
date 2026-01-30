@@ -213,7 +213,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-24 px-4 sm:px-6 md:px-10">
+    <div className="pb-24">
       <form
         onSubmit={handleSubmit}
         className="space-y-12"

@@ -657,10 +657,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div
-      className="w-full animate-in fade-in duration-500"
-      style={{ paddingLeft: "48px", paddingRight: "48px" }}
-    >
+    <div className="w-full animate-in fade-in duration-500">
       <div className="w-full max-w-[960px] mx-auto space-y-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <h2 className="text-4xl gothic-font text-[color:var(--accent)]">Admin Console</h2>

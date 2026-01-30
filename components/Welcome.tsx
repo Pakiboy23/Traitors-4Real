@@ -19,7 +19,7 @@ const formatScore = (value: number) =>
 
 const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
   return (
-    <div className="max-w-7xl mx-auto py-16 md:py-24 animate-in fade-in duration-1000 lg:grid lg:grid-cols-12 lg:gap-16 lg:items-start">
+    <div className="py-16 md:py-24 animate-in fade-in duration-1000 lg:grid lg:grid-cols-12 lg:gap-16 lg:items-start">
       {/* Hero Section */}
       <section className="text-center space-y-8 lg:col-span-7 lg:text-left">
         <div className="flex justify-center lg:justify-start mb-10">
@@ -160,7 +160,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
             <h3 className="gothic-font text-[color:var(--crimson)] text-2xl mb-5 uppercase tracking-[0.2em]">The Architect</h3>
             <p className="text-zinc-200 text-base leading-relaxed">
               Crafted for the elite members of the Titanic Swim Team league. I built this application to bring the mystery
-              and treachery of the castle into our own hands. From real-time scoring to AI-generated "Prophecies,"
+              and treachery of the castle into our own hands. From real-time scoring to prophecies,
               this tool is designed to track our collective descent into chaos.
             </p>
           </div>
