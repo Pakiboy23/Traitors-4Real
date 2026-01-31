@@ -185,12 +185,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   </tr>
                   
                   {expandedPlayerId === p.id && (
-                    <tr className="bg-black/60 animate-in slide-in-from-top-2 duration-300">
-                      <td colSpan={3} className="p-8 border-l-2 border-[#D4AF37]">
-                        <div className="space-y-8">
+                    <tr className="bg-black/30 animate-in slide-in-from-top-2 duration-300">
+                      <td colSpan={3} className="p-6 md:p-8">
+                        <div className="rounded-3xl border border-[color:var(--accent)]/35 bg-black/70 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
+                          <div className="absolute inset-y-0 left-0 w-1 bg-[color:var(--accent)]/60" />
+                          <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.2),_transparent_70%)] blur-2xl" />
                           <div className="grid gap-8 lg:grid-cols-2">
                             <div>
-                              <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">The Hall of Victory</h4>
+                              <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
+                                The Hall of Victory
+                              </h4>
                               {p.scoring.achievements.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
                                   {p.scoring.achievements.map((ach, i) => {

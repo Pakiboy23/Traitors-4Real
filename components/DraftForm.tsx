@@ -440,7 +440,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
               type="submit"
               disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed}
               className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg ${
-                DRAFT_CLOSED || hasDuplicates || !allPicksSealed
+                DRAFT_CLOSED
+                  ? 'bg-red-900 border-red-600 text-white cursor-not-allowed opacity-90'
+                  : hasDuplicates || !allPicksSealed
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
               }`}

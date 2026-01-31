@@ -158,7 +158,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   };
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-20">
       <div className="text-center space-y-3">
         <h2 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.22em]">
           Weekly Council
@@ -169,9 +169,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/30">
+        <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-6 py-4 text-center">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-emerald-200">Main League</p>
+          <p className="text-sm text-emerald-100 font-semibold">Weekly Council Voting</p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
           <div className="space-y-4 text-center lg:text-left">
-            <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Main League</p>
             <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
               Weekly Council Votes
             </h3>
@@ -253,9 +256,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20">
+        <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/15 px-6 py-4 text-center">
+          <p className="text-[10px] uppercase tracking-[0.32em] text-red-200">Jr. League</p>
+          <p className="text-sm text-red-100 font-semibold">Late Entry Council</p>
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
           <div className="space-y-4 text-center lg:text-left">
-            <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Late Entry</p>
             <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
               Jr. League Weekly Council
             </h3>
