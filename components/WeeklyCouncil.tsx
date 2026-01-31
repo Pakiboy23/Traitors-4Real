@@ -158,7 +158,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   };
 
   return (
-    <div className="space-y-24">
+    <div className="space-y-12">
       <div className="text-center space-y-3">
         <h2 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.22em]">
           Weekly Council
@@ -168,164 +168,164 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         </p>
       </div>
 
-      <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/30">
-        <div className="mb-6 h-12" aria-hidden="true" />
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
-          <div className="space-y-4 text-center lg:text-left">
-            <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-              Weekly Council Votes
-            </h3>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Already drafted? Submit your weekly banished and murdered predictions here.
-            </p>
-            {mainSubmitted && (
-              <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
-                Vote Submitted
-              </div>
-            )}
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <input
-                type="text"
-                placeholder="Name"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={playerEmail}
-                onChange={(e) => setPlayerEmail(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
-              <div>
-                <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                  ⚖️ Next Banished
-                </label>
-                <select
-                  value={weeklyBanished}
-                  onChange={(e) => setWeeklyBanished(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                  🗡️ Next Murdered
-                </label>
-                <select
-                  value={weeklyMurdered}
-                  onChange={(e) => setWeeklyMurdered(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+      <div className="grid gap-10 lg:grid-cols-2 items-start">
+        <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/30 h-full lg:min-h-[620px] flex flex-col">
+          <div className="mb-6 h-8" aria-hidden="true" />
+          <div className="grid grid-cols-1 gap-8 flex-1 content-start">
+            <div className="space-y-4 text-center lg:text-left">
+              <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
+                Weekly Council Votes
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Already drafted? Submit your weekly banished and murdered predictions here.
+              </p>
+              {mainSubmitted && (
+                <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
+                  Vote Submitted
+                </div>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={handleWeeklySubmit}
-              className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
-            >
-              Submit Weekly Council
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <div className="h-16" aria-hidden="true" />
-
-      <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20">
-        <div className="mb-6 h-12" aria-hidden="true" />
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
-          <div className="space-y-4 text-center lg:text-left">
-            <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-              Jr. League Weekly Council
-            </h3>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              Missed the initial draft? You can still play each week by submitting your council
-              predictions. No draft entry required.
-            </p>
-            {jrSubmitted && (
-              <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
-                Vote Submitted
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={playerEmail}
+                  onChange={(e) => setPlayerEmail(e.target.value)}
+                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                />
+                <div>
+                  <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    ⚖️ Next Banished
+                  </label>
+                  <select
+                    value={weeklyBanished}
+                    onChange={(e) => setWeeklyBanished(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                  >
+                    <option value="">Select...</option>
+                    {CAST_NAMES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    🗡️ Next Murdered
+                  </label>
+                  <select
+                    value={weeklyMurdered}
+                    onChange={(e) => setWeeklyMurdered(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                  >
+                    <option value="">Select...</option>
+                    {CAST_NAMES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
-          </div>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <input
-                type="text"
-                placeholder="Name"
-                value={jrName}
-                onChange={(e) => setJrName(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={jrEmail}
-                onChange={(e) => setJrEmail(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
-              <div>
-                <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                  ⚖️ Next Banished
-                </label>
-                <select
-                  value={jrWeeklyBanished}
-                  onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                  🗡️ Next Murdered
-                </label>
-                <select
-                  value={jrWeeklyMurdered}
-                  onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <button
+                type="button"
+                onClick={handleWeeklySubmit}
+                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
+              >
+                Submit Weekly Council
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleJrWeeklySubmit}
-              className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
-            >
-              Submit Jr. League Vote
-            </button>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 h-full lg:min-h-[620px] flex flex-col">
+          <div className="mb-6 h-8" aria-hidden="true" />
+          <div className="grid grid-cols-1 gap-8 flex-1 content-start">
+            <div className="space-y-4 text-center lg:text-left">
+              <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
+                Jr. League Weekly Council
+              </h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Missed the initial draft? You can still play each week by submitting your council
+                predictions. No draft entry required.
+              </p>
+              {jrSubmitted && (
+                <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
+                  Vote Submitted
+                </div>
+              )}
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={jrName}
+                  onChange={(e) => setJrName(e.target.value)}
+                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={jrEmail}
+                  onChange={(e) => setJrEmail(e.target.value)}
+                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                />
+                <div>
+                  <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    ⚖️ Next Banished
+                  </label>
+                  <select
+                    value={jrWeeklyBanished}
+                    onChange={(e) => setJrWeeklyBanished(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                  >
+                    <option value="">Select...</option>
+                    {CAST_NAMES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    🗡️ Next Murdered
+                  </label>
+                  <select
+                    value={jrWeeklyMurdered}
+                    onChange={(e) => setJrWeeklyMurdered(e.target.value)}
+                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                  >
+                    <option value="">Select...</option>
+                    {CAST_NAMES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleJrWeeklySubmit}
+                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
+              >
+                Submit Jr. League Vote
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
     </div>
   );
 };
