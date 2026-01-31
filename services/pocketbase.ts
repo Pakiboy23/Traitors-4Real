@@ -187,6 +187,7 @@ export const submitWeeklyCouncilVote = async (input: {
   name: string;
   email: string;
   weeklyPredictions: { nextBanished: string; nextMurdered: string };
+  league?: string;
 }) => {
   const normalizedEmail = normalizeEmail(input.email || "");
   return pb.collection(SUBMISSIONS_COLLECTION).create({
@@ -196,6 +197,7 @@ export const submitWeeklyCouncilVote = async (input: {
     weeklyBanished: input.weeklyPredictions?.nextBanished || "",
     weeklyMurdered: input.weeklyPredictions?.nextMurdered || "",
     payload: {
+      league: input.league || "main",
       weeklyPredictions: {
         nextBanished: input.weeklyPredictions?.nextBanished || "",
         nextMurdered: input.weeklyPredictions?.nextMurdered || "",

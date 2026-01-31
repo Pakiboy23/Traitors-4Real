@@ -21,6 +21,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [weeklyBanished, setWeeklyBanished] = useState('');
   const [weeklyMurdered, setWeeklyMurdered] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [jrName, setJrName] = useState('');
+  const [jrEmail, setJrEmail] = useState('');
+  const [jrWeeklyBanished, setJrWeeklyBanished] = useState('');
+  const [jrWeeklyMurdered, setJrWeeklyMurdered] = useState('');
+  const [jrSubmitted, setJrSubmitted] = useState(false);
 
   // Validation: Check for duplicates in the squad
   const getDuplicatePicks = () => {
@@ -76,8 +81,17 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
   };
 
-  const getWeeklyCouncilData = () => {
-    return `TRAITORS WEEKLY COUNCIL\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}`;
+  const getWeeklyCouncilData = (
+    name: string,
+    email: string,
+    banished: string,
+    murdered: string,
+    leagueLabel?: string
+  ) => {
+    const header = leagueLabel
+      ? `TRAITORS WEEKLY COUNCIL - ${leagueLabel}`
+      : "TRAITORS WEEKLY COUNCIL";
+    return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || 'None'}\nNext Murdered: ${murdered || 'None'}`;
   };
 
   const findExistingPlayer = () => {
@@ -136,6 +150,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         nextBanished: weeklyBanished,
         nextMurdered: weeklyMurdered,
       },
+      league: "main",
     }).catch((err) => {
       const message =
         typeof err?.message === "string" && err.message.length
@@ -145,9 +160,60 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
       alert(message);
     });
 
-    const body = encodeURIComponent(getWeeklyCouncilData());
+    const body = encodeURIComponent(
+      getWeeklyCouncilData(
+        playerName,
+        playerEmail,
+        weeklyBanished,
+        weeklyMurdered,
+        "Main League"
+      )
+    );
     const subject = encodeURIComponent(`Traitors Weekly Council - ${playerName}`);
     window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
+  };
+
+  const handleJrWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (!jrName || !jrEmail) {
+      alert("Please enter your name and email before submitting Jr. League votes.");
+      return;
+    }
+
+    if (!jrWeeklyBanished && !jrWeeklyMurdered) {
+      alert("Please select at least one weekly council prediction.");
+      return;
+    }
+
+    submitWeeklyCouncilVote({
+      name: jrName,
+      email: jrEmail,
+      weeklyPredictions: {
+        nextBanished: jrWeeklyBanished,
+        nextMurdered: jrWeeklyMurdered,
+      },
+      league: "jr",
+    }).catch((err) => {
+      const message =
+        typeof err?.message === "string" && err.message.length
+          ? err.message
+          : "Weekly votes could not be submitted. Please try again.";
+      console.warn("Jr. League weekly submission failed:", err);
+      alert(message);
+    });
+
+    const body = encodeURIComponent(
+      getWeeklyCouncilData(
+        jrName,
+        jrEmail,
+        jrWeeklyBanished,
+        jrWeeklyMurdered,
+        "Jr. League"
+      )
+    );
+    const subject = encodeURIComponent(`Traitors Jr. League Council - ${jrName}`);
+    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
+    setJrSubmitted(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -329,6 +395,84 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         </section>
 
         <div className="space-y-10">
+          <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20">
+            <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
+              <div className="space-y-4 text-center lg:text-left">
+                <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">Late Entry</p>
+                <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
+                  Jr. League Weekly Council
+                </h3>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Missed the initial draft? You can still play each week by submitting your council
+                  predictions. No draft entry required.
+                </p>
+                {jrSubmitted && (
+                  <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
+                    Vote Submitted
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={jrName}
+                    onChange={(e) => setJrName(e.target.value)}
+                    className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={jrEmail}
+                    onChange={(e) => setJrEmail(e.target.value)}
+                    className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
+                  />
+                  <div>
+                    <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                      ⚖️ Next Banished
+                    </label>
+                    <select
+                      value={jrWeeklyBanished}
+                      onChange={(e) => setJrWeeklyBanished(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    >
+                      <option value="">Select...</option>
+                      {CAST_NAMES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                      🗡️ Next Murdered
+                    </label>
+                    <select
+                      value={jrWeeklyMurdered}
+                      onChange={(e) => setJrWeeklyMurdered(e.target.value)}
+                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    >
+                      <option value="">Select...</option>
+                      {CAST_NAMES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleJrWeeklySubmit}
+                  className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
+                >
+                  Submit Jr. League Vote
+                </button>
+              </div>
+            </div>
+          </section>
           <section className="glass-panel rounded-3xl overflow-hidden">
             <div className="p-6 border-b border-zinc-800/80 bg-black/40 flex flex-wrap justify-between items-center gap-6">
               <div className="flex flex-col">
