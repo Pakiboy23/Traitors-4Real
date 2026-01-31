@@ -169,10 +169,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/30">
-        <div className="mb-6 rounded-2xl border border-emerald-400/40 bg-emerald-500/15 px-6 py-4 text-center">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-emerald-200">Main League</p>
-          <p className="text-sm text-emerald-100 font-semibold">Weekly Council Voting</p>
-        </div>
+        <div className="mb-6 h-12" aria-hidden="true" />
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
           <div className="space-y-4 text-center lg:text-left">
             <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
@@ -256,10 +253,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20">
-        <div className="mb-6 rounded-2xl border border-red-500/40 bg-red-500/15 px-6 py-4 text-center">
-          <p className="text-[10px] uppercase tracking-[0.32em] text-red-200">Jr. League</p>
-          <p className="text-sm text-red-100 font-semibold">Late Entry Council</p>
-        </div>
+        <div className="mb-6 h-12" aria-hidden="true" />
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">
           <div className="space-y-4 text-center lg:text-left">
             <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
