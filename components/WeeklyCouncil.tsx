@@ -247,7 +247,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           </div>
         </section>
 
-        <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 h-full lg:min-h-[620px] flex flex-col">
+        <section className="glass-panel jr-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 h-full lg:min-h-[620px] flex flex-col">
           <div className="mb-6 h-8" aria-hidden="true" />
           <div className="grid grid-cols-1 gap-8 flex-1 content-start">
             <div className="space-y-4 text-center lg:text-left">
