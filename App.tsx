@@ -93,7 +93,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState("weekly");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
@@ -339,7 +339,7 @@ const App: React.FC = () => {
       case "home":
         return (
           <Welcome
-            onStart={() => setActiveTab("draft")}
+            onStart={() => setActiveTab("weekly")}
             mvp={overallMvp}
             weeklyMvp={weeklyMvp}
           />
@@ -372,7 +372,7 @@ const App: React.FC = () => {
           <AdminAuth onAuthenticate={authenticateAdmin} />
         );
       default:
-        return <Welcome onStart={() => setActiveTab("draft")} />;
+        return <Welcome onStart={() => setActiveTab("weekly")} />;
     }
   }, [activeTab, gameState, isAdminAuthenticated]);
 

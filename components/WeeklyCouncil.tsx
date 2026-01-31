@@ -158,7 +158,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   };
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-16">
       <div className="text-center space-y-3">
         <h2 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.22em]">
           Weekly Council
@@ -245,6 +245,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           </div>
         </div>
       </section>
+
+      <div className="flex items-center justify-center gap-6">
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[color:var(--accent)]/40 to-transparent" />
+        <span className="text-[10px] uppercase tracking-[0.32em] text-zinc-500">Jr. League</span>
+        <div className="h-px flex-1 bg-gradient-to-r from-transparent via-[color:var(--accent)]/40 to-transparent" />
+      </div>
 
       <section className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/20">
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-8 items-center">

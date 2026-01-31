@@ -10,6 +10,8 @@ interface DraftFormProps {
   onAddEntry: (entry: PlayerEntry) => void;
 }
 
+const DRAFT_CLOSED = true;
+
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [playerName, setPlayerName] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
@@ -76,6 +78,10 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (DRAFT_CLOSED) {
+      alert("Draft submissions are closed. Please use the Weekly Council tab.");
+      return;
+    }
     if (!playerName || !playerEmail) {
       alert("Please enter your name and email to proceed.");
       return;
@@ -136,6 +142,14 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         onSubmit={handleSubmit}
         className="space-y-12"
       >
+        {DRAFT_CLOSED && (
+          <div className="glass-panel p-6 rounded-3xl border border-red-500/40 bg-red-950/30 text-center">
+            <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-3">Draft Closed</p>
+            <p className="text-sm text-zinc-300">
+              Draft submissions are no longer accepted. Head to the Weekly Council tab to submit weekly votes.
+            </p>
+          </div>
+        )}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
           <div className="glass-panel p-8 rounded-3xl">
             <h3 className="text-xl text-[color:var(--accent)] mb-5 gothic-font uppercase text-center tracking-[0.22em]">
@@ -194,7 +208,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     ⚠ Duplicate picks detected
                   </span>
                 ) : (
-                  <span className="text-xs text-zinc-500 uppercase tracking-[0.2em]">Seal each pick to finalize</span>
+                  <span className="text-xs text-zinc-500 uppercase tracking-[0.2em]">
+                    {DRAFT_CLOSED ? "Draft submissions are closed" : "Seal each pick to finalize"}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-5">
@@ -422,14 +438,16 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             )}
             <button
               type="submit"
-              disabled={hasDuplicates || !allPicksSealed}
+              disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed}
               className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg ${
-                hasDuplicates || !allPicksSealed
+                DRAFT_CLOSED || hasDuplicates || !allPicksSealed
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
               }`}
             >
-              {hasDuplicates
+              {DRAFT_CLOSED
+                ? 'Draft Closed'
+                : hasDuplicates
                 ? 'Resolve Duplicates'
                 : !allPicksSealed
                 ? 'Seal All Picks to Submit'
