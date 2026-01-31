@@ -80,6 +80,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
               The Draft
             </button>
             <button 
+              onClick={() => onTabChange('weekly')}
+              className={`px-5 py-2.5 text-xs md:text-sm rounded-full border transition-all ${
+                activeTab === 'weekly'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
+            >
+              Weekly Council
+            </button>
+            <button 
               onClick={() => onTabChange('leaderboard')}
               className={`px-5 py-2.5 text-xs md:text-sm rounded-full border transition-all ${
                 activeTab === 'leaderboard'

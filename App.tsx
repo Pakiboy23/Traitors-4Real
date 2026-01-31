@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
 import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
+import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
 import AdminAuth from "./components/AdminAuth";
@@ -346,6 +347,13 @@ const App: React.FC = () => {
       case "draft":
         // If DraftForm doesn't take these props, the build will tell us.
         return <DraftForm gameState={gameState} onAddEntry={handleAddEntry} />;
+      case "weekly":
+        return (
+          <WeeklyCouncil
+            gameState={gameState}
+            onAddEntry={handleAddEntry}
+          />
+        );
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
