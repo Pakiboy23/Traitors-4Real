@@ -169,7 +169,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <div className="flex flex-col lg:flex-row lg:gap-x-20 lg:items-start">
-        <section className="glass-panel main-panel p-8 rounded-3xl border border-[color:var(--accent)]/30 h-full lg:min-h-[620px] flex flex-col lg:flex-1">
+        <section className="glass-panel main-panel p-8 rounded-3xl border border-[color:var(--accent)]/30 lg:min-h-[620px] flex flex-col lg:flex-1">
           <div className="mb-6 h-8" aria-hidden="true" />
           <div className="grid grid-cols-1 gap-8 flex-1 content-start">
             <div className="space-y-4 text-center lg:text-left">
@@ -247,9 +247,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           </div>
         </section>
 
-        <div className="h-16 lg:hidden" aria-hidden="true" />
+        <div
+          className="w-full lg:hidden"
+          style={{ height: "64px", flexShrink: 0 }}
+          aria-hidden="true"
+        />
 
-        <section className="glass-panel jr-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 h-full lg:min-h-[620px] flex flex-col lg:flex-1">
+        <section className="glass-panel jr-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 lg:min-h-[620px] flex flex-col lg:flex-1">
           <div className="mb-6 h-8" aria-hidden="true" />
           <div className="grid grid-cols-1 gap-8 flex-1 content-start">
             <div className="space-y-4 text-center lg:text-left">
