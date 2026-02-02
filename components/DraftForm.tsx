@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
-import { submitDraftEntry, submitWeeklyCouncilVote } from '../services/pocketbase';
+import { submitDraftEntry } from '../services/pocketbase';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
 
@@ -9,6 +9,8 @@ interface DraftFormProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
 }
+
+const DRAFT_CLOSED = true;
 
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [playerName, setPlayerName] = useState('');
@@ -18,8 +20,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [predFirstOut, setPredFirstOut] = useState('');
   const [predWinner, setPredWinner] = useState('');
   const [traitors, setTraitors] = useState(['', '', '']);
-  const [weeklyBanished, setWeeklyBanished] = useState('');
-  const [weeklyMurdered, setWeeklyMurdered] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Validation: Check for duplicates in the squad
@@ -73,80 +73,15 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   const getFormData = () => {
     let draftText = picks.map((p, i) => `Pick #${i+1}: ${p.member || 'None'} | Rank: ${p.rank} | Pred: ${p.role}`).join('\n');
-    return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
-  };
-
-  const getWeeklyCouncilData = () => {
-    return `TRAITORS WEEKLY COUNCIL\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}`;
-  };
-
-  const findExistingPlayer = () => {
-    if (!playerName && !playerEmail) return undefined;
-    const normalizedEmail = playerEmail.trim().toLowerCase();
-    const normalizedName = playerName.trim().toLowerCase();
-    if (normalizedEmail) {
-      const matchByEmail = gameState.players.find((player) => {
-        const playerEmail = (player.email || "").trim().toLowerCase();
-        return playerEmail && playerEmail === normalizedEmail;
-      });
-      if (matchByEmail) return matchByEmail;
-    }
-    if (normalizedName) {
-      return gameState.players.find(
-        (player) => player.name.trim().toLowerCase() === normalizedName
-      );
-    }
-    return undefined;
-  };
-
-  const handleWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (!playerName || !playerEmail) {
-      alert("Please enter your name and email before submitting weekly votes.");
-      return;
-    }
-
-    if (!weeklyBanished && !weeklyMurdered) {
-      alert("Please select at least one weekly council prediction.");
-      return;
-    }
-
-    const existingPlayer = findExistingPlayer();
-    if (!existingPlayer) {
-      alert("We couldn't find your draft entry yet. Please submit your draft once first.");
-      return;
-    }
-
-    const updatedEntry: PlayerEntry = {
-      ...existingPlayer,
-      name: playerName,
-      email: playerEmail,
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
-    };
-
-    onAddEntry(updatedEntry);
-    setIsSubmitted(true);
-    submitWeeklyCouncilVote({
-      name: playerName,
-      email: playerEmail,
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
-    }).catch((err) => {
-      console.warn("Weekly council submission failed:", err);
-    });
-
-    const body = encodeURIComponent(getWeeklyCouncilData());
-    const subject = encodeURIComponent(`Traitors Weekly Council - ${playerName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
+    return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (DRAFT_CLOSED) {
+      alert("Draft submissions are closed. Please use the Weekly Council tab.");
+      return;
+    }
     if (!playerName || !playerEmail) {
       alert("Please enter your name and email to proceed.");
       return;
@@ -170,10 +105,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
       predFirstOut,
       predWinner,
       predTraitors: traitors.filter(t => t !== ''),
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
     };
 
     onAddEntry(newEntry);
@@ -200,20 +131,26 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           setPredFirstOut('');
           setPredWinner('');
           setTraitors(['', '', '']);
-          setWeeklyBanished('');
-          setWeeklyMurdered('');
         }} 
       />
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto pb-24 px-4 sm:px-6 md:px-10">
+    <div className="pb-24">
       <form
         onSubmit={handleSubmit}
         className="space-y-12"
       >
-        <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-10">
+        {DRAFT_CLOSED && (
+          <div className="glass-panel p-6 rounded-3xl border border-red-500/40 bg-red-950/30 text-center">
+            <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-3">Draft Closed</p>
+            <p className="text-sm text-zinc-300">
+              Draft submissions are no longer accepted. Head to the Weekly Council tab to submit weekly votes.
+            </p>
+          </div>
+        )}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
           <div className="glass-panel p-8 rounded-3xl">
             <h3 className="text-xl text-[color:var(--accent)] mb-5 gothic-font uppercase text-center tracking-[0.22em]">
               Identify Yourself
@@ -235,68 +172,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                 onChange={(e) => setPlayerEmail(e.target.value)}
                 className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
               />
-            </div>
-          </div>
-
-          <div className="glass-panel p-8 rounded-3xl border border-[color:var(--accent)]/30">
-            <div className="flex items-center justify-between mb-5 gap-4">
-              <div>
-                <h3 className="text-xl text-[color:var(--accent)] gothic-font uppercase tracking-[0.18em]">
-                  Weekly Council
-                </h3>
-                <p className="text-xs text-zinc-500 uppercase tracking-[0.18em] mt-1">
-                  Separate from the season draft
-                </p>
-              </div>
-              <span className="text-xs text-zinc-400 uppercase tracking-[0.28em]">+1 / -0.5</span>
-            </div>
-            <div className="grid grid-cols-1 gap-5 max-w-sm mx-auto w-full">
-              <div>
-                <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                  ⚖️ Next Banished
-                </label>
-                <select
-                  value={weeklyBanished}
-                  onChange={(e) => setWeeklyBanished(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                  🗡️ Next Murdered
-                </label>
-                <select
-                  value={weeklyMurdered}
-                  onChange={(e) => setWeeklyMurdered(e.target.value)}
-                  className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-col gap-4 items-center">
-              <p className="text-xs text-zinc-500 uppercase tracking-[0.18em] text-center">
-                Weekly votes submit independently
-              </p>
-              <button
-                type="button"
-                onClick={handleWeeklySubmit}
-                className="px-10 py-3.5 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
-              >
-                Submit Weekly Council
-              </button>
             </div>
           </div>
 
@@ -333,7 +208,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     ⚠ Duplicate picks detected
                   </span>
                 ) : (
-                  <span className="text-xs text-zinc-500 uppercase tracking-[0.2em]">Seal each pick to finalize</span>
+                  <span className="text-xs text-zinc-500 uppercase tracking-[0.2em]">
+                    {DRAFT_CLOSED ? "Draft submissions are closed" : "Seal each pick to finalize"}
+                  </span>
                 )}
               </div>
               <div className="flex items-center gap-5">
@@ -561,14 +438,18 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             )}
             <button
               type="submit"
-              disabled={hasDuplicates || !allPicksSealed}
+              disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed}
               className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg ${
-                hasDuplicates || !allPicksSealed
+                DRAFT_CLOSED
+                  ? 'bg-red-900 border-red-600 text-white cursor-not-allowed opacity-90'
+                  : hasDuplicates || !allPicksSealed
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
               }`}
             >
-              {hasDuplicates
+              {DRAFT_CLOSED
+                ? 'Draft Closed'
+                : hasDuplicates
                 ? 'Resolve Duplicates'
                 : !allPicksSealed
                 ? 'Seal All Picks to Submit'

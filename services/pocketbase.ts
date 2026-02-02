@@ -1,5 +1,6 @@
+import type { RecordModel } from "pocketbase";
 import type { GameState } from "../types";
-import { pb } from "../src/lib/pocketbase";
+import { pb, pocketbaseUrl } from "../src/lib/pocketbase";
 
 const GAME_COLLECTION = "games";
 const GAME_SLUG = "default";
@@ -137,7 +138,7 @@ export const savePlayerPortrait = async (
   }
 };
 
-export interface SubmissionRecord {
+export interface SubmissionRecord extends RecordModel {
   id: string;
   name: string;
   email: string;
@@ -150,11 +151,61 @@ export interface SubmissionRecord {
 }
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
-  const records = await pb.collection(SUBMISSIONS_COLLECTION).getFullList({
+  try {
+    const perPage = 200;
+    const firstPage = await pb
+      .collection(SUBMISSIONS_COLLECTION)
+      .getList<SubmissionRecord>(1, perPage, {
+        sort: "-created",
+        filter: 'kind="weekly"',
+      });
+    const items = [...firstPage.items];
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await pb
+        .collection(SUBMISSIONS_COLLECTION)
+        .getList<SubmissionRecord>(page, perPage, {
+          sort: "-created",
+          filter: 'kind="weekly"',
+        });
+      items.push(...nextPage.items);
+    }
+    return items;
+  } catch (error) {
+    console.warn("PocketBase SDK submissions fetch failed:", error);
+  }
+
+  const params = new URLSearchParams({
+    perPage: "200",
     sort: "-created",
     filter: 'kind="weekly"',
   });
-  return records as SubmissionRecord[];
+  const response = await fetch(
+    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load submissions (${response.status})`);
+  }
+  const data = (await response.json()) as { items?: SubmissionRecord[] };
+  return Array.isArray(data.items) ? data.items : [];
+};
+
+export const subscribeToWeeklySubmissions = (
+  handler: (submission: SubmissionRecord) => void
+) => {
+  const callback = (event: any) => {
+    const record = event?.record as SubmissionRecord | undefined;
+    if (!record || record.kind !== "weekly") return;
+    if (event?.action !== "create") return;
+    handler(record);
+  };
+
+  pb.collection(SUBMISSIONS_COLLECTION).subscribe("*", callback).catch((error) => {
+    console.warn("PocketBase submission subscription failed:", error);
+  });
+
+  return () => {
+    pb.collection(SUBMISSIONS_COLLECTION).unsubscribe("*").catch(() => undefined);
+  };
 };
 
 export const subscribeToWeeklySubmissions = (
@@ -184,6 +235,7 @@ export const submitWeeklyCouncilVote = async (input: {
   name: string;
   email: string;
   weeklyPredictions: { nextBanished: string; nextMurdered: string };
+  league?: string;
 }) => {
   const normalizedEmail = normalizeEmail(input.email || "");
   return pb.collection(SUBMISSIONS_COLLECTION).create({
@@ -193,6 +245,7 @@ export const submitWeeklyCouncilVote = async (input: {
     weeklyBanished: input.weeklyPredictions?.nextBanished || "",
     weeklyMurdered: input.weeklyPredictions?.nextMurdered || "",
     payload: {
+      league: input.league || "main",
       weeklyPredictions: {
         nextBanished: input.weeklyPredictions?.nextBanished || "",
         nextMurdered: input.weeklyPredictions?.nextMurdered || "",

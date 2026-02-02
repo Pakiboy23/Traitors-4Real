@@ -2,10 +2,19 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
 import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
+import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
 import AdminAuth from "./components/AdminAuth";
-import { CastMemberStatus, CAST_NAMES, GameState, PlayerEntry } from "./types";
+import {
+  CastMemberStatus,
+  CAST_NAMES,
+  GameState,
+  PlayerEntry,
+  WeeklySubmissionHistoryEntry,
+  WeeklyScoreSnapshot,
+} from "./types";
+import { calculatePlayerScore } from "./src/utils/scoring";
 import {
   fetchGameState,
   fetchPlayerPortraits,
@@ -56,6 +65,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
       id: safeId,
       name: safeName,
       email: safeEmail,
+      league: player.league === "jr" ? "jr" : "main",
       picks: Array.isArray(player.picks) ? player.picks : [],
       predTraitors: Array.isArray(player.predTraitors)
         ? player.predTraitors
@@ -67,15 +77,24 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     } as PlayerEntry;
   });
 
+  const history = Array.isArray(input?.weeklySubmissionHistory)
+    ? (input!.weeklySubmissionHistory as WeeklySubmissionHistoryEntry[])
+    : [];
+  const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
+    ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
+    : [];
+
   return {
     players: normalizedPlayers,
     castStatus,
     weeklyResults: input?.weeklyResults ?? DEFAULT_WEEKLY_RESULTS,
+    weeklySubmissionHistory: history,
+    weeklyScoreHistory,
   };
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("home");
+  const [activeTab, setActiveTab] = useState("weekly");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
@@ -248,9 +267,16 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddEntry = (entry: PlayerEntry) => {
+    const normalizedEmail = normalizeEmail(entry.email || "");
     const updatedPlayers = [
-      ...gameState.players.filter((p) => p.name !== entry.name),
-      entry,
+      ...gameState.players.filter((p) => {
+        if (entry.id) return p.id !== entry.id;
+        if (normalizedEmail) {
+          return normalizeEmail(p.email || "") !== normalizedEmail;
+        }
+        return p.name !== entry.name;
+      }),
+      { ...entry, league: entry.league === "jr" ? "jr" : "main" },
     ];
     setGameState({ ...gameState, players: updatedPlayers });
   };
@@ -269,13 +295,73 @@ const App: React.FC = () => {
   const handleSignOut = async () => {
     signOutAdmin();
   };
+
+  const scoreHistory = Array.isArray(gameState.weeklyScoreHistory)
+    ? gameState.weeklyScoreHistory
+    : [];
+
+  const overallMvp = useMemo(() => {
+    if (gameState.players.length === 0) return null;
+    const scored = gameState.players
+      .map((player) => ({
+        player,
+        score: calculatePlayerScore(gameState, player).total,
+      }))
+      .sort((a, b) => b.score - a.score);
+    const top = scored[0];
+    return top
+      ? {
+          name: top.player.name,
+          score: top.score,
+          portraitUrl: top.player.portraitUrl,
+          label: "Season MVP",
+        }
+      : null;
+  }, [gameState]);
+
+  const weeklyMvp = useMemo(() => {
+    if (scoreHistory.length === 0) return null;
+    const last = scoreHistory[scoreHistory.length - 1];
+    const prev = scoreHistory.length > 1 ? scoreHistory[scoreHistory.length - 2] : null;
+    let best: { id: string; delta: number } | null = null;
+    Object.entries(last.totals || {}).forEach(([id, total]) => {
+      const previous = prev?.totals?.[id] ?? 0;
+      const delta = Number(total) - Number(previous);
+      if (!best || delta > best.delta) {
+        best = { id, delta };
+      }
+    });
+    if (!best) return null;
+    const player = gameState.players.find((p) => p.id === best!.id);
+    if (!player) return null;
+    return {
+      name: player.name,
+      score: best.delta,
+      portraitUrl: player.portraitUrl,
+      label: last.label || "Weekly MVP",
+      delta: best.delta,
+    };
+  }, [gameState, scoreHistory]);
   const content = useMemo(() => {
     switch (activeTab) {
       case "home":
-        return <Welcome onStart={() => setActiveTab("draft")} />;
+        return (
+          <Welcome
+            onStart={() => setActiveTab("weekly")}
+            mvp={overallMvp}
+            weeklyMvp={weeklyMvp}
+          />
+        );
       case "draft":
         // If DraftForm doesn't take these props, the build will tell us.
         return <DraftForm gameState={gameState} onAddEntry={handleAddEntry} />;
+      case "weekly":
+        return (
+          <WeeklyCouncil
+            gameState={gameState}
+            onAddEntry={handleAddEntry}
+          />
+        );
       case "leaderboard":
         // This is the key fix: stop Leaderboard from reading players off undefined.
         return <Leaderboard gameState={gameState} />;
@@ -294,7 +380,7 @@ const App: React.FC = () => {
           <AdminAuth onAuthenticate={authenticateAdmin} />
         );
       default:
-        return <Welcome />;
+        return <Welcome onStart={() => setActiveTab("weekly")} />;
     }
   }, [activeTab, gameState, isAdminAuthenticated]);
 

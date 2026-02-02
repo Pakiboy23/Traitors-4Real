@@ -1,20 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=Italiana&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Playfair+Display:wght@500;600;700;800;900&family=Sora:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-deep: #15121c;
-  --bg-emerald: #1b1824;
-  --panel: rgba(36, 28, 52, 0.72);
-  --panel-strong: rgba(28, 22, 42, 0.82);
-  --stroke: rgba(217, 221, 227, 0.12);
-  --accent: #d9dde3;
-  --accent-strong: #f3f5f8;
-  --crimson: #7a1822;
-  --text: #e9e5dc;
-  --muted: #aeb4be;
+  --bg-deep: #0a0a0f;
+  --bg-emerald: #131018;
+  --panel: rgba(17, 14, 24, 0.82);
+  --panel-strong: rgba(12, 10, 18, 0.92);
+  --stroke: rgba(214, 179, 106, 0.16);
+  --accent: #d6b36a;
+  --accent-strong: #f2d9a2;
+  --crimson: #7b1f2d;
+  --text: #f5f2ea;
+  --muted: #b8b1a6;
 }
 
 html, body, #root {
@@ -22,17 +22,17 @@ html, body, #root {
 }
 
 html {
-  font-size: 120%;
+  font-size: 112%;
 }
 
 body {
   background:
-    radial-gradient(900px 600px at 12% 4%, rgba(122, 24, 34, 0.26), transparent 64%),
-    radial-gradient(1000px 720px at 88% 6%, rgba(217, 221, 227, 0.2), transparent 60%),
-    radial-gradient(1200px 900px at 50% 96%, rgba(34, 24, 46, 0.9), transparent 66%),
-    linear-gradient(180deg, var(--bg-deep) 0%, #1a1724 48%, #221a2e 100%);
+    radial-gradient(900px 640px at 12% -6%, rgba(214, 179, 106, 0.18), transparent 62%),
+    radial-gradient(980px 720px at 88% 6%, rgba(123, 31, 45, 0.26), transparent 64%),
+    radial-gradient(1200px 900px at 50% 96%, rgba(12, 10, 18, 0.95), transparent 68%),
+    linear-gradient(180deg, var(--bg-deep) 0%, #121018 42%, #171326 100%);
   color: var(--text);
-  font-family: "Space Grotesk", sans-serif;
+  font-family: "Sora", sans-serif;
   line-height: 1.5;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -40,26 +40,61 @@ body {
 
 .gothic-font {
   font-family: "Cinzel", serif;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .handwriting {
-  font-family: "Italiana", serif;
-  letter-spacing: 0.04em;
+  font-family: "Playfair Display", serif;
+  letter-spacing: 0.01em;
+  font-style: italic;
+  font-weight: 600;
 }
 
 @layer components {
   .glass-panel {
-    background: rgba(36, 28, 52, 0.65);
-    border: 1px solid rgba(217, 221, 227, 0.12);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    backdrop-filter: blur(16px) saturate(180%);
+    background: linear-gradient(160deg, rgba(18, 15, 24, 0.78), rgba(8, 7, 12, 0.92));
+    border: 1px solid rgba(214, 179, 106, 0.14);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+
+  .jr-panel {
+    background: linear-gradient(160deg, rgba(64, 12, 20, 0.86), rgba(18, 6, 10, 0.96));
+  }
+
+  .main-panel {
+    background: linear-gradient(160deg, rgba(12, 42, 44, 0.86), rgba(6, 16, 18, 0.96));
+  }
+
+  .page-shell {
+    width: 100%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1rem;
   }
 
   .accent-outline {
-    border: 1px solid rgba(217, 221, 227, 0.62);
-    box-shadow: 0 0 0 1px rgba(217, 221, 227, 0.24);
+    border: 1px solid rgba(214, 179, 106, 0.5);
+    box-shadow: 0 0 0 1px rgba(214, 179, 106, 0.2);
+  }
+}
+
+@media (min-width: 640px) {
+  .page-shell {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .page-shell {
+    padding: 0 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page-shell {
+    padding: 0 3rem;
   }
 }
 
@@ -71,6 +106,8 @@ body {
 
   button {
     transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    min-height: 48px;
+    font-size: 0.95rem;
   }
 
   button:active {
@@ -90,6 +127,13 @@ body {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
     box-shadow: 0 0 0 4px rgba(217, 221, 227, 0.2);
+  }
+}
+
+@media (min-width: 768px) {
+  button {
+    min-height: 52px;
+    font-size: 1rem;
   }
 }
 

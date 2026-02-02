@@ -54,9 +54,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
             </div>
           </div>
 
-          <p className={`${isLightMode ? 'text-red-900' : 'text-red-500'} tracking-[0.35em] text-xs uppercase font-semibold transition-colors`}>Titanic Swim Team Edition</p>
+          <p className={`${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]/80'} tracking-[0.32em] text-xs uppercase font-semibold transition-colors`}>Titanic Swim Team Edition</p>
           <h1 className={`text-4xl md:text-6xl font-black uppercase drop-shadow-lg gothic-font transition-colors ${isLightMode ? 'text-red-900' : 'text-[color:var(--accent)]'}`}>The Traitors</h1>
-          <h2 className={`text-base md:text-xl font-light gothic-font transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
+          <h2 className={`text-base md:text-xl font-medium transition-colors ${isLightMode ? 'text-zinc-700' : 'text-[color:var(--muted)]'}`}>Season 4 Fantasy Draft</h2>
 
           <nav className="flex flex-wrap justify-center gap-2 sm:gap-3 md:gap-3.5 mt-6 md:mt-8 px-4">
             <button 
@@ -78,6 +78,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
               }`}
             >
               The Draft
+            </button>
+            <button 
+              onClick={() => onTabChange('weekly')}
+              className={`px-5 py-2.5 text-xs md:text-sm rounded-full border transition-all ${
+                activeTab === 'weekly'
+                  ? (isLightMode ? 'bg-red-900 text-white border-red-900' : 'bg-[color:var(--accent)] text-black border-[color:var(--accent)]')
+                  : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
+              }`}
+            >
+              Weekly Council
             </button>
             <button 
               onClick={() => onTabChange('leaderboard')}
@@ -102,8 +112,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
           </nav>
         </header>
 
-        <main className={`glass-panel p-8 md:p-12 rounded-2xl min-h-[60vh] transition-colors duration-500`}>
-          {children}
+        <main className={`glass-panel p-6 md:p-10 rounded-2xl min-h-[60vh] transition-colors duration-500`}>
+          <div className="page-shell">
+            {children}
+          </div>
         </main>
 
         <footer className={`text-center text-xs md:text-sm py-10 border-t transition-colors duration-500 ${isLightMode ? 'text-zinc-500 border-red-100' : 'text-gray-600 border-gray-900'}`}>

@@ -23,10 +23,32 @@ export interface WeeklyResults {
   nextMurdered?: string;
 }
 
+export interface WeeklyScoreSnapshot {
+  id: string;
+  label: string;
+  createdAt: string;
+  weeklyResults?: WeeklyResults;
+  totals: Record<string, number>;
+}
+
+export type League = "main" | "jr";
+
+export interface WeeklySubmissionHistoryEntry {
+  id: string;
+  name: string;
+  email: string;
+  weeklyBanished?: string;
+  weeklyMurdered?: string;
+  league?: League;
+  created?: string;
+  mergedAt: string;
+}
+
 export interface PlayerEntry {
   id: string;
   name: string;
   email: string;
+  league?: League;
   picks: DraftPick[];
   predFirstOut: string;
   predWinner: string;
@@ -40,6 +62,8 @@ export interface GameState {
   players: PlayerEntry[];
   castStatus: Record<string, CastMemberStatus>;
   weeklyResults?: WeeklyResults;
+  weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
+  weeklyScoreHistory?: WeeklyScoreSnapshot[];
 }
 
 export const CAST_NAMES = [
