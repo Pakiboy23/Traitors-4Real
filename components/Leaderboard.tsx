@@ -161,7 +161,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                         </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-100 text-base md:text-lg">{p.name}</span>
-                          <span className="text-xs text-zinc-500 uppercase tracking-tighter">View Scroll</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-zinc-500 uppercase tracking-tighter">View Scroll</span>
+                            {p.league === "jr" && (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] bg-purple-500/20 text-purple-200 border border-purple-500/30">
+                                JR League
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>

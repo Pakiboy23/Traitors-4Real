@@ -65,6 +65,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
       id: safeId,
       name: safeName,
       email: safeEmail,
+      league: player.league === "jr" ? "jr" : "main",
       picks: Array.isArray(player.picks) ? player.picks : [],
       predTraitors: Array.isArray(player.predTraitors)
         ? player.predTraitors
@@ -266,9 +267,16 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddEntry = (entry: PlayerEntry) => {
+    const normalizedEmail = normalizeEmail(entry.email || "");
     const updatedPlayers = [
-      ...gameState.players.filter((p) => p.name !== entry.name),
-      entry,
+      ...gameState.players.filter((p) => {
+        if (entry.id) return p.id !== entry.id;
+        if (normalizedEmail) {
+          return normalizeEmail(p.email || "") !== normalizedEmail;
+        }
+        return p.name !== entry.name;
+      }),
+      { ...entry, league: entry.league === "jr" ? "jr" : "main" },
     ];
     setGameState({ ...gameState, players: updatedPlayers });
   };

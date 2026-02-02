@@ -68,6 +68,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const getSubmissionLeague = (submission: SubmissionRecord) => {
+    const payload = submission.payload as { league?: string } | undefined;
+    return payload?.league === "jr" ? "jr" : "main";
+  };
   const HISTORY_LIMIT = 200;
 
   const buildHistoryEntry = (
@@ -78,6 +82,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     email: submission.email || "",
     weeklyBanished: submission.weeklyBanished || "",
     weeklyMurdered: submission.weeklyMurdered || "",
+    league: getSubmissionLeague(submission),
     created: submission.created,
     mergedAt: new Date().toISOString(),
   });
@@ -99,20 +104,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const findPlayerMatch = (
     players: PlayerEntry[],
-    submission: SubmissionRecord
+    submission: SubmissionRecord,
+    league: "main" | "jr"
   ) => {
     const email = normalize(submission.email || "");
     if (email) {
-      const idx = players.findIndex(
-        (p) => normalize(p.email || "") === email
-      );
+      const idx = players.findIndex((p) => {
+        const matchesLeague = league === "jr" ? p.league === "jr" : p.league !== "jr";
+        return matchesLeague && normalize(p.email || "") === email;
+      });
       if (idx !== -1) return { index: idx, type: "email" as const };
     }
     const name = normalize(submission.name || "");
     if (name) {
-      const idx = players.findIndex(
-        (p) => normalize(p.name || "") === name
-      );
+      const idx = players.findIndex((p) => {
+        const matchesLeague = league === "jr" ? p.league === "jr" : p.league !== "jr";
+        return matchesLeague && normalize(p.name || "") === name;
+      });
       if (idx !== -1) return { index: idx, type: "name" as const };
     }
     return null;
@@ -124,8 +132,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const records = await fetchWeeklySubmissions();
       setSubmissions(records);
-      if (records.length > 0) {
-        await mergeSubmissionList(records, { announce: false });
+      const mainRecords = records.filter(
+        (record) => getSubmissionLeague(record) !== "jr"
+      );
+      if (mainRecords.length > 0) {
+        await mergeSubmissionList(mainRecords, { announce: false });
       }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
@@ -142,7 +153,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? prev
           : [submission, ...prev]
       );
-      mergeSubmissionRecord(submission, { announce: false });
+      if (getSubmissionLeague(submission) !== "jr") {
+        mergeSubmissionRecord(submission, { announce: false });
+      }
     });
     return () => {
       unsubscribe?.();
@@ -346,8 +359,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     players: PlayerEntry[],
     submission: SubmissionRecord
   ) => {
-    const match = findPlayerMatch(players, submission);
-    if (!match) return { matched: false as const, players };
+    const league = getSubmissionLeague(submission);
+    const match = findPlayerMatch(players, submission, league);
+    if (!match) {
+      if (league !== "jr") return { matched: false as const, players };
+      const normalizedEmail = normalize(submission.email || "");
+      const safeName = submission.name?.trim() || "JR Player";
+      const fallbackId = safeName.toLowerCase().replace(/\s+/g, "-");
+      const rawId = normalizedEmail || fallbackId || `jr-${Date.now()}`;
+      const idSeed = rawId.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+      const newPlayer: PlayerEntry = {
+        id: `jr-${idSeed || Date.now()}`,
+        name: submission.name || "",
+        email: submission.email || "",
+        league: "jr",
+        picks: [],
+        predFirstOut: "",
+        predWinner: "",
+        predTraitors: [],
+        weeklyPredictions: {
+          nextBanished: submission.weeklyBanished || "",
+          nextMurdered: submission.weeklyMurdered || "",
+        },
+      };
+      return {
+        matched: true as const,
+        players: [...players, newPlayer],
+        match: { index: players.length, type: "new" as const },
+      };
+    }
     const updatedPlayers = players.map((player, idx) => {
       if (idx !== match.index) return player;
       return {
@@ -861,7 +901,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
         <div className="mt-4 space-y-3">
           {submissions.map((submission) => {
-            const match = findPlayerMatch(gameState.players, submission);
+            const league = getSubmissionLeague(submission);
+            const match = findPlayerMatch(gameState.players, submission, league);
+            const canMerge = Boolean(match) || league === "jr";
             const createdLabel = submission.created
               ? new Date(submission.created).toLocaleString()
               : "";
@@ -878,6 +920,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         {submission.email}
                       </span>
                     ) : null}
+                    <span
+                      className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                        league === "jr"
+                          ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
+                          : "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                      }`}
+                    >
+                      {league === "jr" ? "JR" : "Main"}
+                    </span>
                   </p>
                   <p className="text-xs text-zinc-400">
                     Banished:{" "}
@@ -891,16 +942,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </p>
                   <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
                     {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
-                    {match ? ` · Match by ${match.type}` : " · No match"}
+                    {match
+                      ? ` · Match by ${match.type}`
+                      : league === "jr"
+                      ? " · New Jr player"
+                      : " · No match"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => mergeSubmissionRecord(submission)}
-                    disabled={!match}
+                    disabled={!canMerge}
                     className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
-                      match
+                      canMerge
                         ? 'bg-emerald-400 text-black hover:bg-emerald-300'
                         : 'bg-zinc-900 text-zinc-600 border border-zinc-800'
                     }`}
@@ -977,6 +1032,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           {entry.email}
                         </span>
                       ) : null}
+                      {entry.league && (
+                        <span
+                          className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
+                            entry.league === "jr"
+                              ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
+                              : "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
+                          }`}
+                        >
+                          {entry.league === "jr" ? "JR" : "Main"}
+                        </span>
+                      )}
                     </p>
                     <p className="text-xs text-zinc-400">
                       Banished:{" "}
