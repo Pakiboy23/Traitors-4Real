@@ -10,6 +10,7 @@ import {
 } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
+import { pocketbaseUrl } from "../src/lib/pocketbase";
 import {
   deleteSubmission,
   fetchWeeklySubmissions,
@@ -130,7 +131,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsLoadingSubmissions(true);
     setSubmissionsError(null);
     try {
-      const records = await fetchWeeklySubmissions();
+      let records = await fetchWeeklySubmissions();
+      if (records.length === 0) {
+        try {
+          const response = await fetch(
+            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&filter=${encodeURIComponent(
+              '(kind="weekly")'
+            )}`
+          );
+          if (response.ok) {
+            const data = (await response.json()) as { items?: SubmissionRecord[] };
+            if (Array.isArray(data.items) && data.items.length > 0) {
+              records = data.items;
+              setMsg({
+                text: "Loaded weekly submissions from API fallback.",
+                type: "success",
+              });
+            }
+          }
+        } catch (fallbackError) {
+          console.warn("Fallback submissions fetch failed:", fallbackError);
+        }
+      }
       setSubmissions(records);
       const mainRecords = records.filter(
         (record) => getSubmissionLeague(record) !== "jr"
@@ -864,7 +886,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Submissions</h3>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">New council votes</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
+              New council votes · API: {pocketbaseUrl}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <button
