@@ -151,6 +151,12 @@ export interface SubmissionRecord extends RecordModel {
 }
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
+  // Check if admin is authenticated
+  if (!pb.authStore.isValid) {
+    console.warn("fetchWeeklySubmissions: Admin not authenticated");
+    return [];
+  }
+
   try {
     const perPage = 200;
     const firstPage = await pb
@@ -169,37 +175,60 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
         });
       items.push(...nextPage.items);
     }
+    console.log(`fetchWeeklySubmissions: Loaded ${items.length} submissions via SDK`);
     return items;
   } catch (error) {
     console.warn("PocketBase SDK submissions fetch failed:", error);
   }
 
-  const params = new URLSearchParams({
-    perPage: "200",
-    sort: "-created",
-    filter: 'kind="weekly"',
-  });
-  const response = await fetch(
-    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`
-  );
-  if (!response.ok) {
-    throw new Error(`Failed to load submissions (${response.status})`);
+  // Fallback: use fetch with auth header
+  try {
+    const params = new URLSearchParams({
+      perPage: "200",
+      sort: "-created",
+      filter: 'kind="weekly"',
+    });
+    const headers: Record<string, string> = {};
+    if (pb.authStore.token) {
+      headers["Authorization"] = pb.authStore.token;
+    }
+    const response = await fetch(
+      `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`,
+      { headers }
+    );
+    if (!response.ok) {
+      console.warn(`Fallback fetch failed with status ${response.status}`);
+      return [];
+    }
+    const data = (await response.json()) as { items?: SubmissionRecord[] };
+    const items = Array.isArray(data.items) ? data.items : [];
+    console.log(`fetchWeeklySubmissions: Loaded ${items.length} submissions via fallback`);
+    return items;
+  } catch (fallbackError) {
+    console.warn("Fallback submissions fetch failed:", fallbackError);
+    return [];
   }
-  const data = (await response.json()) as { items?: SubmissionRecord[] };
-  return Array.isArray(data.items) ? data.items : [];
 };
 
 export const subscribeToWeeklySubmissions = (
   handler: (submission: SubmissionRecord) => void
 ) => {
+  if (!pb.authStore.isValid) {
+    console.warn("subscribeToWeeklySubmissions: Admin not authenticated, skipping subscription");
+    return () => {};
+  }
+
   const callback = (event: any) => {
     const record = event?.record as SubmissionRecord | undefined;
     if (!record || record.kind !== "weekly") return;
     if (event?.action !== "create") return;
+    console.log("New weekly submission received:", record.id, record.name);
     handler(record);
   };
 
-  pb.collection(SUBMISSIONS_COLLECTION).subscribe("*", callback).catch((error) => {
+  pb.collection(SUBMISSIONS_COLLECTION).subscribe("*", callback).then(() => {
+    console.log("Subscribed to weekly submissions");
+  }).catch((error) => {
     console.warn("PocketBase submission subscription failed:", error);
   });
 
