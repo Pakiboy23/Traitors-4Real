@@ -152,13 +152,24 @@ export interface SubmissionRecord extends RecordModel {
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
   try {
-    const records = await pb
+    const perPage = 200;
+    const firstPage = await pb
       .collection(SUBMISSIONS_COLLECTION)
-      .getFullList<SubmissionRecord>({
+      .getList<SubmissionRecord>(1, perPage, {
         sort: "-created",
         filter: 'kind="weekly"',
       });
-    return records;
+    const items = [...firstPage.items];
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await pb
+        .collection(SUBMISSIONS_COLLECTION)
+        .getList<SubmissionRecord>(page, perPage, {
+          sort: "-created",
+          filter: 'kind="weekly"',
+        });
+      items.push(...nextPage.items);
+    }
+    return items;
   } catch (error) {
     console.warn("PocketBase SDK submissions fetch failed:", error);
   }
