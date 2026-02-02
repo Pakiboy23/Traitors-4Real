@@ -154,11 +154,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       }
       setSubmissions(records);
-      const mainRecords = records.filter(
-        (record) => getSubmissionLeague(record) !== "jr"
-      );
-      if (mainRecords.length > 0) {
-        await mergeSubmissionList(mainRecords, { announce: false });
+      if (records.length > 0) {
+        await mergeSubmissionList(records, { announce: false });
       }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
@@ -175,9 +172,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? prev
           : [submission, ...prev]
       );
-      if (getSubmissionLeague(submission) !== "jr") {
-        mergeSubmissionRecord(submission, { announce: false });
-      }
+      mergeSubmissionRecord(submission, { announce: false });
     });
     return () => {
       unsubscribe?.();
