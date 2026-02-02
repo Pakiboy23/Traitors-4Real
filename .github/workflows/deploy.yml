@@ -22,7 +22,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy API (PocketBase)
-        run: fly deploy -c fly.toml --remote-only --yes --now
+        run: flyctl deploy -c fly.toml --remote-only --yes --now
 
       - name: Deploy Web
-        run: fly deploy -c fly.frontend.toml --remote-only --yes --now
+        run: flyctl deploy -c fly.frontend.toml --remote-only --yes --now
