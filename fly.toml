@@ -17,6 +17,10 @@ primary_region = 'iad'
   min_machines_running = 0
   processes = ['app']
 
+[[mounts]]
+  source = 'pb_data'
+  destination = '/pb/pb_data'
+
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
