@@ -1,6 +1,6 @@
 import type { RecordModel } from "pocketbase";
 import type { GameState } from "../types";
-import { pb } from "../src/lib/pocketbase";
+import { pb, pocketbaseUrl } from "../src/lib/pocketbase";
 
 const GAME_COLLECTION = "games";
 const GAME_SLUG = "default";
@@ -151,13 +151,31 @@ export interface SubmissionRecord extends RecordModel {
 }
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
-  const records = await pb
-    .collection(SUBMISSIONS_COLLECTION)
-    .getFullList<SubmissionRecord>({
-      sort: "-created",
-      filter: 'kind="weekly"',
-    });
-  return records;
+  try {
+    const records = await pb
+      .collection(SUBMISSIONS_COLLECTION)
+      .getFullList<SubmissionRecord>({
+        sort: "-created",
+        filter: 'kind="weekly"',
+      });
+    return records;
+  } catch (error) {
+    console.warn("PocketBase SDK submissions fetch failed:", error);
+  }
+
+  const params = new URLSearchParams({
+    perPage: "200",
+    sort: "-created",
+    filter: 'kind="weekly"',
+  });
+  const response = await fetch(
+    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`
+  );
+  if (!response.ok) {
+    throw new Error(`Failed to load submissions (${response.status})`);
+  }
+  const data = (await response.json()) as { items?: SubmissionRecord[] };
+  return Array.isArray(data.items) ? data.items : [];
 };
 
 export const subscribeToWeeklySubmissions = (
