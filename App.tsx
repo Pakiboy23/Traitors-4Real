@@ -94,7 +94,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 };
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState("weekly");
+  const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
