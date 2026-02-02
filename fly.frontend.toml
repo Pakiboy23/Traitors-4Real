@@ -3,7 +3,7 @@ app = "traitorsfantasydraft-web"
 [build]
   dockerfile = "Dockerfile.frontend"
   [build.args]
-    VITE_POCKETBASE_URL = "https://api.traitorsfantasydraft.online"
+    VITE_POCKETBASE_URL = "https://traitorsfantasydraft-pb.fly.dev"
 
 [http_service]
   internal_port = 8080
@@ -11,3 +11,11 @@ app = "traitorsfantasydraft-web"
   auto_start_machines = true
   auto_stop_machines = "stop"
   min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/"
+    protocol = "http"
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
