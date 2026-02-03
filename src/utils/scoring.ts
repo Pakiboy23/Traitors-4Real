@@ -119,7 +119,11 @@ export const calculatePlayerScore = (
     }
   }
 
-  if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
+  if (
+    weeklyResults?.nextMurdered &&
+    weeklyPredictions?.nextMurdered &&
+    weeklyResults.nextMurdered !== "No Murder"
+  ) {
     if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
       score += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "correct" });
