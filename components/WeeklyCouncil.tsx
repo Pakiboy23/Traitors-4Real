@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CAST_NAMES, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
+import { useToast } from "./Toast";
 
 interface WeeklyCouncilProps {
   gameState: GameState;
@@ -23,17 +24,20 @@ const getWeeklyCouncilData = (
 };
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
+  const { showToast } = useToast();
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
   const [weeklyBanished, setWeeklyBanished] = useState("");
   const [weeklyMurdered, setWeeklyMurdered] = useState("");
   const [mainSubmitted, setMainSubmitted] = useState(false);
+  const [isMainSubmitting, setIsMainSubmitting] = useState(false);
 
   const [jrName, setJrName] = useState("");
   const [jrEmail, setJrEmail] = useState("");
   const [jrWeeklyBanished, setJrWeeklyBanished] = useState("");
   const [jrWeeklyMurdered, setJrWeeklyMurdered] = useState("");
   const [jrSubmitted, setJrSubmitted] = useState(false);
+  const [isJrSubmitting, setIsJrSubmitting] = useState(false);
 
   const findExistingPlayer = () => {
     if (!playerName && !playerEmail) return undefined;
@@ -54,23 +58,25 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     return undefined;
   };
 
-  const handleWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (!playerName || !playerEmail) {
-      alert("Please enter your name and email before submitting weekly votes.");
+      showToast("Please enter your name and email before submitting weekly votes.", "warning");
       return;
     }
 
     if (!weeklyBanished && !weeklyMurdered) {
-      alert("Please select at least one weekly council prediction.");
+      showToast("Please select at least one weekly council prediction.", "warning");
       return;
     }
 
     const existingPlayer = findExistingPlayer();
     if (!existingPlayer) {
-      alert("We couldn't find your draft entry yet. Please submit your draft once first.");
+      showToast("We couldn't find your draft entry yet. Please submit your draft once first.", "error");
       return;
     }
+
+    setIsMainSubmitting(true);
 
     const updatedEntry: PlayerEntry = {
       ...existingPlayer,
@@ -83,22 +89,28 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     };
 
     onAddEntry(updatedEntry);
-    submitWeeklyCouncilVote({
-      name: playerName,
-      email: playerEmail,
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
-      league: "main",
-    }).catch((err) => {
+
+    try {
+      await submitWeeklyCouncilVote({
+        name: playerName,
+        email: playerEmail,
+        weeklyPredictions: {
+          nextBanished: weeklyBanished,
+          nextMurdered: weeklyMurdered,
+        },
+        league: "main",
+      });
+      showToast("Your weekly council vote has been submitted!", "success");
+    } catch (err) {
       const message =
-        typeof err?.message === "string" && err.message.length
-          ? err.message
+        typeof (err as Error)?.message === "string" && (err as Error).message.length
+          ? (err as Error).message
           : "Weekly votes could not be submitted. Please try again.";
       console.warn("Weekly council submission failed:", err);
-      alert(message);
-    });
+      showToast(message, "error");
+    }
+
+    setIsMainSubmitting(false);
 
     const body = encodeURIComponent(
       getWeeklyCouncilData(
@@ -114,34 +126,41 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     setMainSubmitted(true);
   };
 
-  const handleJrWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (!jrName || !jrEmail) {
-      alert("Please enter your name and email before submitting Jr. League votes.");
+      showToast("Please enter your name and email before submitting Jr. League votes.", "warning");
       return;
     }
 
     if (!jrWeeklyBanished && !jrWeeklyMurdered) {
-      alert("Please select at least one weekly council prediction.");
+      showToast("Please select at least one weekly council prediction.", "warning");
       return;
     }
 
-    submitWeeklyCouncilVote({
-      name: jrName,
-      email: jrEmail,
-      weeklyPredictions: {
-        nextBanished: jrWeeklyBanished,
-        nextMurdered: jrWeeklyMurdered,
-      },
-      league: "jr",
-    }).catch((err) => {
+    setIsJrSubmitting(true);
+
+    try {
+      await submitWeeklyCouncilVote({
+        name: jrName,
+        email: jrEmail,
+        weeklyPredictions: {
+          nextBanished: jrWeeklyBanished,
+          nextMurdered: jrWeeklyMurdered,
+        },
+        league: "jr",
+      });
+      showToast("Your Jr. League vote has been submitted!", "success");
+    } catch (err) {
       const message =
-        typeof err?.message === "string" && err.message.length
-          ? err.message
+        typeof (err as Error)?.message === "string" && (err as Error).message.length
+          ? (err as Error).message
           : "Weekly votes could not be submitted. Please try again.";
       console.warn("Jr. League weekly submission failed:", err);
-      alert(message);
-    });
+      showToast(message, "error");
+    }
+
+    setIsJrSubmitting(false);
 
     const body = encodeURIComponent(
       getWeeklyCouncilData(
@@ -187,28 +206,39 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={playerEmail}
-                  onChange={(e) => setPlayerEmail(e.target.value)}
-                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-                />
                 <div>
-                  <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    ⚖️ Next Banished
+                  <label htmlFor="main-name" className="sr-only">Your Name</label>
+                  <input
+                    id="main-name"
+                    type="text"
+                    placeholder="Name"
+                    value={playerName}
+                    onChange={(e) => setPlayerName(e.target.value)}
+                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    aria-required="true"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="main-email" className="sr-only">Your Email</label>
+                  <input
+                    id="main-email"
+                    type="email"
+                    placeholder="Email"
+                    value={playerEmail}
+                    onChange={(e) => setPlayerEmail(e.target.value)}
+                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    aria-required="true"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="main-banished" className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    Next Banished
                   </label>
                   <select
+                    id="main-banished"
                     value={weeklyBanished}
                     onChange={(e) => setWeeklyBanished(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -219,13 +249,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    🗡️ Next Murdered
+                  <label htmlFor="main-murdered" className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    Next Murdered
                   </label>
                   <select
+                    id="main-murdered"
                     value={weeklyMurdered}
                     onChange={(e) => setWeeklyMurdered(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -239,9 +270,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <button
                 type="button"
                 onClick={handleWeeklySubmit}
-                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
+                disabled={isMainSubmitting}
+                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                aria-busy={isMainSubmitting}
               >
-                Submit Weekly Council
+                {isMainSubmitting && <span className="loading-spinner" aria-hidden="true" />}
+                {isMainSubmitting ? "Submitting..." : "Submit Weekly Council"}
               </button>
             </div>
           </div>
@@ -272,28 +306,39 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </div>
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-4">
-                <input
-                  type="text"
-                  placeholder="Name"
-                  value={jrName}
-                  onChange={(e) => setJrName(e.target.value)}
-                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-                />
-                <input
-                  type="email"
-                  placeholder="Email"
-                  value={jrEmail}
-                  onChange={(e) => setJrEmail(e.target.value)}
-                  className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-                />
                 <div>
-                  <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    ⚖️ Next Banished
+                  <label htmlFor="jr-name" className="sr-only">Your Name</label>
+                  <input
+                    id="jr-name"
+                    type="text"
+                    placeholder="Name"
+                    value={jrName}
+                    onChange={(e) => setJrName(e.target.value)}
+                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    aria-required="true"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="jr-email" className="sr-only">Your Email</label>
+                  <input
+                    id="jr-email"
+                    type="email"
+                    placeholder="Email"
+                    value={jrEmail}
+                    onChange={(e) => setJrEmail(e.target.value)}
+                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    aria-required="true"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="jr-banished" className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    Next Banished
                   </label>
                   <select
+                    id="jr-banished"
                     value={jrWeeklyBanished}
                     onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -304,13 +349,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    🗡️ Next Murdered
+                  <label htmlFor="jr-murdered" className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                    Next Murdered
                   </label>
                   <select
+                    id="jr-murdered"
                     value={jrWeeklyMurdered}
                     onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white text-center"
+                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -324,9 +370,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <button
                 type="button"
                 onClick={handleJrWeeklySubmit}
-                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all"
+                disabled={isJrSubmitting}
+                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                aria-busy={isJrSubmitting}
               >
-                Submit Jr. League Vote
+                {isJrSubmitting && <span className="loading-spinner" aria-hidden="true" />}
+                {isJrSubmitting ? "Submitting..." : "Submit Jr. League Vote"}
               </button>
             </div>
           </div>

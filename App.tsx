@@ -6,6 +6,7 @@ import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
 import AdminAuth from "./components/AdminAuth";
+import { ToastProvider } from "./components/Toast";
 import {
   CastMemberStatus,
   CAST_NAMES,
@@ -385,13 +386,15 @@ const App: React.FC = () => {
   }, [activeTab, gameState, isAdminAuthenticated]);
 
   return (
-    <Layout
-      activeTab={activeTab}
-      onTabChange={setActiveTab}
-      lastSync={lastSavedAt ?? undefined}
-    >
-      {content}
-    </Layout>
+    <ToastProvider>
+      <Layout
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        lastSync={lastSavedAt ?? undefined}
+      >
+        {content}
+      </Layout>
+    </ToastProvider>
   );
 };
 

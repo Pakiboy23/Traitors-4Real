@@ -15,6 +15,44 @@
   --crimson: #7b1f2d;
   --text: #f5f2ea;
   --muted: #b8b1a6;
+  --success: #00E5A8;
+  --danger: #FF2D55;
+  --input-bg: #0a0a0f;
+  --input-border: #27272a;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+  --radius-2xl: 2rem;
+  --spacing-section: 3rem;
+  --tracking-title: 0.22em;
+  --tracking-label: 0.18em;
+  --tracking-wide: 0.2em;
+}
+
+/* Light Mode Theme */
+body.light-mode {
+  --bg-deep: #f5f2ea;
+  --bg-emerald: #ebe7dc;
+  --panel: rgba(255, 255, 255, 0.92);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --stroke: rgba(123, 31, 45, 0.16);
+  --accent: #7b1f2d;
+  --accent-strong: #5a1620;
+  --crimson: #7b1f2d;
+  --text: #1a1a1f;
+  --muted: #5a5850;
+  --input-bg: #ffffff;
+  --input-border: #d4d4d8;
+}
+
+body.light-mode {
+  background:
+    radial-gradient(900px 640px at 12% -6%, rgba(123, 31, 45, 0.12), transparent 62%),
+    radial-gradient(980px 720px at 88% 6%, rgba(214, 179, 106, 0.16), transparent 64%),
+    radial-gradient(1200px 900px at 50% 96%, rgba(245, 242, 234, 0.95), transparent 68%),
+    linear-gradient(180deg, #f5f2ea 0%, #ebe7dc 42%, #e5e1d4 100%);
+  color: var(--text);
 }
 
 html, body, #root {
@@ -59,12 +97,26 @@ body {
     backdrop-filter: blur(18px) saturate(160%);
   }
 
+  body.light-mode .glass-panel {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(245, 242, 234, 0.96));
+    border: 1px solid rgba(123, 31, 45, 0.12);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
   .jr-panel {
     background: linear-gradient(160deg, rgba(64, 12, 20, 0.86), rgba(18, 6, 10, 0.96));
   }
 
+  body.light-mode .jr-panel {
+    background: linear-gradient(160deg, rgba(123, 31, 45, 0.12), rgba(245, 242, 234, 0.96));
+  }
+
   .main-panel {
     background: linear-gradient(160deg, rgba(12, 42, 44, 0.86), rgba(6, 16, 18, 0.96));
+  }
+
+  body.light-mode .main-panel {
+    background: linear-gradient(160deg, rgba(12, 82, 84, 0.08), rgba(245, 242, 234, 0.96));
   }
 
   .page-shell {
@@ -77,6 +129,69 @@ body {
   .accent-outline {
     border: 1px solid rgba(214, 179, 106, 0.5);
     box-shadow: 0 0 0 1px rgba(214, 179, 106, 0.2);
+  }
+
+  /* Standardized input styling */
+  .input-base {
+    padding: 1rem;
+    border-radius: var(--radius-lg);
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .input-base:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(214, 179, 106, 0.15);
+  }
+
+  body.light-mode .input-base:focus {
+    box-shadow: 0 0 0 3px rgba(123, 31, 45, 0.15);
+  }
+
+  .input-base:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Standardized button styles */
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--accent);
+    transition: all 0.2s ease;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-strong);
+    transform: scale(1.02);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Visually hidden but accessible to screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 }
 
@@ -161,5 +276,53 @@ body {
   }
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Page entry animation */
+  .animate-page-in {
+    animation: pageIn 0.5s ease-out both;
+  }
+  @keyframes pageIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Slide in from right (for toasts) */
+  .animate-in.slide-in-from-right-full {
+    animation: slideInFromRight 0.3s ease-out both;
+  }
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Button press feedback */
+  .btn-press:active {
+    transform: scale(0.95);
+  }
+
+  /* Standardized tracking utilities */
+  .tracking-title {
+    letter-spacing: 0.22em;
+  }
+
+  .tracking-label {
+    letter-spacing: 0.18em;
+  }
+
+  .tracking-wide-custom {
+    letter-spacing: 0.2em;
   }
 }
