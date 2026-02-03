@@ -269,17 +269,19 @@ const App: React.FC = () => {
 
   const handleAddEntry = (entry: PlayerEntry) => {
     const normalizedEmail = normalizeEmail(entry.email || "");
-    const updatedPlayers = [
-      ...gameState.players.filter((p) => {
-        if (entry.id) return p.id !== entry.id;
-        if (normalizedEmail) {
-          return normalizeEmail(p.email || "") !== normalizedEmail;
-        }
-        return p.name !== entry.name;
-      }),
-      { ...entry, league: entry.league === "jr" ? "jr" : "main" },
-    ];
-    setGameState({ ...gameState, players: updatedPlayers });
+    setGameState((prev) => {
+      const updatedPlayers = [
+        ...prev.players.filter((p) => {
+          if (entry.id) return p.id !== entry.id;
+          if (normalizedEmail) {
+            return normalizeEmail(p.email || "") !== normalizedEmail;
+          }
+          return p.name !== entry.name;
+        }),
+        { ...entry, league: entry.league === "jr" ? "jr" : "main" },
+      ];
+      return { ...prev, players: updatedPlayers };
+    });
   };
   const authenticateAdmin = async (
     email: string,
