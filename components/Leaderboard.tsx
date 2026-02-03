@@ -152,9 +152,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
                           {p.portraitUrl ? (
-                            <img src={p.portraitUrl} alt="" className="w-full h-full object-cover" />
+                            <img src={p.portraitUrl} alt={`${p.name}'s profile`} className="w-full h-full object-cover" />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase">
+                            <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase" aria-hidden="true">
                               {p.name.charAt(0)}
                             </div>
                           )}

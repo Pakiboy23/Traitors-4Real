@@ -4,6 +4,7 @@ import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
 import { submitDraftEntry } from '../services/pocketbase';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
+import { useToast } from './Toast';
 
 interface DraftFormProps {
   gameState: GameState;
@@ -26,6 +27,7 @@ function shuffleArray<T>(array: T[]): T[] {
 const DRAFT_CLOSED = true;
 
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
+  const { showToast } = useToast();
   const [playerName, setPlayerName] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
   const [picks, setPicks] = useState<DraftPick[]>(Array(10).fill({ member: '', rank: 1, role: 'Faithful' }));
@@ -34,6 +36,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [predWinner, setPredWinner] = useState('');
   const [traitors, setTraitors] = useState(['', '', '']);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Validation: Check for duplicates in the squad
   const getDuplicatePicks = () => {
@@ -55,7 +58,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   const toggleSeal = (idx: number) => {
     if (!picks[idx].member) {
-      alert("A name must be spoken before the pick is sealed.");
+      showToast("A name must be spoken before the pick is sealed.", "warning");
       return;
     }
     const newSeals = [...sealedPicks];
@@ -89,26 +92,28 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (DRAFT_CLOSED) {
-      alert("Draft submissions are closed. Please use the Weekly Council tab.");
+      showToast("Draft submissions are closed. Please use the Weekly Council tab.", "warning");
       return;
     }
     if (!playerName || !playerEmail) {
-      alert("Please enter your name and email to proceed.");
+      showToast("Please enter your name and email to proceed.", "warning");
       return;
     }
 
     if (hasDuplicates) {
-      alert("The Conclave forbids duplicates. Each pick must be unique.");
+      showToast("The Conclave forbids duplicates. Each pick must be unique.", "error");
       return;
     }
 
     if (!allPicksSealed) {
-      alert("All members of your squad must be sealed before the final submission.");
+      showToast("All members of your squad must be sealed before the final submission.", "warning");
       return;
     }
+
+    setIsSubmitting(true);
 
     const newEntry: PlayerEntry = {
       id: Date.now().toString(),
@@ -121,10 +126,17 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     };
 
     onAddEntry(newEntry);
-    setIsSubmitted(true);
-    submitDraftEntry(newEntry).catch((err) => {
+
+    try {
+      await submitDraftEntry(newEntry);
+      showToast("Your draft has been submitted successfully!", "success");
+    } catch (err) {
       console.warn("Draft submission failed:", err);
-    });
+      showToast("Draft submission failed. Your entry was saved locally.", "warning");
+    }
+
+    setIsSubmitting(false);
+    setIsSubmitted(true);
 
     const body = encodeURIComponent(getFormData());
     const subject = encodeURIComponent(`Traitors Draft Picks - ${playerName}`);
@@ -169,22 +181,32 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
               Identify Yourself
             </h3>
             <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto w-full">
-              <input
-                required
-                type="text"
-                placeholder="Name"
-                value={playerName}
-                onChange={(e) => setPlayerName(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
-              <input
-                required
-                type="email"
-                placeholder="Email"
-                value={playerEmail}
-                onChange={(e) => setPlayerEmail(e.target.value)}
-                className="p-4 rounded-xl bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none text-base text-center"
-              />
+              <div>
+                <label htmlFor="player-name" className="sr-only">Your Name</label>
+                <input
+                  id="player-name"
+                  required
+                  type="text"
+                  placeholder="Name"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                  aria-required="true"
+                />
+              </div>
+              <div>
+                <label htmlFor="player-email" className="sr-only">Your Email</label>
+                <input
+                  id="player-email"
+                  required
+                  type="email"
+                  placeholder="Email"
+                  value={playerEmail}
+                  onChange={(e) => setPlayerEmail(e.target.value)}
+                  className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                  aria-required="true"
+                />
+              </div>
             </div>
           </div>
 
@@ -230,7 +252,8 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                 <button
                   type="button"
                   onClick={autoGeneratePicks}
-                  className="text-sm font-semibold text-zinc-200 border border-[color:var(--accent)]/40 px-5 py-2.5 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.18em]"
+                  className="text-sm font-semibold text-zinc-200 border border-[color:var(--accent)]/40 px-5 py-2.5 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.18em] active:scale-95"
+                  aria-label="Auto-generate random picks"
                 >
                   Auto-pick
                 </button>
@@ -243,7 +266,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 grid-rows-5 grid-flow-col gap-6 bg-transparent p-6 md:p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-transparent p-6 md:p-8">
               {picks.map((pick, i) => {
                 const isDuplicate = pick.member !== '' && duplicateNames.includes(pick.member);
                 const isSealed = sealedPicks[i];
@@ -266,11 +289,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     <div className="flex items-center justify-center">
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xs text-zinc-600 font-bold uppercase">
                         {castPortrait ? (
-                          <img src={castPortrait} alt="" className="w-full h-full object-cover" />
+                          <img src={castPortrait} alt={`${pick.member} portrait`} className="w-full h-full object-cover" />
                         ) : pick.member ? (
-                          pick.member.charAt(0)
+                          <span aria-hidden="true">{pick.member.charAt(0)}</span>
                         ) : (
-                          '?'
+                          <span aria-hidden="true">?</span>
                         )}
                       </div>
                     </div>
@@ -327,16 +350,18 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                           }`}
                         />
                       </div>
-                      <div className="flex bg-black/70 p-2 rounded-xl border border-zinc-800 w-full max-w-[220px] justify-between">
+                      <div className="flex bg-black/70 p-2 rounded-xl border border-zinc-800 w-full max-w-[220px] justify-between" role="group" aria-label="Role prediction">
                         <button
                           disabled={isSealed}
                           type="button"
                           onClick={() => updatePick(i, 'role', 'Faithful')}
                           className={`flex-1 px-4 py-3 rounded-lg text-xs font-semibold transition-all ${
                             pick.role === 'Faithful'
-                              ? 'bg-[#00E5A8] text-black border-2 border-[#00E5A8] shadow-[0_0_26px_rgba(0,229,168,0.85)] scale-[1.04]'
+                              ? 'bg-[color:var(--success)] text-black border-2 border-[color:var(--success)] shadow-[0_0_26px_rgba(0,229,168,0.85)] scale-[1.04]'
                               : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
                           }`}
+                          aria-label="Predict Faithful"
+                          aria-pressed={pick.role === 'Faithful'}
                         >
                           F
                         </button>
@@ -346,9 +371,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                           onClick={() => updatePick(i, 'role', 'Traitor')}
                           className={`flex-1 px-4 py-3 rounded-lg text-xs font-semibold transition-all ${
                             pick.role === 'Traitor'
-                              ? 'bg-[#FF2D55] text-black border-2 border-[#FF2D55] shadow-[0_0_26px_rgba(255,45,85,0.85)] scale-[1.04]'
+                              ? 'bg-[color:var(--danger)] text-black border-2 border-[color:var(--danger)] shadow-[0_0_26px_rgba(255,45,85,0.85)] scale-[1.04]'
                               : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
                           }`}
+                          aria-label="Predict Traitor"
+                          aria-pressed={pick.role === 'Traitor'}
                         >
                           T
                         </button>
@@ -451,16 +478,20 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             )}
             <button
               type="submit"
-              disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed}
-              className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg ${
+              disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
+              className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg flex items-center justify-center gap-3 ${
                 DRAFT_CLOSED
                   ? 'bg-red-900 border-red-600 text-white cursor-not-allowed opacity-90'
-                  : hasDuplicates || !allPicksSealed
+                  : hasDuplicates || !allPicksSealed || isSubmitting
                   ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50'
                   : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
               }`}
+              aria-busy={isSubmitting}
             >
-              {DRAFT_CLOSED
+              {isSubmitting && <span className="loading-spinner" aria-hidden="true" />}
+              {isSubmitting
+                ? 'Submitting...'
+                : DRAFT_CLOSED
                 ? 'Draft Closed'
                 : hasDuplicates
                 ? 'Resolve Duplicates'

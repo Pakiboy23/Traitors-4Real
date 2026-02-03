@@ -32,17 +32,19 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
         <header className={`text-center space-y-5 py-10 md:py-12 relative overflow-hidden rounded-2xl transition-all duration-500 glass-panel`}>
           {/* Live Sync Badge & Theme Toggle */}
           <div className="absolute top-4 right-4 flex items-center gap-3">
-            <button 
+            <button
               onClick={toggleTheme}
-              className={`p-2 rounded-full border transition-all ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-black/50 border-zinc-700 text-zinc-200'}`}
+              className={`p-2 rounded-full border transition-all active:scale-95 ${isLightMode ? 'bg-red-900 border-red-700 text-white' : 'bg-black/50 border-zinc-700 text-zinc-200'}`}
               title={isLightMode ? "Extinguish the Torches" : "Light the Torches"}
+              aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
+              aria-pressed={isLightMode}
             >
               {isLightMode ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 9h-1m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14 7 7 0 000-14z" />
                 </svg>
               )}
