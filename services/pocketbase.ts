@@ -245,6 +245,12 @@ export const submitWeeklyCouncilVote = async (input: {
   name: string;
   email: string;
   weeklyPredictions: { nextBanished: string; nextMurdered: string };
+  bonusGames?: {
+    redemptionRoulette?: string;
+    doubleOrNothing?: boolean;
+    shieldGambit?: string;
+    traitorTrio?: string[];
+  };
   league?: string;
 }) => {
   const normalizedEmail = normalizeEmail(input.email || "");
@@ -259,6 +265,12 @@ export const submitWeeklyCouncilVote = async (input: {
       weeklyPredictions: {
         nextBanished: input.weeklyPredictions?.nextBanished || "",
         nextMurdered: input.weeklyPredictions?.nextMurdered || "",
+        bonusGames: {
+          redemptionRoulette: input.bonusGames?.redemptionRoulette || "",
+          doubleOrNothing: Boolean(input.bonusGames?.doubleOrNothing),
+          shieldGambit: input.bonusGames?.shieldGambit || "",
+          traitorTrio: input.bonusGames?.traitorTrio ?? [],
+        },
       },
     },
   });

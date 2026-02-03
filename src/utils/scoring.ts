@@ -14,6 +14,7 @@ export interface ScoreBreakdown {
   traitorBonus: string[];
   penalty: boolean;
   weeklyCouncil: { label: string; result: "correct" | "incorrect" }[];
+  bonusGames: { label: string; result: "correct" | "incorrect" | "partial"; points: number }[];
 }
 
 export interface PlayerScore {
@@ -38,6 +39,7 @@ export const calculatePlayerScore = (
     traitorBonus: [],
     penalty: false,
     weeklyCouncil: [],
+    bonusGames: [],
   };
 
   player.picks.forEach((pick) => {
@@ -96,36 +98,130 @@ export const calculatePlayerScore = (
 
   const weeklyResults = gameState.weeklyResults;
   const weeklyPredictions = player.weeklyPredictions;
+  const doubleOrNothing = Boolean(weeklyPredictions?.bonusGames?.doubleOrNothing);
+  const weeklyMultiplier = doubleOrNothing ? 2 : 1;
+  const weeklyCorrectPoints = 1 * weeklyMultiplier;
+  const weeklyIncorrectPoints = 0.5 * weeklyMultiplier;
 
   if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
     if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
-      score += 1;
+      score += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Banished", result: "correct" });
       achievements.push({
         member: weeklyPredictions.nextBanished,
         type: "Weekly: Banished",
-        points: 1,
+        points: weeklyCorrectPoints,
         icon: "⚖️",
       });
     } else {
-      score -= 0.5;
+      score -= weeklyIncorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Banished", result: "incorrect" });
     }
   }
 
   if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
     if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
-      score += 1;
+      score += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "correct" });
       achievements.push({
         member: weeklyPredictions.nextMurdered,
         type: "Weekly: Murdered",
-        points: 1,
+        points: weeklyCorrectPoints,
         icon: "🗡️",
       });
     } else {
-      score -= 0.5;
+      score -= weeklyIncorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "incorrect" });
+    }
+  }
+
+  const bonusResults = weeklyResults?.bonusGames;
+  const bonusPredictions = weeklyPredictions?.bonusGames;
+  const isNegativeForBonus = score < 0;
+
+  if (bonusResults?.redemptionRoulette && bonusPredictions?.redemptionRoulette) {
+    if (bonusResults.redemptionRoulette === bonusPredictions.redemptionRoulette) {
+      const points = isNegativeForBonus ? 16 : 8;
+      score += points;
+      breakdown.bonusGames.push({
+        label: "Redemption Roulette",
+        result: "correct",
+        points,
+      });
+      achievements.push({
+        member: bonusPredictions.redemptionRoulette,
+        type: "Bonus: Redemption Roulette",
+        points,
+        icon: "🎲",
+      });
+    } else {
+      score -= 1;
+      breakdown.bonusGames.push({
+        label: "Redemption Roulette",
+        result: "incorrect",
+        points: -1,
+      });
+    }
+  }
+
+  if (bonusResults?.shieldGambit && bonusPredictions?.shieldGambit) {
+    if (bonusResults.shieldGambit === bonusPredictions.shieldGambit) {
+      const points = isNegativeForBonus ? 8 : 5;
+      score += points;
+      breakdown.bonusGames.push({
+        label: "Shield Gambit",
+        result: "correct",
+        points,
+      });
+      achievements.push({
+        member: bonusPredictions.shieldGambit,
+        type: "Bonus: Shield Gambit",
+        points,
+        icon: "🛡️",
+      });
+    } else {
+      breakdown.bonusGames.push({
+        label: "Shield Gambit",
+        result: "incorrect",
+        points: 0,
+      });
+    }
+  }
+
+  if (bonusResults?.traitorTrio?.length && bonusPredictions?.traitorTrio?.length) {
+    const resultSet = Array.from(
+      new Set(bonusResults.traitorTrio.filter(Boolean))
+    );
+    const predictionSet = Array.from(
+      new Set(bonusPredictions.traitorTrio.filter(Boolean))
+    );
+    const correctCount = predictionSet.filter((name) =>
+      resultSet.includes(name)
+    ).length;
+    if (correctCount > 0) {
+      const points = correctCount === 3 ? 15 : correctCount * 3;
+      const perNamePoints = correctCount === 3 ? 5 : 3;
+      score += points;
+      breakdown.bonusGames.push({
+        label: "Traitor Trio Challenge",
+        result: correctCount === 3 ? "correct" : "partial",
+        points,
+      });
+      predictionSet.forEach((name) => {
+        if (!resultSet.includes(name)) return;
+        achievements.push({
+          member: name,
+          type: "Bonus: Traitor Trio",
+          points: perNamePoints,
+          icon: "🎭",
+        });
+      });
+    } else {
+      breakdown.bonusGames.push({
+        label: "Traitor Trio Challenge",
+        result: "incorrect",
+        points: 0,
+      });
     }
   }
 
