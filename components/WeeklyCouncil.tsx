@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CAST_NAMES, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
 import { calculatePlayerScore } from "../src/utils/scoring";
@@ -301,6 +301,18 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     : null;
   const hasJrDouble = jrScoreTotal !== null && jrScoreTotal < 0;
 
+  useEffect(() => {
+    if (!hasMainDouble && bonusDoubleOrNothing) {
+      setBonusDoubleOrNothing(false);
+    }
+  }, [hasMainDouble, bonusDoubleOrNothing]);
+
+  useEffect(() => {
+    if (!hasJrDouble && jrBonusDoubleOrNothing) {
+      setJrBonusDoubleOrNothing(false);
+    }
+  }, [hasJrDouble, jrBonusDoubleOrNothing]);
+
   return (
     <div className="space-y-12">
       <div className="text-center space-y-3">
@@ -489,7 +501,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         type="checkbox"
                         checked={bonusDoubleOrNothing}
                         onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                        disabled={!hasMainDouble}
+                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
                     <div>
@@ -683,7 +696,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       type="checkbox"
                       checked={jrBonusDoubleOrNothing}
                       onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                      disabled={!hasJrDouble}
+                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                   <div>
