@@ -273,7 +273,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }
         if (lowerLine.includes("next murdered:")) {
           const val = line.split(":")[1]?.trim() || "";
-          weeklyMurdered = CAST_NAMES.find(c => val.includes(c)) || val;
+          if (val.toLowerCase() === "no murder") {
+            weeklyMurdered = "No Murder";
+          } else {
+            weeklyMurdered = CAST_NAMES.find(c => val.includes(c)) || val;
+          }
         }
 
         if (lowerLine.includes("traitor guesses") || lowerLine.includes("traitor suspects") || lowerLine.includes("the traitors")) {
@@ -854,6 +858,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
             >
               <option value="">Select...</option>
+              <option value="No Murder">No Murder</option>
               {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>

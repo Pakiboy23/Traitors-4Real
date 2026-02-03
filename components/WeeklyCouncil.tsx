@@ -444,6 +444,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
+                      <option value="No Murder">No Murder</option>
                       {CAST_NAMES.map((c) => (
                         <option key={c} value={c}>
                           {c}
@@ -639,6 +640,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
+                    <option value="No Murder">No Murder</option>
                     {CAST_NAMES.map((c) => (
                       <option key={c} value={c}>
                         {c}
