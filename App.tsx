@@ -28,7 +28,15 @@ import {
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
-const DEFAULT_WEEKLY_RESULTS = { nextBanished: "", nextMurdered: "" };
+const DEFAULT_WEEKLY_RESULTS = {
+  nextBanished: "",
+  nextMurdered: "",
+  bonusGames: {
+    redemptionRoulette: "",
+    shieldGambit: "",
+    traitorTrio: [],
+  },
+};
 
 const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const castStatus: GameState["castStatus"] = {};
@@ -71,9 +79,19 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
       predTraitors: Array.isArray(player.predTraitors)
         ? player.predTraitors
         : [],
-      weeklyPredictions: player.weeklyPredictions ?? {
-        nextBanished: "",
-        nextMurdered: "",
+      weeklyPredictions: {
+        nextBanished: player.weeklyPredictions?.nextBanished ?? "",
+        nextMurdered: player.weeklyPredictions?.nextMurdered ?? "",
+        bonusGames: {
+          redemptionRoulette:
+            player.weeklyPredictions?.bonusGames?.redemptionRoulette ?? "",
+          doubleOrNothing: Boolean(
+            player.weeklyPredictions?.bonusGames?.doubleOrNothing
+          ),
+          shieldGambit: player.weeklyPredictions?.bonusGames?.shieldGambit ?? "",
+          traitorTrio:
+            player.weeklyPredictions?.bonusGames?.traitorTrio ?? [],
+        },
       },
     } as PlayerEntry;
   });

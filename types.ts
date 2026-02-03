@@ -16,11 +16,26 @@ export interface DraftPick {
 export interface WeeklyPredictions {
   nextBanished: string;
   nextMurdered: string;
+  bonusGames?: BonusGamePredictions;
 }
 
 export interface WeeklyResults {
   nextBanished?: string;
   nextMurdered?: string;
+  bonusGames?: BonusGameResults;
+}
+
+export interface BonusGamePredictions {
+  redemptionRoulette?: string;
+  doubleOrNothing?: boolean;
+  shieldGambit?: string;
+  traitorTrio?: string[];
+}
+
+export interface BonusGameResults {
+  redemptionRoulette?: string;
+  shieldGambit?: string;
+  traitorTrio?: string[];
 }
 
 export interface WeeklyScoreSnapshot {

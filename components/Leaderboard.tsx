@@ -70,6 +70,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     }> = [];
     const weeklyResults = gameState.weeklyResults;
     const weeklyPredictions = player.weeklyPredictions;
+    const weeklyMultiplier = weeklyPredictions?.bonusGames?.doubleOrNothing ? 2 : 1;
+    const weeklyIncorrectPoints = 0.5 * weeklyMultiplier;
 
     if (player.predWinner && gameState.castStatus[player.predWinner]?.isFirstOut) {
       penalties.push({
@@ -87,7 +89,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     ) {
       penalties.push({
         label: "Weekly Council: Banished",
-        points: -0.5,
+        points: -weeklyIncorrectPoints,
         pick: weeklyPredictions.nextBanished,
         actual: weeklyResults.nextBanished,
       });
@@ -100,9 +102,23 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     ) {
       penalties.push({
         label: "Weekly Council: Murdered",
-        points: -0.5,
+        points: -weeklyIncorrectPoints,
         pick: weeklyPredictions.nextMurdered,
         actual: weeklyResults.nextMurdered,
+      });
+    }
+
+    if (
+      weeklyResults?.bonusGames?.redemptionRoulette &&
+      weeklyPredictions?.bonusGames?.redemptionRoulette &&
+      weeklyResults.bonusGames.redemptionRoulette !==
+        weeklyPredictions.bonusGames.redemptionRoulette
+    ) {
+      penalties.push({
+        label: "Bonus: Redemption Roulette",
+        points: -1,
+        pick: weeklyPredictions.bonusGames.redemptionRoulette,
+        actual: weeklyResults.bonusGames.redemptionRoulette,
       });
     }
 
