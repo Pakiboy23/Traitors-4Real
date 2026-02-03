@@ -10,6 +10,19 @@ interface DraftFormProps {
   onAddEntry: (entry: PlayerEntry) => void;
 }
 
+/**
+ * Fisher-Yates shuffle algorithm for unbiased random shuffling.
+ * Returns a new shuffled array without modifying the original.
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 const DRAFT_CLOSED = true;
 
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
@@ -51,9 +64,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   };
 
   const autoGeneratePicks = () => {
-    const shuffled = [...CAST_NAMES].sort(() => 0.5 - Math.random());
+    const shuffled = shuffleArray(CAST_NAMES);
     const selected = shuffled.slice(0, 10);
-    const ranks = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].sort(() => 0.5 - Math.random());
+    const ranks = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     
     const newPicks: DraftPick[] = selected.map((member, i) => ({
       member,
