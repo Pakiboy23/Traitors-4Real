@@ -38,6 +38,27 @@ const DEFAULT_WEEKLY_RESULTS = {
   },
 };
 
+const normalizeWeeklyResults = (
+  input?: GameState["weeklyResults"] | null
+): GameState["weeklyResults"] => {
+  const bonusGames = input?.bonusGames ?? DEFAULT_WEEKLY_RESULTS.bonusGames;
+  return {
+    nextBanished: input?.nextBanished ?? DEFAULT_WEEKLY_RESULTS.nextBanished,
+    nextMurdered: input?.nextMurdered ?? DEFAULT_WEEKLY_RESULTS.nextMurdered,
+    bonusGames: {
+      redemptionRoulette:
+        bonusGames.redemptionRoulette ??
+        DEFAULT_WEEKLY_RESULTS.bonusGames.redemptionRoulette,
+      shieldGambit:
+        bonusGames.shieldGambit ??
+        DEFAULT_WEEKLY_RESULTS.bonusGames.shieldGambit,
+      traitorTrio: Array.isArray(bonusGames.traitorTrio)
+        ? bonusGames.traitorTrio
+        : DEFAULT_WEEKLY_RESULTS.bonusGames.traitorTrio,
+    },
+  };
+};
+
 const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
@@ -106,7 +127,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   return {
     players: normalizedPlayers,
     castStatus,
-    weeklyResults: input?.weeklyResults ?? DEFAULT_WEEKLY_RESULTS,
+    weeklyResults: normalizeWeeklyResults(input?.weeklyResults),
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
   };
