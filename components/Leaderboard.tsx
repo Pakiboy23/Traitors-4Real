@@ -98,6 +98,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     if (
       weeklyResults?.nextMurdered &&
       weeklyPredictions?.nextMurdered &&
+      weeklyResults.nextMurdered !== "No Murder" &&
       weeklyResults.nextMurdered !== weeklyPredictions.nextMurdered
     ) {
       penalties.push({
