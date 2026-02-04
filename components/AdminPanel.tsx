@@ -73,6 +73,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const payload = submission.payload as { league?: string } | undefined;
     return payload?.league === "jr" ? "jr" : "main";
   };
+  const getSubmissionBonusGames = (submission: SubmissionRecord) => {
+    const payload = submission.payload as
+      | {
+          weeklyPredictions?: {
+            bonusGames?: {
+              redemptionRoulette?: string;
+              doubleOrNothing?: boolean;
+              shieldGambit?: string;
+              traitorTrio?: string[];
+            };
+          };
+        }
+      | undefined;
+    return payload?.weeklyPredictions?.bonusGames;
+  };
   const HISTORY_LIMIT = 200;
 
   const buildHistoryEntry = (
@@ -287,6 +302,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         weeklyPredictions: {
           nextBanished: weeklyBanished,
           nextMurdered: weeklyMurdered,
+          bonusGames: {
+            redemptionRoulette: "",
+            doubleOrNothing: false,
+            shieldGambit: "",
+            traitorTrio: [],
+          },
         },
       };
 
@@ -378,6 +399,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   ) => {
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
+    const bonusGames = getSubmissionBonusGames(submission);
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
       const normalizedEmail = normalize(submission.email || "");
@@ -397,6 +419,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         weeklyPredictions: {
           nextBanished: submission.weeklyBanished || "",
           nextMurdered: submission.weeklyMurdered || "",
+          bonusGames: {
+            redemptionRoulette: bonusGames?.redemptionRoulette || "",
+            doubleOrNothing: Boolean(bonusGames?.doubleOrNothing),
+            shieldGambit: bonusGames?.shieldGambit || "",
+            traitorTrio: bonusGames?.traitorTrio ?? [],
+          },
         },
       };
       return {
@@ -407,13 +435,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const updatedPlayers = players.map((player, idx) => {
       if (idx !== match.index) return player;
+      const nextBonusGames =
+        bonusGames ?? player.weeklyPredictions?.bonusGames ?? {};
       return {
         ...player,
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
-          nextBanished: submission.weeklyBanished || "",
-          nextMurdered: submission.weeklyMurdered || "",
+          nextBanished:
+            submission.weeklyBanished ||
+            player.weeklyPredictions?.nextBanished ||
+            "",
+          nextMurdered:
+            submission.weeklyMurdered ||
+            player.weeklyPredictions?.nextMurdered ||
+            "",
+          bonusGames: {
+            redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
+            doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
+            shieldGambit: nextBonusGames?.shieldGambit || "",
+            traitorTrio: nextBonusGames?.traitorTrio ?? [],
+          },
         },
       };
     });
@@ -557,6 +599,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       weeklyPredictions: {
         nextBanished: editWeeklyBanished,
         nextMurdered: editWeeklyMurdered,
+        bonusGames: selectedPlayer.weeklyPredictions?.bonusGames,
       },
     });
     setMsg({
@@ -622,11 +665,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             ...p,
             name: nextName,
             email: nextEmail,
-            weeklyPredictions: {
-              nextBanished: edit.weeklyBanished,
-              nextMurdered: edit.weeklyMurdered,
-            },
-          }
+          weeklyPredictions: {
+            nextBanished: edit.weeklyBanished,
+            nextMurdered: edit.weeklyMurdered,
+            bonusGames: player.weeklyPredictions?.bonusGames,
+          },
+        }
         : p
     );
     updateGameState({ ...gameState, players: updatedPlayers });
@@ -712,6 +756,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const player = gameState.players.find((p) => p.id === topId);
     return player ? { name: player.name, score: topScore } : null;
   };
+
+  const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
+  const traitorTrioResults = bonusResults.traitorTrio?.length
+    ? bonusResults.traitorTrio
+    : ["", "", ""];
 
   return (
     <div className="w-full animate-in fade-in duration-500">
@@ -818,6 +867,105 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
         <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score weekly council picks</p>
+
+        <div className="mt-6 pt-6 border-t border-zinc-800">
+          <h4 className="text-sm gothic-font text-[color:var(--accent)] uppercase tracking-[0.24em] mb-4">
+            Bonus Game Results
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs text-amber-300 font-semibold mb-2 uppercase tracking-[0.2em]">
+                🎲 Redemption Roulette (Revealed Traitor)
+              </label>
+              <select
+                value={bonusResults.redemptionRoulette ?? ""}
+                onChange={(e) =>
+                  updateGameState({
+                    ...gameState,
+                    weeklyResults: {
+                      ...(gameState.weeklyResults ?? {}),
+                      bonusGames: {
+                        ...(gameState.weeklyResults?.bonusGames ?? {}),
+                        redemptionRoulette: e.target.value,
+                      },
+                    },
+                  })
+                }
+                className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+              >
+                <option value="">Select...</option>
+                {CAST_NAMES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.2em]">
+                🛡️ Shield Gambit (Immunity Winner)
+              </label>
+              <select
+                value={bonusResults.shieldGambit ?? ""}
+                onChange={(e) =>
+                  updateGameState({
+                    ...gameState,
+                    weeklyResults: {
+                      ...(gameState.weeklyResults ?? {}),
+                      bonusGames: {
+                        ...(gameState.weeklyResults?.bonusGames ?? {}),
+                        shieldGambit: e.target.value,
+                      },
+                    },
+                  })
+                }
+                className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+              >
+                <option value="">Select...</option>
+                {CAST_NAMES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.2em]">
+              🎭 Traitor Trio (All Remaining Traitors)
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {traitorTrioResults.map((value, idx) => (
+                <select
+                  key={`traitor-trio-${idx}`}
+                  value={value}
+                  onChange={(e) => {
+                    const next = [...traitorTrioResults];
+                    next[idx] = e.target.value;
+                    updateGameState({
+                      ...gameState,
+                      weeklyResults: {
+                        ...(gameState.weeklyResults ?? {}),
+                        bonusGames: {
+                          ...(gameState.weeklyResults?.bonusGames ?? {}),
+                          traitorTrio: next,
+                        },
+                      },
+                    });
+                  }}
+                  className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+                >
+                  <option value="">{`Select #${idx + 1}`}</option>
+                  {CAST_NAMES.map((c) => (
+                    <option key={`${idx}-${c}`} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="glass-panel py-6 px-12 rounded-2xl">
