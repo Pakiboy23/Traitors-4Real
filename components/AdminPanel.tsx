@@ -442,8 +442,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
-          nextBanished: submission.weeklyBanished || "",
-          nextMurdered: submission.weeklyMurdered || "",
+          nextBanished:
+            submission.weeklyBanished ||
+            player.weeklyPredictions?.nextBanished ||
+            "",
+          nextMurdered:
+            submission.weeklyMurdered ||
+            player.weeklyPredictions?.nextMurdered ||
+            "",
           bonusGames: {
             redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
             doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
