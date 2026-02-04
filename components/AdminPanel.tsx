@@ -752,7 +752,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
-  const traitorTrioResults = bonusResults.traitorTrio ?? ["", "", ""];
+  const traitorTrioResults = bonusResults.traitorTrio?.length
+    ? bonusResults.traitorTrio
+    : ["", "", ""];
 
   return (
     <div className="w-full animate-in fade-in duration-500">
