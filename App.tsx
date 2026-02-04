@@ -126,8 +126,6 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-
-
       if (saved) return normalizeGameState(JSON.parse(saved));
     } catch {
       // ignore corrupted localStorage
