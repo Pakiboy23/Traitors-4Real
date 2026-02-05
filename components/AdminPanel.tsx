@@ -78,6 +78,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const getSubmissionBonusGames = (submission: SubmissionRecord) => {
     const payload = submission.payload as
       | {
+          bonusGames?: {
+            redemptionRoulette?: string;
+            doubleOrNothing?: boolean;
+            shieldGambit?: string;
+          };
           weeklyPredictions?: {
             bonusGames?: {
               redemptionRoulette?: string;
@@ -87,7 +92,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           };
         }
       | undefined;
-    return payload?.weeklyPredictions?.bonusGames;
+    return payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
   };
   const HISTORY_LIMIT = 200;
 
