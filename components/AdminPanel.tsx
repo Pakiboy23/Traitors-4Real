@@ -36,6 +36,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastWriteError,
   onSaveNow,
 }) => {
+  const BANISHED_OPTIONS = CAST_NAMES;
+  const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
   const defaultStatus = {
     isWinner: false,
     isFirstOut: false,
@@ -69,6 +71,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const normalizeEmpty = <T,>(value: T | null | undefined) => {
+    if (value === undefined || value === null || value === "") return null;
+    return value;
+  };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
     const payload = submission.payload as { league?: string } | undefined;
     return payload?.league === "jr" ? "jr" : "main";
@@ -76,6 +82,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const getSubmissionBonusGames = (submission: SubmissionRecord) => {
     const payload = submission.payload as
       | {
+          playerId?: string;
+          bonusGames?: {
+            redemptionRoulette?: string;
+            doubleOrNothing?: boolean;
+            shieldGambit?: string;
+            traitorTrio?: string[];
+          };
           weeklyPredictions?: {
             bonusGames?: {
               redemptionRoulette?: string;
@@ -86,7 +99,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           };
         }
       | undefined;
-    return payload?.weeklyPredictions?.bonusGames;
+    return payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
+  };
+  const getSubmissionPlayerId = (submission: SubmissionRecord) => {
+    const payload = submission.payload as { playerId?: string } | undefined;
+    return payload?.playerId ?? null;
   };
   const HISTORY_LIMIT = 200;
 
@@ -123,6 +140,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     submission: SubmissionRecord,
     league: "main" | "jr"
   ) => {
+    const playerId = getSubmissionPlayerId(submission);
+    if (playerId) {
+      const idx = players.findIndex((p) => p.id === playerId);
+      if (idx !== -1) return { index: idx, type: "id" as const };
+    }
     const email = normalize(submission.email || "");
     if (email) {
       const idx = players.findIndex((p) => {
@@ -400,6 +422,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const bonusGames = getSubmissionBonusGames(submission);
+    const incomingBanished = normalizeEmpty(submission.weeklyBanished);
+    const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
+    const incomingBonusGames = {
+      redemptionRoulette: normalizeEmpty(bonusGames?.redemptionRoulette) ?? undefined,
+      doubleOrNothing:
+        typeof bonusGames?.doubleOrNothing === "boolean"
+          ? bonusGames?.doubleOrNothing
+          : undefined,
+      shieldGambit: normalizeEmpty(bonusGames?.shieldGambit) ?? undefined,
+      traitorTrio:
+        Array.isArray(bonusGames?.traitorTrio)
+          ? bonusGames?.traitorTrio
+          : undefined,
+    };
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
       const normalizedEmail = normalize(submission.email || "");
@@ -417,13 +453,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predWinner: "",
         predTraitors: [],
         weeklyPredictions: {
-          nextBanished: submission.weeklyBanished || "",
-          nextMurdered: submission.weeklyMurdered || "",
+          nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
+          nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
           bonusGames: {
-            redemptionRoulette: bonusGames?.redemptionRoulette || "",
-            doubleOrNothing: Boolean(bonusGames?.doubleOrNothing),
-            shieldGambit: bonusGames?.shieldGambit || "",
-            traitorTrio: bonusGames?.traitorTrio ?? [],
+            redemptionRoulette: incomingBonusGames.redemptionRoulette ?? "",
+            doubleOrNothing: Boolean(incomingBonusGames.doubleOrNothing),
+            shieldGambit: incomingBonusGames.shieldGambit ?? "",
+            traitorTrio: incomingBonusGames.traitorTrio ?? [],
           },
         },
       };
@@ -435,27 +471,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const updatedPlayers = players.map((player, idx) => {
       if (idx !== match.index) return player;
-      const nextBonusGames =
-        bonusGames ?? player.weeklyPredictions?.bonusGames ?? {};
+      const existingWeekly = player.weeklyPredictions ?? {
+        nextBanished: "",
+        nextMurdered: "",
+        bonusGames: {},
+      };
+      const existingBonus = existingWeekly.bonusGames ?? {};
+      const nextBonusGames = {
+        redemptionRoulette:
+          incomingBonusGames.redemptionRoulette ?? existingBonus.redemptionRoulette ?? "",
+        doubleOrNothing:
+          typeof incomingBonusGames.doubleOrNothing === "boolean"
+            ? incomingBonusGames.doubleOrNothing
+            : Boolean(existingBonus.doubleOrNothing),
+        shieldGambit:
+          incomingBonusGames.shieldGambit ?? existingBonus.shieldGambit ?? "",
+        traitorTrio:
+          incomingBonusGames.traitorTrio ?? existingBonus.traitorTrio ?? [],
+      };
       return {
         ...player,
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
           nextBanished:
-            submission.weeklyBanished ||
-            player.weeklyPredictions?.nextBanished ||
-            "",
+            typeof incomingBanished === "string"
+              ? incomingBanished
+              : existingWeekly.nextBanished || "",
           nextMurdered:
-            submission.weeklyMurdered ||
-            player.weeklyPredictions?.nextMurdered ||
-            "",
-          bonusGames: {
-            redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
-            doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
-            shieldGambit: nextBonusGames?.shieldGambit || "",
-            traitorTrio: nextBonusGames?.traitorTrio ?? [],
-          },
+            typeof incomingMurdered === "string"
+              ? incomingMurdered
+              : existingWeekly.nextMurdered || "",
+          bonusGames: nextBonusGames,
         },
       };
     });
@@ -843,7 +890,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
             >
               <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+              {BANISHED_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -862,7 +909,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
             >
               <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+              {MURDER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
@@ -1298,7 +1345,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
                       >
                         <option value="">Next Banished</option>
-                        {CAST_NAMES.map((c) => (
+                        {BANISHED_OPTIONS.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -1310,7 +1357,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
                       >
                         <option value="">Next Murdered</option>
-                        {CAST_NAMES.map((c) => (
+                        {MURDER_OPTIONS.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>

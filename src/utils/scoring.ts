@@ -30,6 +30,9 @@ export const calculatePlayerScore = (
   gameState: GameState,
   player: PlayerEntry
 ): PlayerScore => {
+  const getWeeklyMultiplier = (entry: PlayerEntry) =>
+    entry.weeklyPredictions?.bonusGames?.doubleOrNothing ? 2 : 1;
+
   let score = 0;
   const achievements: ScoreAchievement[] = [];
   const breakdown: ScoreBreakdown = {
@@ -98,8 +101,7 @@ export const calculatePlayerScore = (
 
   const weeklyResults = gameState.weeklyResults;
   const weeklyPredictions = player.weeklyPredictions;
-  const doubleOrNothing = Boolean(weeklyPredictions?.bonusGames?.doubleOrNothing);
-  const weeklyMultiplier = doubleOrNothing ? 2 : 1;
+  const weeklyMultiplier = getWeeklyMultiplier(player);
   const weeklyCorrectPoints = 1 * weeklyMultiplier;
   const weeklyIncorrectPoints = 0.5 * weeklyMultiplier;
 
@@ -119,7 +121,11 @@ export const calculatePlayerScore = (
     }
   }
 
-  if (weeklyResults?.nextMurdered && weeklyPredictions?.nextMurdered) {
+  if (
+    weeklyResults?.nextMurdered &&
+    weeklyPredictions?.nextMurdered &&
+    weeklyResults.nextMurdered !== "No Murder"
+  ) {
     if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
       score += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "correct" });
@@ -224,6 +230,5 @@ export const calculatePlayerScore = (
       });
     }
   }
-
   return { total: score, breakdown, achievements };
 };
