@@ -249,7 +249,6 @@ export const submitWeeklyCouncilVote = async (input: {
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
-    traitorTrio?: string[];
   };
   league?: string;
 }) => {
@@ -269,7 +268,6 @@ export const submitWeeklyCouncilVote = async (input: {
           redemptionRoulette: input.bonusGames?.redemptionRoulette || "",
           doubleOrNothing: Boolean(input.bonusGames?.doubleOrNothing),
           shieldGambit: input.bonusGames?.shieldGambit || "",
-          traitorTrio: input.bonusGames?.traitorTrio ?? [],
         },
       },
     },

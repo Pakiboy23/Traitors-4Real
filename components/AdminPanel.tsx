@@ -81,7 +81,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               redemptionRoulette?: string;
               doubleOrNothing?: boolean;
               shieldGambit?: string;
-              traitorTrio?: string[];
             };
           };
         }
@@ -306,7 +305,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             redemptionRoulette: "",
             doubleOrNothing: false,
             shieldGambit: "",
-            traitorTrio: [],
           },
         },
       };
@@ -423,7 +421,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             redemptionRoulette: bonusGames?.redemptionRoulette || "",
             doubleOrNothing: Boolean(bonusGames?.doubleOrNothing),
             shieldGambit: bonusGames?.shieldGambit || "",
-            traitorTrio: bonusGames?.traitorTrio ?? [],
           },
         },
       };
@@ -454,7 +451,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
             doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
             shieldGambit: nextBonusGames?.shieldGambit || "",
-            traitorTrio: nextBonusGames?.traitorTrio ?? [],
           },
         },
       };
@@ -758,9 +754,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
-  const traitorTrioResults = bonusResults.traitorTrio?.length
-    ? bonusResults.traitorTrio
-    : ["", "", ""];
 
   return (
     <div className="w-full animate-in fade-in duration-500">
@@ -928,41 +921,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </option>
                 ))}
               </select>
-            </div>
-          </div>
-          <div className="mt-4">
-            <label className="block text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.2em]">
-              🎭 Traitor Trio (All Remaining Traitors)
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {traitorTrioResults.map((value, idx) => (
-                <select
-                  key={`traitor-trio-${idx}`}
-                  value={value}
-                  onChange={(e) => {
-                    const next = [...traitorTrioResults];
-                    next[idx] = e.target.value;
-                    updateGameState({
-                      ...gameState,
-                      weeklyResults: {
-                        ...(gameState.weeklyResults ?? {}),
-                        bonusGames: {
-                          ...(gameState.weeklyResults?.bonusGames ?? {}),
-                          traitorTrio: next,
-                        },
-                      },
-                    });
-                  }}
-                  className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
-                >
-                  <option value="">{`Select #${idx + 1}`}</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={`${idx}-${c}`} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              ))}
             </div>
           </div>
         </div>

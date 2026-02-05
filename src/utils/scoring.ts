@@ -188,42 +188,5 @@ export const calculatePlayerScore = (
     }
   }
 
-  if (bonusResults?.traitorTrio?.length && bonusPredictions?.traitorTrio?.length) {
-    const resultSet = Array.from(
-      new Set(bonusResults.traitorTrio.filter(Boolean))
-    );
-    const predictionSet = Array.from(
-      new Set(bonusPredictions.traitorTrio.filter(Boolean))
-    );
-    const correctCount = predictionSet.filter((name) =>
-      resultSet.includes(name)
-    ).length;
-    if (correctCount > 0) {
-      const points = correctCount === 3 ? 15 : correctCount * 3;
-      const perNamePoints = correctCount === 3 ? 5 : 3;
-      score += points;
-      breakdown.bonusGames.push({
-        label: "Traitor Trio Challenge",
-        result: correctCount === 3 ? "correct" : "partial",
-        points,
-      });
-      predictionSet.forEach((name) => {
-        if (!resultSet.includes(name)) return;
-        achievements.push({
-          member: name,
-          type: "Bonus: Traitor Trio",
-          points: perNamePoints,
-          icon: "🎭",
-        });
-      });
-    } else {
-      breakdown.bonusGames.push({
-        label: "Traitor Trio Challenge",
-        result: "incorrect",
-        points: 0,
-      });
-    }
-  }
-
   return { total: score, breakdown, achievements };
 };

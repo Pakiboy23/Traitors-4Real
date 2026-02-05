@@ -20,15 +20,13 @@ const getWeeklyCouncilData = (
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
-    traitorTrio?: string[];
   },
   leagueLabel?: string
 ) => {
   const header = leagueLabel
     ? `TRAITORS WEEKLY COUNCIL - ${leagueLabel}`
     : "TRAITORS WEEKLY COUNCIL";
-  const trio = bonus.traitorTrio?.filter(Boolean) ?? [];
-  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}\nTraitor Trio: ${trio.length ? trio.join(", ") : "None"}`;
+  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}`;
 };
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
@@ -40,7 +38,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [bonusRedemption, setBonusRedemption] = useState("");
   const [bonusDoubleOrNothing, setBonusDoubleOrNothing] = useState(false);
   const [bonusShield, setBonusShield] = useState("");
-  const [bonusTraitorTrio, setBonusTraitorTrio] = useState(["", "", ""]);
   const [mainSubmitted, setMainSubmitted] = useState(false);
   const [isMainSubmitting, setIsMainSubmitting] = useState(false);
 
@@ -51,11 +48,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [jrBonusRedemption, setJrBonusRedemption] = useState("");
   const [jrBonusDoubleOrNothing, setJrBonusDoubleOrNothing] = useState(false);
   const [jrBonusShield, setJrBonusShield] = useState("");
-  const [jrBonusTraitorTrio, setJrBonusTraitorTrio] = useState([
-    "",
-    "",
-    "",
-  ]);
   const [jrSubmitted, setJrSubmitted] = useState(false);
   const [isJrSubmitting, setIsJrSubmitting] = useState(false);
 
@@ -63,13 +55,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
-    traitorTrio?: string[];
   }) =>
     Boolean(
       bonus.redemptionRoulette ||
         bonus.doubleOrNothing ||
-        bonus.shieldGambit ||
-        bonus.traitorTrio?.some(Boolean)
+        bonus.shieldGambit
     );
 
   const findExistingPlayer = (league?: "main" | "jr") => {
@@ -137,7 +127,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: bonusRedemption,
         doubleOrNothing: bonusDoubleOrNothing,
         shieldGambit: bonusShield,
-        traitorTrio: bonusTraitorTrio,
       })
     ) {
       showToast("Please select at least one weekly council or bonus prediction.", "warning");
@@ -163,7 +152,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
       },
     };
@@ -182,7 +170,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
         league: "main",
       });
@@ -208,7 +195,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
         "Main League"
       )
@@ -232,7 +218,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: jrBonusRedemption,
         doubleOrNothing: jrBonusDoubleOrNothing,
         shieldGambit: jrBonusShield,
-        traitorTrio: jrBonusTraitorTrio,
       })
     ) {
       showToast("Please select at least one weekly council or bonus prediction.", "warning");
@@ -253,7 +238,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: jrBonusRedemption,
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
-          traitorTrio: jrBonusTraitorTrio,
         },
         league: "jr",
       });
@@ -279,7 +263,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: jrBonusRedemption,
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
-          traitorTrio: jrBonusTraitorTrio,
         },
         "Jr. League"
       )
@@ -346,15 +329,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <p className="mt-2">
                 Guess who wins the next shield. +5 points if correct, with an extra +3 bonus when
                 you’re in the red.
-              </p>
-            </div>
-            <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-200 font-semibold">
-                🎭 Traitor Trio Challenge
-              </p>
-              <p className="mt-2">
-                Call all three remaining traitors. Hit all 3 for +15 points, or get +3 for each
-                correct guess.
               </p>
             </div>
           </div>
@@ -483,13 +457,17 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         ))}
                       </select>
                     </div>
-                    <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
+                    <label
+                      htmlFor="main-double-or-nothing"
+                      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100"
+                    >
                       <span>Double or Nothing</span>
                       <input
+                        id="main-double-or-nothing"
                         type="checkbox"
                         checked={bonusDoubleOrNothing}
                         onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                        className="h-4 w-4 cursor-pointer rounded border-amber-300 text-amber-400 focus:ring-amber-300"
                       />
                     </label>
                     <div>
@@ -509,34 +487,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div>
-                      <p className="text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Traitor Trio Challenge
-                      </p>
-                      <div className="grid grid-cols-1 gap-3">
-                        {bonusTraitorTrio.map((value, idx) => (
-                          <select
-                            key={`main-trio-${idx}`}
-                            value={value}
-                            onChange={(e) =>
-                              setBonusTraitorTrio((prev) => {
-                                const next = [...prev];
-                                next[idx] = e.target.value;
-                                return next;
-                              })
-                            }
-                            className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-fuchsia-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                          >
-                            <option value="">{`Select #${idx + 1}`}</option>
-                            {CAST_NAMES.map((c) => (
-                              <option key={`${idx}-${c}`} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -677,13 +627,17 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       ))}
                     </select>
                   </div>
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
+                  <label
+                    htmlFor="jr-double-or-nothing"
+                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100"
+                  >
                     <span>Double or Nothing</span>
                     <input
+                      id="jr-double-or-nothing"
                       type="checkbox"
                       checked={jrBonusDoubleOrNothing}
                       onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                      className="h-4 w-4 cursor-pointer rounded border-amber-300 text-amber-400 focus:ring-amber-300"
                     />
                   </label>
                   <div>
@@ -703,34 +657,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         </option>
                       ))}
                     </select>
-                  </div>
-                  <div>
-                    <p className="text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Traitor Trio Challenge
-                    </p>
-                    <div className="grid grid-cols-1 gap-3">
-                      {jrBonusTraitorTrio.map((value, idx) => (
-                        <select
-                          key={`jr-trio-${idx}`}
-                          value={value}
-                          onChange={(e) =>
-                            setJrBonusTraitorTrio((prev) => {
-                              const next = [...prev];
-                              next[idx] = e.target.value;
-                              return next;
-                            })
-                          }
-                          className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-fuchsia-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                        >
-                          <option value="">{`Select #${idx + 1}`}</option>
-                          {CAST_NAMES.map((c) => (
-                            <option key={`${idx}-${c}`} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      ))}
-                    </div>
                   </div>
                 </div>
               </div>

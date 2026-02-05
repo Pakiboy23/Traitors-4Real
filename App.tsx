@@ -28,16 +28,6 @@ import {
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
-const DEFAULT_WEEKLY_RESULTS = {
-  nextBanished: "",
-  nextMurdered: "",
-  bonusGames: {
-    redemptionRoulette: "",
-    shieldGambit: "",
-    traitorTrio: [],
-  },
-};
-
 const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
@@ -89,8 +79,6 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
             player.weeklyPredictions?.bonusGames?.doubleOrNothing
           ),
           shieldGambit: player.weeklyPredictions?.bonusGames?.shieldGambit ?? "",
-          traitorTrio:
-            player.weeklyPredictions?.bonusGames?.traitorTrio ?? [],
         },
       },
     } as PlayerEntry;
@@ -102,11 +90,20 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
     ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
     : [];
+  const weeklyResults = {
+    nextBanished: input?.weeklyResults?.nextBanished ?? "",
+    nextMurdered: input?.weeklyResults?.nextMurdered ?? "",
+    bonusGames: {
+      redemptionRoulette:
+        input?.weeklyResults?.bonusGames?.redemptionRoulette ?? "",
+      shieldGambit: input?.weeklyResults?.bonusGames?.shieldGambit ?? "",
+    },
+  };
 
   return {
     players: normalizedPlayers,
     castStatus,
-    weeklyResults: input?.weeklyResults ?? DEFAULT_WEEKLY_RESULTS,
+    weeklyResults,
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
   };

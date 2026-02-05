@@ -29,13 +29,11 @@ export interface BonusGamePredictions {
   redemptionRoulette?: string;
   doubleOrNothing?: boolean;
   shieldGambit?: string;
-  traitorTrio?: string[];
 }
 
 export interface BonusGameResults {
   redemptionRoulette?: string;
   shieldGambit?: string;
-  traitorTrio?: string[];
 }
 
 export interface WeeklyScoreSnapshot {
