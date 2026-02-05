@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { CAST_NAMES, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
-import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
 
 interface WeeklyCouncilProps {
@@ -274,29 +273,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     setJrSubmitted(true);
   };
 
-  const mainPlayerMatch = findExistingPlayer("main");
-  const mainScoreTotal = mainPlayerMatch
-    ? calculatePlayerScore(gameState, mainPlayerMatch).total
-    : null;
-  const hasMainDouble = mainScoreTotal !== null && mainScoreTotal < 0;
-
-  const jrPlayerMatch = findExistingJrPlayer();
-  const jrScoreTotal = jrPlayerMatch
-    ? calculatePlayerScore(gameState, jrPlayerMatch).total
-    : null;
-  const hasJrDouble = jrScoreTotal !== null && jrScoreTotal < 0;
-
-  useEffect(() => {
-    if (!hasMainDouble && bonusDoubleOrNothing) {
-      setBonusDoubleOrNothing(false);
-    }
-  }, [hasMainDouble, bonusDoubleOrNothing]);
-
-  useEffect(() => {
-    if (!hasJrDouble && jrBonusDoubleOrNothing) {
-      setJrBonusDoubleOrNothing(false);
-    }
-  }, [hasJrDouble, jrBonusDoubleOrNothing]);
+  const hasMainDouble = bonusDoubleOrNothing;
+  const hasJrDouble = jrBonusDoubleOrNothing;
 
   return (
     <div className="space-y-12">
@@ -445,7 +423,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                           : "border-amber-400/30 bg-black/40 text-amber-200"
                       }`}
                     >
-                      {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
+                      {hasMainDouble ? "2x Boost On" : "2x Boost Off"}
                     </span>
                   </div>
                   <p className="text-xs text-zinc-300 leading-relaxed">
@@ -477,8 +455,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         type="checkbox"
                         checked={bonusDoubleOrNothing}
                         onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                        disabled={!hasMainDouble}
-                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
                       />
                     </label>
                     <div>
@@ -612,7 +589,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         : "border-amber-400/30 bg-black/40 text-amber-200"
                     }`}
                   >
-                    {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}
+                    {hasJrDouble ? "2x Boost On" : "2x Boost Off"}
                   </span>
                 </div>
                 <p className="text-xs text-zinc-300 leading-relaxed">
@@ -644,8 +621,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       type="checkbox"
                       checked={jrBonusDoubleOrNothing}
                       onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                      disabled={!hasJrDouble}
-                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
                     />
                   </label>
                   <div>
