@@ -1,0 +1,78 @@
+name: Deploy (Fly)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  PB_APP: traitorsfantasydraft-pb
+  WEB_APP: traitorsfantasydraft-web
+  PB_URL: https://api.traitorsfantasydraft.online
+  WEB_URL: https://traitorsfantasydraft.online
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy PocketBase
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy -a "${PB_APP}"
+
+      - name: Smoke check PocketBase
+        run: |
+          set -e
+          for i in {1..20}; do
+            echo "Attempt $i..."
+            if curl -fsS "${PB_URL}/api/health" >/dev/null; then
+              echo "PocketBase healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "PocketBase health check failed"
+          exit 1
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: deploy-backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Frontend (uses fly.frontend.toml)
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl deploy -c fly.frontend.toml -a "${WEB_APP}"
+
+      - name: Smoke check Frontend
+        run: |
+          set -e
+          for i in {1..20}; do
+            echo "Attempt $i..."
+            if curl -fsS "${WEB_URL}/status" >/dev/null; then
+              echo "Frontend healthy"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Frontend health check failed"
+          exit 1
