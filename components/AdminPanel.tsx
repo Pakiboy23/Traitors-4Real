@@ -915,7 +915,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
         <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score weekly council picks</p>
 
-        <div className="mt-6 pt-6 border-t border-zinc-800">
+        <div className="mt-6 pt-6 border-t soft-divider">
           <h4 className="text-sm gothic-font text-[color:var(--accent)] uppercase tracking-[0.24em] mb-4">
             Bonus Game Results
           </h4>
@@ -1054,7 +1054,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               return (
                 <div
                   key={snapshot.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
                 >
                   <div className="space-y-1">
                     <p className="text-sm text-white font-semibold">{snapshot.label}</p>
@@ -1124,7 +1124,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             return (
               <div
                 key={submission.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
               >
                 <div className="space-y-1">
                   <p className="text-sm text-white font-semibold">
@@ -1236,7 +1236,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               return (
                 <div
                   key={entry.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-zinc-800 bg-black/40"
+                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
                 >
                   <div className="space-y-1">
                     <p className="text-sm text-white font-semibold">
@@ -1291,7 +1291,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               return (
                 <React.Fragment key={player.id}>
                   <div
-                    className={`flex justify-between items-center p-3 rounded border transition-all cursor-pointer ${selectedPlayer?.id === player.id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'bg-black/40 border-zinc-800 hover:border-zinc-700'}`}
+                    className={`flex justify-between items-center p-3 rounded-2xl soft-card soft-card-subtle transition-all cursor-pointer ${selectedPlayer?.id === player.id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'border-zinc-700/60 hover:border-zinc-600'}`}
                     onClick={() => setSelectedPlayer(player)}
                   >
                     <div className="flex items-center gap-3">
@@ -1321,7 +1321,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                   </div>
                   <div
-                    className="mt-2 mb-4 rounded-2xl border border-zinc-800 bg-black/30 p-3"
+                    className="mt-2 mb-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/50 p-3"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -1445,7 +1445,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-zinc-800 bg-black/40">
+              <div className="p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60">
                 <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Player</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -1493,7 +1493,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl border border-zinc-800 bg-black/40">
+              <div className="p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60">
                 <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Weekly Council</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
@@ -1593,7 +1593,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               ? "bg-black/80 border-fuchsia-400/70 shadow-[0_0_24px_rgba(232,121,249,0.45)]"
               : "bg-black/70 border-zinc-800";
             return (
-              <div key={name} className={`p-4 rounded-2xl border space-y-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ${cardClass}`}>
+              <div key={name} className={`p-4 rounded-2xl soft-card space-y-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ${cardClass}`}>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
