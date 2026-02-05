@@ -36,6 +36,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastWriteError,
   onSaveNow,
 }) => {
+  const BANISHED_OPTIONS = CAST_NAMES;
+  const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
   const defaultStatus = {
     isWinner: false,
     isFirstOut: false,
@@ -439,14 +441,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
-          nextBanished:
-            submission.weeklyBanished ||
-            player.weeklyPredictions?.nextBanished ||
-            "",
-          nextMurdered:
-            submission.weeklyMurdered ||
-            player.weeklyPredictions?.nextMurdered ||
-            "",
+          nextBanished: submission.weeklyBanished || "",
+          nextMurdered: submission.weeklyMurdered || "",
           bonusGames: {
             redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
             doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
@@ -836,7 +832,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
             >
               <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+              {BANISHED_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
@@ -855,7 +851,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
             >
               <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
+              {MURDER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
         </div>
@@ -1256,7 +1252,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
                       >
                         <option value="">Next Banished</option>
-                        {CAST_NAMES.map((c) => (
+                        {BANISHED_OPTIONS.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -1268,7 +1264,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
                       >
                         <option value="">Next Murdered</option>
-                        {CAST_NAMES.map((c) => (
+                        {MURDER_OPTIONS.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -1417,7 +1413,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {BANISHED_OPTIONS.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -1434,7 +1430,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {MURDER_OPTIONS.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>

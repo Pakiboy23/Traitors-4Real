@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { CAST_NAMES, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
 import { calculatePlayerScore } from "../src/utils/scoring";
@@ -10,6 +10,8 @@ interface WeeklyCouncilProps {
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
+const BANISHED_OPTIONS = CAST_NAMES;
+const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
 
 const getWeeklyCouncilData = (
   name: string,
@@ -284,6 +286,18 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     : null;
   const hasJrDouble = jrScoreTotal !== null && jrScoreTotal < 0;
 
+  useEffect(() => {
+    if (!hasMainDouble && bonusDoubleOrNothing) {
+      setBonusDoubleOrNothing(false);
+    }
+  }, [hasMainDouble, bonusDoubleOrNothing]);
+
+  useEffect(() => {
+    if (!hasJrDouble && jrBonusDoubleOrNothing) {
+      setJrBonusDoubleOrNothing(false);
+    }
+  }, [hasJrDouble, jrBonusDoubleOrNothing]);
+
   return (
     <div className="space-y-12">
       <div className="text-center space-y-3">
@@ -388,7 +402,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {BANISHED_OPTIONS.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -406,7 +420,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {MURDER_OPTIONS.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -457,17 +471,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         ))}
                       </select>
                     </div>
-                    <label
-                      htmlFor="main-double-or-nothing"
-                      className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100"
-                    >
+                    <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
                       <span>Double or Nothing</span>
                       <input
-                        id="main-double-or-nothing"
                         type="checkbox"
                         checked={bonusDoubleOrNothing}
                         onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                        className="h-4 w-4 cursor-pointer rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                        disabled={!hasMainDouble}
+                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
                     <div>
@@ -558,7 +569,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
-                    {CAST_NAMES.map((c) => (
+                    {BANISHED_OPTIONS.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -576,7 +587,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
-                    {CAST_NAMES.map((c) => (
+                    {MURDER_OPTIONS.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -627,17 +638,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       ))}
                     </select>
                   </div>
-                  <label
-                    htmlFor="jr-double-or-nothing"
-                    className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100"
-                  >
+                  <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
                     <span>Double or Nothing</span>
                     <input
-                      id="jr-double-or-nothing"
                       type="checkbox"
                       checked={jrBonusDoubleOrNothing}
                       onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                      className="h-4 w-4 cursor-pointer rounded border-amber-300 text-amber-400 focus:ring-amber-300"
+                      disabled={!hasJrDouble}
+                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                     />
                   </label>
                   <div>
