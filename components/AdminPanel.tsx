@@ -71,6 +71,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const normalizeEmpty = <T,>(value: T | null | undefined) => {
+    if (value === undefined || value === null || value === "") return null;
+    return value;
+  };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
     const payload = submission.payload as { league?: string } | undefined;
     return payload?.league === "jr" ? "jr" : "main";
@@ -78,6 +82,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const getSubmissionBonusGames = (submission: SubmissionRecord) => {
     const payload = submission.payload as
       | {
+          playerId?: string;
           bonusGames?: {
             redemptionRoulette?: string;
             doubleOrNothing?: boolean;
@@ -93,6 +98,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       | undefined;
     return payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
+  };
+  const getSubmissionPlayerId = (submission: SubmissionRecord) => {
+    const payload = submission.payload as { playerId?: string } | undefined;
+    return payload?.playerId ?? null;
   };
   const HISTORY_LIMIT = 200;
 
@@ -129,6 +138,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     submission: SubmissionRecord,
     league: "main" | "jr"
   ) => {
+    const playerId = getSubmissionPlayerId(submission);
+    if (playerId) {
+      const idx = players.findIndex((p) => p.id === playerId);
+      if (idx !== -1) return { index: idx, type: "id" as const };
+    }
     const email = normalize(submission.email || "");
     if (email) {
       const idx = players.findIndex((p) => {
@@ -405,6 +419,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const bonusGames = getSubmissionBonusGames(submission);
+    const incomingBanished = normalizeEmpty(submission.weeklyBanished);
+    const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
+    const incomingBonusGames = {
+      redemptionRoulette: normalizeEmpty(bonusGames?.redemptionRoulette) ?? undefined,
+      doubleOrNothing:
+        typeof bonusGames?.doubleOrNothing === "boolean"
+          ? bonusGames?.doubleOrNothing
+          : undefined,
+      shieldGambit: normalizeEmpty(bonusGames?.shieldGambit) ?? undefined,
+    };
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
       const normalizedEmail = normalize(submission.email || "");
@@ -422,12 +446,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predWinner: "",
         predTraitors: [],
         weeklyPredictions: {
-          nextBanished: submission.weeklyBanished || "",
-          nextMurdered: submission.weeklyMurdered || "",
+          nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
+          nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
           bonusGames: {
-            redemptionRoulette: bonusGames?.redemptionRoulette || "",
-            doubleOrNothing: Boolean(bonusGames?.doubleOrNothing),
-            shieldGambit: bonusGames?.shieldGambit || "",
+            redemptionRoulette: incomingBonusGames.redemptionRoulette ?? "",
+            doubleOrNothing: Boolean(incomingBonusGames.doubleOrNothing),
+            shieldGambit: incomingBonusGames.shieldGambit ?? "",
           },
         },
       };
@@ -439,20 +463,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const updatedPlayers = players.map((player, idx) => {
       if (idx !== match.index) return player;
-      const nextBonusGames =
-        bonusGames ?? player.weeklyPredictions?.bonusGames ?? {};
+      const existingWeekly = player.weeklyPredictions ?? {
+        nextBanished: "",
+        nextMurdered: "",
+        bonusGames: {},
+      };
+      const existingBonus = existingWeekly.bonusGames ?? {};
+      const nextBonusGames = {
+        redemptionRoulette:
+          incomingBonusGames.redemptionRoulette ?? existingBonus.redemptionRoulette ?? "",
+        doubleOrNothing:
+          typeof incomingBonusGames.doubleOrNothing === "boolean"
+            ? incomingBonusGames.doubleOrNothing
+            : Boolean(existingBonus.doubleOrNothing),
+        shieldGambit:
+          incomingBonusGames.shieldGambit ?? existingBonus.shieldGambit ?? "",
+      };
       return {
         ...player,
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
-          nextBanished: submission.weeklyBanished || "",
-          nextMurdered: submission.weeklyMurdered || "",
-          bonusGames: {
-            redemptionRoulette: nextBonusGames?.redemptionRoulette || "",
-            doubleOrNothing: Boolean(nextBonusGames?.doubleOrNothing),
-            shieldGambit: nextBonusGames?.shieldGambit || "",
-          },
+          nextBanished:
+            typeof incomingBanished === "string"
+              ? incomingBanished
+              : existingWeekly.nextBanished || "",
+          nextMurdered:
+            typeof incomingMurdered === "string"
+              ? incomingMurdered
+              : existingWeekly.nextMurdered || "",
+          bonusGames: nextBonusGames,
         },
       };
     });
