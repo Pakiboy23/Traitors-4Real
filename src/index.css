@@ -19,8 +19,8 @@
   --muted: #b8b1a6;
   --success: #00E5A8;
   --danger: #FF2D55;
-  --input-bg: #0a0a0f;
-  --input-border: #27272a;
+  --input-bg: rgba(8, 8, 12, 0.72);
+  --input-border: rgba(255, 255, 255, 0.1);
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
@@ -45,8 +45,8 @@ body.light-mode {
   --crimson: #7b1f2d;
   --text: #1a1a1f;
   --muted: #5a5850;
-  --input-bg: #ffffff;
-  --input-border: #d4d4d8;
+  --input-bg: rgba(255, 255, 255, 0.88);
+  --input-border: rgba(123, 31, 45, 0.18);
 }
 
 body.light-mode {
@@ -193,7 +193,8 @@ body {
     border: 1px solid var(--input-border);
     color: var(--text);
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   }
 
   .input-base:focus {
@@ -208,6 +209,21 @@ body {
   .input-base:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .field-soft {
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .field-soft:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(214, 179, 106, 0.15);
+  }
+
+  body.light-mode .field-soft:focus {
+    box-shadow: 0 0 0 3px rgba(123, 31, 45, 0.15);
   }
 
   /* Standardized button styles */
