@@ -25,7 +25,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
 
   return (
     <div className="max-w-md mx-auto mt-16 animate-in fade-in slide-in-from-top-4 duration-500">
-      <div className="glass-panel border border-red-900/60 p-8 rounded-2xl text-center relative overflow-hidden">
+      <div className="glass-panel p-8 rounded-2xl text-center relative overflow-hidden">
         {/* Visual Flourish */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-600 to-transparent opacity-50" />
 
@@ -47,7 +47,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email"
-              className={`w-full bg-[color:var(--input-bg)] border ${
+              className={`w-full field-soft ${
                 error ? 'border-red-600 animate-shake' : 'border-[color:var(--input-border)]'
               } p-4 rounded text-center text-[color:var(--accent)] focus:border-[color:var(--accent)] outline-none transition-all gothic-font tracking-[0.2em]`}
               autoComplete="email"
@@ -63,7 +63,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
-              className={`w-full bg-[color:var(--input-bg)] border ${
+              className={`w-full field-soft ${
                 error ? 'border-red-600 animate-shake' : 'border-[color:var(--input-border)]'
               } p-4 rounded text-center text-[color:var(--accent)] focus:border-[color:var(--accent)] outline-none transition-all gothic-font tracking-[0.2em]`}
               autoComplete="current-password"
@@ -81,7 +81,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-4 bg-black/60 border border-red-900/60 text-red-100 hover:bg-red-900/40 transition-all gothic-font uppercase tracking-[0.25em] text-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 soft-card soft-card-subtle border-red-900/50 text-red-100 hover:bg-red-900/30 transition-all gothic-font uppercase tracking-[0.25em] text-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             aria-busy={isSubmitting}
           >
             {isSubmitting && <span className="loading-spinner" aria-hidden="true" />}

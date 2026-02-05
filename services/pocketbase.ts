@@ -162,7 +162,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
     const firstPage = await pb
       .collection(SUBMISSIONS_COLLECTION)
       .getList<SubmissionRecord>(1, perPage, {
-        sort: "-created",
+        sort: "-id",
         filter: 'kind="weekly"',
       });
     const items = [...firstPage.items];
@@ -170,7 +170,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
       const nextPage = await pb
         .collection(SUBMISSIONS_COLLECTION)
         .getList<SubmissionRecord>(page, perPage, {
-          sort: "-created",
+          sort: "-id",
           filter: 'kind="weekly"',
         });
       items.push(...nextPage.items);
@@ -185,7 +185,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
   try {
     const params = new URLSearchParams({
       perPage: "200",
-      sort: "-created",
+      sort: "-id",
       filter: 'kind="weekly"',
     });
     const headers: Record<string, string> = {};

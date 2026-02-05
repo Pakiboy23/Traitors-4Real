@@ -22,15 +22,13 @@ const getWeeklyCouncilData = (
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
-    traitorTrio?: string[];
   },
   leagueLabel?: string
 ) => {
   const header = leagueLabel
     ? `TRAITORS WEEKLY COUNCIL - ${leagueLabel}`
     : "TRAITORS WEEKLY COUNCIL";
-  const trio = bonus.traitorTrio?.filter(Boolean) ?? [];
-  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}\nTraitor Trio: ${trio.length ? trio.join(", ") : "None"}`;
+  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}`;
 };
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
@@ -42,7 +40,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [bonusRedemption, setBonusRedemption] = useState("");
   const [bonusDoubleOrNothing, setBonusDoubleOrNothing] = useState(false);
   const [bonusShield, setBonusShield] = useState("");
-  const [bonusTraitorTrio, setBonusTraitorTrio] = useState(["", "", ""]);
   const [mainSubmitted, setMainSubmitted] = useState(false);
   const [isMainSubmitting, setIsMainSubmitting] = useState(false);
 
@@ -53,11 +50,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [jrBonusRedemption, setJrBonusRedemption] = useState("");
   const [jrBonusDoubleOrNothing, setJrBonusDoubleOrNothing] = useState(false);
   const [jrBonusShield, setJrBonusShield] = useState("");
-  const [jrBonusTraitorTrio, setJrBonusTraitorTrio] = useState([
-    "",
-    "",
-    "",
-  ]);
   const [jrSubmitted, setJrSubmitted] = useState(false);
   const [isJrSubmitting, setIsJrSubmitting] = useState(false);
 
@@ -65,13 +57,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
-    traitorTrio?: string[];
   }) =>
     Boolean(
       bonus.redemptionRoulette ||
         bonus.doubleOrNothing ||
-        bonus.shieldGambit ||
-        bonus.traitorTrio?.some(Boolean)
+        bonus.shieldGambit
     );
 
   const findExistingPlayer = (league?: "main" | "jr") => {
@@ -139,7 +129,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: bonusRedemption,
         doubleOrNothing: bonusDoubleOrNothing,
         shieldGambit: bonusShield,
-        traitorTrio: bonusTraitorTrio,
       })
     ) {
       showToast("Please select at least one weekly council or bonus prediction.", "warning");
@@ -165,7 +154,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
       },
     };
@@ -184,7 +172,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
         league: "main",
       });
@@ -210,7 +197,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
-          traitorTrio: bonusTraitorTrio,
         },
         "Main League"
       )
@@ -234,7 +220,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: jrBonusRedemption,
         doubleOrNothing: jrBonusDoubleOrNothing,
         shieldGambit: jrBonusShield,
-        traitorTrio: jrBonusTraitorTrio,
       })
     ) {
       showToast("Please select at least one weekly council or bonus prediction.", "warning");
@@ -255,7 +240,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: jrBonusRedemption,
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
-          traitorTrio: jrBonusTraitorTrio,
         },
         league: "jr",
       });
@@ -281,7 +265,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: jrBonusRedemption,
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
-          traitorTrio: jrBonusTraitorTrio,
         },
         "Jr. League"
       )
@@ -350,15 +333,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 you’re in the red.
               </p>
             </div>
-            <div className="soft-card soft-card-subtle border-fuchsia-400/30 bg-fuchsia-500/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-200 font-semibold">
-                🎭 Traitor Trio Challenge
-              </p>
-              <p className="mt-2">
-                Call all three remaining traitors. Hit all 3 for +15 points, or get +3 for each
-                correct guess.
-              </p>
-            </div>
           </div>
         </aside>
 
@@ -389,7 +363,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       placeholder="Name"
                       value={playerName}
                       onChange={(e) => setPlayerName(e.target.value)}
-                      className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                      className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                       aria-required="true"
                     />
                   </div>
@@ -401,7 +375,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       placeholder="Email"
                       value={playerEmail}
                       onChange={(e) => setPlayerEmail(e.target.value)}
-                      className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                      className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                       aria-required="true"
                     />
                   </div>
@@ -413,7 +387,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       id="main-banished"
                       value={weeklyBanished}
                       onChange={(e) => setWeeklyBanished(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
                       {BANISHED_OPTIONS.map((c) => (
@@ -431,7 +405,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       id="main-murdered"
                       value={weeklyMurdered}
                       onChange={(e) => setWeeklyMurdered(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
                       {MURDER_OPTIONS.map((c) => (
@@ -475,7 +449,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         id="main-redemption"
                         value={bonusRedemption}
                         onChange={(e) => setBonusRedemption(e.target.value)}
-                        className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
+                        className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                       >
                         <option value="">Select...</option>
                         {CAST_NAMES.map((c) => (
@@ -494,15 +468,15 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
                       />
                     </label>
-                    <div>
-                      <label htmlFor="main-shield" className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Shield Gambit
-                      </label>
-                      <select
+                  <div>
+                    <label htmlFor="main-shield" className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                      Shield Gambit
+                    </label>
+                    <select
                         id="main-shield"
                         value={bonusShield}
                         onChange={(e) => setBonusShield(e.target.value)}
-                        className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
+                        className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                       >
                         <option value="">Select...</option>
                         {CAST_NAMES.map((c) => (
@@ -511,34 +485,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                           </option>
                         ))}
                       </select>
-                    </div>
-                    <div>
-                      <p className="text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Traitor Trio Challenge
-                      </p>
-                      <div className="grid grid-cols-1 gap-3">
-                        {bonusTraitorTrio.map((value, idx) => (
-                          <select
-                            key={`main-trio-${idx}`}
-                            value={value}
-                            onChange={(e) =>
-                              setBonusTraitorTrio((prev) => {
-                                const next = [...prev];
-                                next[idx] = e.target.value;
-                                return next;
-                              })
-                            }
-                            className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-fuchsia-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                          >
-                            <option value="">{`Select #${idx + 1}`}</option>
-                            {CAST_NAMES.map((c) => (
-                              <option key={`${idx}-${c}`} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -583,7 +529,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     placeholder="Name"
                     value={jrName}
                     onChange={(e) => setJrName(e.target.value)}
-                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                     aria-required="true"
                   />
                 </div>
@@ -595,7 +541,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     placeholder="Email"
                     value={jrEmail}
                     onChange={(e) => setJrEmail(e.target.value)}
-                    className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                    className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                     aria-required="true"
                   />
                 </div>
@@ -607,7 +553,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     id="jr-banished"
                     value={jrWeeklyBanished}
                     onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
+                    className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {BANISHED_OPTIONS.map((c) => (
@@ -625,7 +571,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     id="jr-murdered"
                     value={jrWeeklyMurdered}
                     onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                    className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-sm text-[color:var(--text)] text-center transition-colors"
+                    className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
                     {MURDER_OPTIONS.map((c) => (
@@ -669,7 +615,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       id="jr-redemption"
                       value={jrBonusRedemption}
                       onChange={(e) => setJrBonusRedemption(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
+                      className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
                       {CAST_NAMES.map((c) => (
@@ -696,44 +642,16 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       id="jr-shield"
                       value={jrBonusShield}
                       onChange={(e) => setJrBonusShield(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
+                      className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
                       {CAST_NAMES.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <p className="text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Traitor Trio Challenge
-                    </p>
-                    <div className="grid grid-cols-1 gap-3">
-                      {jrBonusTraitorTrio.map((value, idx) => (
-                        <select
-                          key={`jr-trio-${idx}`}
-                          value={value}
-                          onChange={(e) =>
-                            setJrBonusTraitorTrio((prev) => {
-                              const next = [...prev];
-                              next[idx] = e.target.value;
-                              return next;
-                            })
-                          }
-                          className="w-full p-3.5 rounded-xl bg-[color:var(--input-bg)] border border-fuchsia-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                        >
-                          <option value="">{`Select #${idx + 1}`}</option>
-                          {CAST_NAMES.map((c) => (
-                            <option key={`${idx}-${c}`} value={c}>
-                              {c}
-                            </option>
-                          ))}
-                        </select>
-                      ))}
+                        ))}
+                      </select>
                     </div>
-                  </div>
                 </div>
               </div>
               <button

@@ -805,9 +805,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
-  const traitorTrioResults = bonusResults.traitorTrio?.length
-    ? bonusResults.traitorTrio
-    : ["", "", ""];
 
   return (
     <div className="w-full animate-in fade-in duration-500">
@@ -863,7 +860,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="glass-panel py-6 px-12 rounded-2xl animate-in slide-in-from-top-4">
           <h3 className="text-[color:var(--accent)] gothic-font mb-3 uppercase text-base">Data Import (JSON)</h3>
           <textarea 
-            className="w-full h-36 bg-zinc-950 text-xs font-mono p-5 border border-zinc-800 rounded-2xl text-zinc-400 focus:border-[#D4AF37] outline-none"
+            className="w-full h-36 field-soft text-xs font-mono p-5 rounded-2xl text-zinc-400 focus:border-[#D4AF37] outline-none"
             defaultValue={JSON.stringify(gameState, null, 2)}
             onChange={handleTomeImport}
             placeholder="Paste JSON Tome here to overwrite database..."
@@ -887,7 +884,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   },
                 })
               }
-              className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+              className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
               <option value="">Select...</option>
               {BANISHED_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -906,7 +903,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   },
                 })
               }
-              className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+              className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
               <option value="">Select...</option>
               {MURDER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -938,7 +935,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     },
                   })
                 }
-                className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+                className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
                 {CAST_NAMES.map((c) => (
@@ -946,7 +943,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {c}
                   </option>
                 ))}
-              </select>
+                </select>
             </div>
             <div>
               <label className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.2em]">
@@ -966,7 +963,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     },
                   })
                 }
-                className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+                className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
                 {CAST_NAMES.map((c) => (
@@ -974,42 +971,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     {c}
                   </option>
                 ))}
-              </select>
-            </div>
-          </div>
-          <div className="mt-4">
-            <label className="block text-xs text-fuchsia-300 font-semibold mb-2 uppercase tracking-[0.2em]">
-              🎭 Traitor Trio (All Remaining Traitors)
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {traitorTrioResults.map((value, idx) => (
-                <select
-                  key={`traitor-trio-${idx}`}
-                  value={value}
-                  onChange={(e) => {
-                    const next = [...traitorTrioResults];
-                    next[idx] = e.target.value;
-                    updateGameState({
-                      ...gameState,
-                      weeklyResults: {
-                        ...(gameState.weeklyResults ?? {}),
-                        bonusGames: {
-                          ...(gameState.weeklyResults?.bonusGames ?? {}),
-                          traitorTrio: next,
-                        },
-                      },
-                    });
-                  }}
-                  className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
-                >
-                  <option value="">{`Select #${idx + 1}`}</option>
-                  {CAST_NAMES.map((c) => (
-                    <option key={`${idx}-${c}`} value={c}>
-                      {c}
-                    </option>
-                  ))}
                 </select>
-              ))}
             </div>
           </div>
         </div>
@@ -1329,20 +1291,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         type="text"
                         value={edit.name}
                         onChange={(e) => updateInlineEdit(player, { name: e.target.value })}
-                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
                         placeholder="Name"
                       />
                       <input
                         type="email"
                         value={edit.email}
                         onChange={(e) => updateInlineEdit(player, { email: e.target.value })}
-                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
                         placeholder="Email"
                       />
                       <select
                         value={edit.weeklyBanished}
                         onChange={(e) => updateInlineEdit(player, { weeklyBanished: e.target.value })}
-                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
                       >
                         <option value="">Next Banished</option>
                         {BANISHED_OPTIONS.map((c) => (
@@ -1354,7 +1316,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       <select
                         value={edit.weeklyMurdered}
                         onChange={(e) => updateInlineEdit(player, { weeklyMurdered: e.target.value })}
-                        className="w-full p-2 rounded-lg bg-black border border-zinc-800 text-xs text-white"
+                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
                       >
                         <option value="">Next Murdered</option>
                         {MURDER_OPTIONS.map((c) => (
@@ -1388,7 +1350,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <textarea 
               value={pasteContent}
               onChange={(e) => setPasteContent(e.target.value)}
-              className="w-full h-28 bg-black border border-zinc-800 p-4 rounded-2xl text-xs font-mono text-zinc-400 focus:border-[#D4AF37] outline-none"
+              className="w-full h-28 field-soft p-4 rounded-2xl text-xs font-mono text-zinc-400 focus:border-[#D4AF37] outline-none"
               placeholder="Paste submission text or spreadsheet rows here..."
             />
             <button onClick={parseAndAdd} className="w-full mt-2 py-2 bg-[color:var(--accent)] text-black text-xs font-bold rounded-full uppercase hover:bg-[color:var(--accent-strong)] transition-all">
@@ -1456,7 +1418,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="text"
                       value={editPlayerName}
                       onChange={(e) => setEditPlayerName(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     />
                   </div>
                   <div>
@@ -1467,7 +1429,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       type="email"
                       value={editPlayerEmail}
                       onChange={(e) => setEditPlayerEmail(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     />
                   </div>
                 </div>
@@ -1503,7 +1465,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <select
                       value={editWeeklyBanished}
                       onChange={(e) => setEditWeeklyBanished(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
                       {CAST_NAMES.map((c) => (
@@ -1520,7 +1482,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <select
                       value={editWeeklyMurdered}
                       onChange={(e) => setEditWeeklyMurdered(e.target.value)}
-                      className="w-full p-3.5 rounded-xl bg-black border border-zinc-800 text-sm text-white"
+                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
                       {CAST_NAMES.map((c) => (

@@ -190,7 +190,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                   placeholder="Name"
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                  className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                   aria-required="true"
                 />
               </div>
@@ -203,7 +203,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                   placeholder="Email"
                   value={playerEmail}
                   onChange={(e) => setPlayerEmail(e.target.value)}
-                  className="w-full p-4 rounded-xl bg-[color:var(--input-bg)] border border-[color:var(--input-border)] text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
+                  className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
                   aria-required="true"
                 />
               </div>
@@ -319,12 +319,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         disabled={isSealed}
                         value={pick.member}
                         onChange={(e) => updatePick(i, 'member', e.target.value)}
-                        className={`w-full p-3.5 text-sm rounded-2xl bg-zinc-950 border text-white outline-none transition-colors font-semibold ${
+                        className={`w-full p-3.5 text-sm rounded-2xl field-soft text-white outline-none transition-colors font-semibold ${
                           isSealed
-                            ? 'border-zinc-800 text-zinc-500'
+                            ? 'border-zinc-800/60 text-zinc-500'
                             : isDuplicate
                             ? 'border-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]'
-                            : 'border-zinc-800 focus:border-[color:var(--accent-strong)] focus:bg-[rgba(217,221,227,0.12)]'
+                            : 'border-[color:var(--input-border)] focus:border-[color:var(--accent-strong)] focus:bg-[rgba(217,221,227,0.12)]'
                         }`}
                       >
                         <option value="">Choose Player...</option>
@@ -345,7 +345,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                           max="10"
                           value={pick.rank}
                           onChange={(e) => updatePick(i, 'rank', parseInt(e.target.value))}
-                          className={`w-full p-3.5 rounded-xl text-center text-sm bg-zinc-950 border border-zinc-800 outline-none ${
+                          className={`w-full p-3.5 rounded-xl text-center text-sm field-soft outline-none ${
                             isSealed ? 'text-zinc-600' : 'text-white'
                           }`}
                         />
@@ -412,7 +412,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                   <select
                     value={predFirstOut}
                     onChange={(e) => setPredFirstOut(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+                    className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -429,7 +429,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                   <select
                     value={predWinner}
                     onChange={(e) => setPredWinner(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl bg-black border border-zinc-800 text-sm text-white"
+                    className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
                   >
                     <option value="">Select...</option>
                     {CAST_NAMES.map((c) => (
@@ -456,7 +456,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                       newT[i] = e.target.value;
                       setTraitors(newT);
                     }}
-                    className="w-full p-3.5 rounded-2xl bg-red-900/5 border border-red-900/30 text-sm text-white"
+                    className="w-full p-3.5 rounded-2xl field-soft bg-red-900/5 border-red-900/30 text-sm text-white"
                   >
                     <option value="">Traitor Guess #{i + 1}</option>
                     {CAST_NAMES.map((c) => (
