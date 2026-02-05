@@ -128,7 +128,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
 
   return (
     <div className="space-y-10">
-      <div className={`glass-panel p-6 md:p-8 rounded-3xl border transition-all duration-1000 overflow-hidden ${isSyncing ? 'border-green-500 shadow-[0_0_24px_rgba(34,197,94,0.22)]' : 'border-[color:var(--accent)]/30'}`}>
+      <div className={`glass-panel p-6 md:p-8 rounded-3xl transition-all duration-1000 overflow-hidden ${isSyncing ? 'panel-sync' : ''}`}>
         <div className="flex justify-between items-center mb-10 relative">
           <div className="flex-1 text-center">
             <h3 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)]">🏆 Official Standings</h3>
@@ -145,13 +145,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-gray-800 text-gray-400 text-xs uppercase tracking-wider">
+              <tr className="border-b soft-divider text-gray-400 text-xs uppercase tracking-wider">
                 <th className="p-5">Rank</th>
                 <th className="p-5">Player</th>
                 <th className="p-5 text-right text-[color:var(--accent)] text-xl">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800">
+            <tbody className="divide-y divide-white/10">
               {scoredPlayers.map((p, idx) => {
                 const penalties = getPenaltyEntries(p);
                 return (
@@ -211,7 +211,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   {expandedPlayerId === p.id && (
                     <tr className="bg-black/30 animate-in slide-in-from-top-2 duration-300">
                       <td colSpan={3} className="p-6 md:p-8">
-                        <div className="rounded-3xl border border-[color:var(--accent)]/35 bg-black/70 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
+                        <div className="rounded-3xl soft-card soft-card-subtle border-[color:var(--accent)]/35 bg-black/65 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
                           <div className="absolute inset-y-0 left-0 w-1 bg-[color:var(--accent)]/60" />
                           <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.2),_transparent_70%)] blur-2xl" />
                           <div className="grid gap-8 lg:grid-cols-2">
@@ -294,7 +294,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                                 {getPlayerTimeline(p.id).slice(-6).map((entry, i) => (
                                   <div
                                     key={`${p.id}-history-${i}`}
-                                    className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-3"
+                                    className="soft-card soft-card-subtle border-zinc-700/60 rounded-2xl p-3"
                                   >
                                     <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
                                       {entry.label}
@@ -323,7 +323,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
         </div>
       </div>
 
-      <div className="glass-panel p-6 md:p-8 rounded-3xl border border-[color:var(--accent)]/20">
+      <div className="glass-panel p-6 md:p-8 rounded-3xl">
         <div className="text-center mb-8">
           <h3 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)]">Cast Status</h3>
           <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-2">Live status of every player</p>
@@ -362,7 +362,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
             return (
               <div
                 key={name}
-                className={`aspect-square grid grid-rows-[auto_1fr_auto] items-center justify-items-center gap-3 rounded-2xl border-2 p-4 text-center relative overflow-hidden ${cardClass}`}
+                className={`aspect-square grid grid-rows-[auto_1fr_auto] items-center justify-items-center gap-3 rounded-2xl border p-4 text-center relative overflow-hidden ${cardClass}`}
               >
                 {status?.isEliminated && (
                   <div className="absolute inset-0 pointer-events-none z-0">

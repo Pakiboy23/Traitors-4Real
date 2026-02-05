@@ -210,22 +210,22 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             </div>
           </div>
 
-          <div className="glass-panel p-8 rounded-3xl border border-zinc-800">
+          <div className="glass-panel p-8 rounded-3xl">
             <p className="text-xs text-zinc-500 uppercase tracking-[0.18em] mb-4 text-center">Season-long scoring</p>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-4 bg-black/70 rounded-2xl border border-[color:var(--accent)]/30 text-center">
+              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
                 <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+10 PTS</span>
                 Winner
               </div>
-              <div className="p-4 bg-black/70 rounded-2xl border border-[color:var(--accent)]/30 text-center">
+              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
                 <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+5 PTS</span>
                 1st Out
               </div>
-              <div className="p-4 bg-black/70 rounded-2xl border border-[color:var(--accent)]/30 text-center">
+              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
                 <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+3 PTS</span>
                 Traitor ID
               </div>
-              <div className="p-4 bg-red-950/40 rounded-2xl border border-red-600/40 text-center">
+              <div className="p-4 soft-card soft-card-subtle text-center border-red-600/40 bg-red-950/25">
                 <span className="block text-red-500 font-bold text-base md:text-lg">-2 PTS</span>
                 Penalty
               </div>
@@ -235,7 +235,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
         <div className="space-y-10">
           <section className="glass-panel rounded-3xl overflow-hidden">
-            <div className="p-6 border-b border-zinc-800/80 bg-black/40 flex flex-wrap justify-between items-center gap-6">
+            <div className="p-6 border-b soft-divider bg-black/30 flex flex-wrap justify-between items-center gap-6">
               <div className="flex flex-col">
                 <h3 className="text-2xl text-[color:var(--accent)] gothic-font">I. The Squad</h3>
                 {hasDuplicates ? (
@@ -276,14 +276,14 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                 return (
                   <div
                     key={i}
-                    className={`flex flex-col gap-4 p-6 rounded-3xl border transition-all duration-500 overflow-hidden focus-within:bg-[rgba(217,221,227,0.12)] focus-within:border-[color:var(--accent-strong)] ${
+                    className={`flex flex-col gap-4 p-6 rounded-3xl soft-card transition-all duration-500 overflow-hidden focus-within:bg-[rgba(217,221,227,0.12)] focus-within:border-[color:var(--accent-strong)] ${
                       isSealed
-                        ? 'bg-black/80 border-zinc-700 opacity-90'
+                        ? 'soft-card-subtle border-zinc-700/60 opacity-90'
                         : isDuplicate
-                        ? 'bg-red-950/40 border-red-500'
+                        ? 'soft-card-subtle border-red-500/60 bg-red-950/25'
                         : pick.role === 'Traitor'
-                        ? 'bg-red-900/10 shadow-[inset_0_0_15px_rgba(138,28,28,0.2)] border-red-600'
-                        : 'bg-black/60 border-[color:var(--accent)]/40'
+                        ? 'soft-card-subtle border-red-600/50 bg-red-950/20 shadow-[inset_0_0_20px_rgba(138,28,28,0.18)]'
+                        : 'border-[color:var(--accent)]/30'
                     }`}
                   >
                     <div className="flex items-center justify-center">
@@ -300,14 +300,14 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
                     <div className="flex justify-center">
                       <div
-                        className={`w-full max-w-[220px] py-2.5 rounded-xl text-center text-sm font-semibold border ${
+                        className={`w-full max-w-[220px] py-2.5 rounded-xl text-center text-sm font-semibold soft-card soft-card-subtle ${
                           isSealed
-                            ? 'border-zinc-800 text-zinc-500 bg-zinc-900/60'
+                            ? 'border-zinc-800/60 text-zinc-500'
                             : isDuplicate
-                            ? 'border-red-500 text-red-400 bg-red-950/30'
+                            ? 'border-red-500/70 text-red-400 bg-red-950/25'
                             : pick.role === 'Traitor'
-                            ? 'border-red-500 text-red-400 bg-red-950/30'
-                            : 'border-[color:var(--accent)]/40 text-[color:var(--accent)] bg-black/40'
+                            ? 'border-red-500/70 text-red-400 bg-red-950/25'
+                            : 'border-[color:var(--accent)]/35 text-[color:var(--accent)]'
                         }`}
                       >
                         #{i + 1}
@@ -350,7 +350,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                           }`}
                         />
                       </div>
-                      <div className="flex bg-black/70 p-2 rounded-xl border border-zinc-800 w-full max-w-[220px] justify-between" role="group" aria-label="Role prediction">
+                      <div className="flex soft-card soft-card-subtle border-zinc-700/60 p-2 rounded-xl w-full max-w-[220px] justify-between" role="group" aria-label="Role prediction">
                         <button
                           disabled={isSealed}
                           type="button"
@@ -401,7 +401,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
           <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="glass-panel p-7 rounded-3xl">
-              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b border-zinc-800 pb-3">
+              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b soft-divider pb-3">
                 II. Prophecies
               </h3>
               <div className="space-y-5">
@@ -443,7 +443,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             </div>
 
             <div className="glass-panel p-7 rounded-3xl">
-              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b border-zinc-800 pb-3">
+              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b soft-divider pb-3">
                 III. The Traitors
               </h3>
               <div className="space-y-3">

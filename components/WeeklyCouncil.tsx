@@ -315,7 +315,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] gap-8 items-start">
-        <aside className="glass-panel p-6 rounded-3xl border border-[color:var(--accent)]/25 bg-black/40 space-y-5">
+        <aside className="glass-panel p-6 rounded-3xl bg-black/40 space-y-5">
           <div>
             <p className="text-xs text-zinc-500 uppercase tracking-[0.2em]">Bonus Game Rules</p>
             <h3 className="text-2xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em] mt-2">
@@ -323,7 +323,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </h3>
           </div>
           <div className="space-y-4 text-sm text-zinc-300 leading-relaxed">
-            <div className="rounded-2xl border border-amber-400/30 bg-amber-500/10 p-4">
+            <div className="soft-card soft-card-subtle border-amber-400/30 bg-amber-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-amber-200 font-semibold">
                 🎲 Redemption Roulette
               </p>
@@ -332,7 +332,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 total score is negative, you automatically get a 2x boost (+16).
               </p>
             </div>
-            <div className="rounded-2xl border border-indigo-400/30 bg-indigo-500/10 p-4">
+            <div className="soft-card soft-card-subtle border-indigo-400/30 bg-indigo-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-indigo-200 font-semibold">
                 ⚡ Double or Nothing
               </p>
@@ -341,7 +341,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 are 2x penalties.
               </p>
             </div>
-            <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-4">
+            <div className="soft-card soft-card-subtle border-sky-400/30 bg-sky-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-sky-200 font-semibold">
                 🛡️ Shield Gambit
               </p>
@@ -350,7 +350,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 you’re in the red.
               </p>
             </div>
-            <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 p-4">
+            <div className="soft-card soft-card-subtle border-fuchsia-400/30 bg-fuchsia-500/10 p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-200 font-semibold">
                 🎭 Traitor Trio Challenge
               </p>
@@ -363,7 +363,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         </aside>
 
         <div className="flex flex-col gap-10">
-          <section className="glass-panel main-panel p-8 rounded-3xl border border-[color:var(--accent)]/30 lg:min-h-[620px] flex flex-col">
+          <section className="glass-panel main-panel p-8 rounded-3xl lg:min-h-[620px] flex flex-col">
             <div className="mb-6 h-8" aria-hidden="true" />
             <div className="grid grid-cols-1 gap-8 flex-1 content-start">
               <div className="space-y-4 text-center lg:text-left">
@@ -442,7 +442,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     </select>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-black/30 to-black/70 p-5 space-y-4">
+                <div className="soft-card soft-card-subtle border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-black/25 to-black/60 p-5 space-y-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-xs text-amber-200 font-semibold uppercase tracking-[0.2em]">
@@ -485,7 +485,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         ))}
                       </select>
                     </div>
-                    <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
+                    <label className="flex items-center justify-between gap-3 rounded-xl soft-card soft-card-subtle border-amber-400/30 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
                       <span>Double or Nothing</span>
                       <input
                         type="checkbox"
@@ -556,7 +556,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </div>
           </section>
 
-          <section className="glass-panel jr-panel p-8 rounded-3xl border border-[color:var(--accent)]/20 lg:min-h-[620px] flex flex-col">
+          <section className="glass-panel jr-panel p-8 rounded-3xl lg:min-h-[620px] flex flex-col">
           <div className="mb-6 h-8" aria-hidden="true" />
           <div className="grid grid-cols-1 gap-8 flex-1 content-start">
             <div className="space-y-4 text-center lg:text-left">
@@ -636,7 +636,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </select>
                 </div>
               </div>
-              <div className="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-black/30 to-black/70 p-5 space-y-4">
+              <div className="soft-card soft-card-subtle border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-black/25 to-black/60 p-5 space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs text-amber-200 font-semibold uppercase tracking-[0.2em]">
