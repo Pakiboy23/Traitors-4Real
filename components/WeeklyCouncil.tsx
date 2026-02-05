@@ -10,9 +10,6 @@ interface WeeklyCouncilProps {
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
-const BANISHED_OPTIONS = CAST_NAMES;
-const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
-
 const getWeeklyCouncilData = (
   name: string,
   email: string,
@@ -33,6 +30,11 @@ const getWeeklyCouncilData = (
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
+  const activeCastNames = CAST_NAMES.filter(
+    (name) => !gameState.castStatus[name]?.isEliminated
+  );
+  const banishedOptions = activeCastNames;
+  const murderOptions = ["No Murder", ...activeCastNames];
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
   const [weeklyBanished, setWeeklyBanished] = useState("");
@@ -336,7 +338,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           </div>
         </aside>
 
-        <div className="flex flex-col gap-10">
+        <div className="flex flex-col gap-12">
           <section className="glass-panel main-panel p-8 rounded-3xl lg:min-h-[620px] flex flex-col">
             <div className="mb-6 h-8" aria-hidden="true" />
             <div className="grid grid-cols-1 gap-8 flex-1 content-start">
@@ -390,7 +392,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {BANISHED_OPTIONS.map((c) => (
+                      {banishedOptions.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -408,7 +410,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {MURDER_OPTIONS.map((c) => (
+                      {murderOptions.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -452,7 +454,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                       >
                         <option value="">Select...</option>
-                        {CAST_NAMES.map((c) => (
+                        {activeCastNames.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -479,7 +481,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                       >
                         <option value="">Select...</option>
-                        {CAST_NAMES.map((c) => (
+                        {activeCastNames.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -556,7 +558,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
-                    {BANISHED_OPTIONS.map((c) => (
+                    {banishedOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -574,7 +576,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
                   >
                     <option value="">Select...</option>
-                    {MURDER_OPTIONS.map((c) => (
+                    {murderOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -618,7 +620,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -645,11 +647,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                       className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
-                        ))}
+                      ))}
                       </select>
                     </div>
                 </div>

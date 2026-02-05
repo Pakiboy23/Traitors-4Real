@@ -142,184 +142,184 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
           )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b soft-divider text-gray-400 text-xs uppercase tracking-wider">
-                <th className="p-5">Rank</th>
-                <th className="p-5">Player</th>
-                <th className="p-5 text-right text-[color:var(--accent)] text-xl">Total</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/10">
-              {scoredPlayers.map((p, idx) => {
-                const penalties = getPenaltyEntries(p);
-                return (
-                <React.Fragment key={p.id}>
-                  <tr 
+        <div className="space-y-4">
+          <div className="grid grid-cols-[56px_1fr_110px] md:grid-cols-[72px_1fr_140px] gap-4 px-2 text-xs uppercase tracking-[0.2em] text-zinc-500">
+            <span>Rank</span>
+            <span>Player</span>
+            <span className="text-right">Total</span>
+          </div>
+          <div className="space-y-3">
+            {scoredPlayers.map((p, idx) => {
+              const penalties = getPenaltyEntries(p);
+              const isExpanded = expandedPlayerId === p.id;
+              return (
+                <div
+                  key={p.id}
+                  className={`rounded-2xl border transition-all duration-300 ${
+                    isExpanded
+                      ? "border-[#D4AF37]/40 bg-[#D4AF37]/10"
+                      : "border-white/10 bg-black/30 hover:bg-black/50"
+                  }`}
+                >
+                  <button
+                    type="button"
                     onClick={() => toggleExpand(p.id)}
-                    className={`cursor-pointer transition-all duration-300 ${expandedPlayerId === p.id ? 'bg-[#D4AF37]/10' : 'hover:bg-black/40'}`}
+                    className="w-full grid grid-cols-[56px_1fr_110px] md:grid-cols-[72px_1fr_140px] items-center gap-4 px-4 py-4 text-left"
+                    aria-expanded={isExpanded}
                   >
-                    <td className="p-5">
-                      <span className="flex items-center gap-2 text-sm">
-                        {idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `#${idx + 1}`}
-                      </span>
-                    </td>
-                    <td className="p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
-                          {p.portraitUrl ? (
-                            <img src={p.portraitUrl} alt={`${p.name}'s profile`} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase" aria-hidden="true">
-                              {p.name.charAt(0)}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-100 text-base md:text-lg">{p.name}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-zinc-500 uppercase tracking-tighter">View Scroll</span>
-                            {p.league === "jr" && (
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                                JR League
-                              </span>
-                            )}
+                    <div className="text-sm font-semibold text-zinc-200">
+                      {idx === 0 ? "👑" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
+                        {p.portraitUrl ? (
+                          <img src={p.portraitUrl} alt={`${p.name}'s profile`} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase" aria-hidden="true">
+                            {p.name.charAt(0)}
                           </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-5 text-right font-black text-2xl md:text-3xl text-[#D4AF37]">
-                      <div className="flex flex-col items-end">
-                        <span>{formatScore(p.scoring.total)}</span>
-                        {weeklyDeltaById[p.id] !== undefined && (
-                          <span
-                            className={`text-xs font-bold uppercase tracking-[0.2em] ${
-                              weeklyDeltaById[p.id] >= 0
-                                ? "text-emerald-400"
-                                : "text-red-400"
-                            }`}
-                          >
-                            {weeklyDeltaById[p.id] >= 0 ? "+" : ""}
-                            {formatScore(weeklyDeltaById[p.id])} wk
-                          </span>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                  
-                  {expandedPlayerId === p.id && (
-                    <tr className="bg-black/30 animate-in slide-in-from-top-2 duration-300">
-                      <td colSpan={3} className="p-6 md:p-8">
-                        <div className="rounded-3xl soft-card soft-card-subtle border-[color:var(--accent)]/35 bg-black/65 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
-                          <div className="absolute inset-y-0 left-0 w-1 bg-[color:var(--accent)]/60" />
-                          <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.2),_transparent_70%)] blur-2xl" />
-                          <div className="grid gap-8 lg:grid-cols-2">
-                            <div>
-                              <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
-                                The Hall of Victory
-                              </h4>
-                              {p.scoring.achievements.length > 0 ? (
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-                                  {p.scoring.achievements.map((ach, i) => {
-                                    const castPortrait = getCastPortraitSrc(
-                                      ach.member,
-                                      gameState.castStatus[ach.member]?.portraitUrl
-                                    );
-                                    return (
-                                      <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-3 rounded-2xl relative group hover:border-[#D4AF37] transition-all">
-                                        <div className="w-10 h-10 rounded-full overflow-hidden bg-black mb-3">
-                                          {castPortrait ? (
-                                            <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                          ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-xs">{ach.member.charAt(0)}</div>
-                                          )}
-                                        </div>
-                                        <div className="text-center">
-                                          <p className="text-xs font-bold text-white truncate">{ach.member}</p>
-                                          <p className={`text-xs uppercase font-black tracking-tight ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
-                                            {ach.icon} {ach.type}
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <p className="text-zinc-600 italic text-sm">No triumphs yet revealed.</p>
-                              )}
-                            </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-red-300 uppercase tracking-[0.2em] mb-5 border-b border-red-500/20 pb-3">Costly Misses</h4>
-                              {penalties.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  {penalties.map((penalty, i) => (
-                                    <div
-                                      key={`${p.id}-penalty-${i}`}
-                                      className="bg-red-950/40 border border-red-500/30 rounded-2xl p-4"
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-200">{penalty.label}</p>
-                                        <span className="text-sm font-black text-red-300">{formatScore(penalty.points)}</span>
-                                      </div>
-                                      <div className="mt-3 space-y-1">
-                                        {penalty.pick && (
-                                          <p className="text-sm text-zinc-200">
-                                            Your pick: <span className="font-semibold text-white">{penalty.pick}</span>
-                                          </p>
-                                        )}
-                                        {penalty.actual && (
-                                          <p className="text-xs text-zinc-400">
-                                            Result: <span className="text-zinc-200">{penalty.actual}</span>
-                                          </p>
-                                        )}
-                                        {penalty.note && (
-                                          <p className="text-xs text-zinc-400">{penalty.note}</p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-zinc-600 italic text-sm">No penalties yet. Clean sheet.</p>
-                              )}
-                            </div>
-                          </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-100 text-base md:text-lg">{p.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-zinc-500 uppercase tracking-tighter">Tap for breakdown</span>
+                          {p.league === "jr" && (
+                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] bg-purple-500/20 text-purple-200 border border-purple-500/30">
+                              JR League
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl md:text-3xl font-black text-[#D4AF37]">
+                        {formatScore(p.scoring.total)}
+                      </div>
+                      {weeklyDeltaById[p.id] !== undefined && (
+                        <div
+                          className={`text-xs font-bold uppercase tracking-[0.2em] ${
+                            weeklyDeltaById[p.id] >= 0
+                              ? "text-emerald-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {weeklyDeltaById[p.id] >= 0 ? "+" : ""}
+                          {formatScore(weeklyDeltaById[p.id])} wk
+                        </div>
+                      )}
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-4 pb-6 animate-in slide-in-from-top-2 duration-300">
+                      <div className="rounded-3xl soft-card soft-card-subtle border-[color:var(--accent)]/35 bg-black/65 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
+                        <div className="absolute inset-y-0 left-0 w-1 bg-[color:var(--accent)]/60" />
+                        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.2),_transparent_70%)] blur-2xl" />
+                        <div className="grid gap-8 lg:grid-cols-2">
                           <div>
                             <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
-                              Weekly Progress
+                              The Hall of Victory
                             </h4>
-                            {scoreHistory.length > 0 ? (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                                {getPlayerTimeline(p.id).slice(-6).map((entry, i) => (
+                            {p.scoring.achievements.length > 0 ? (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+                                {p.scoring.achievements.map((ach, i) => {
+                                  const castPortrait = getCastPortraitSrc(
+                                    ach.member,
+                                    gameState.castStatus[ach.member]?.portraitUrl
+                                  );
+                                  return (
+                                    <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-3 rounded-2xl relative group hover:border-[#D4AF37] transition-all">
+                                      <div className="w-10 h-10 rounded-full overflow-hidden bg-black mb-3">
+                                        {castPortrait ? (
+                                          <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        ) : (
+                                          <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-xs">{ach.member.charAt(0)}</div>
+                                        )}
+                                      </div>
+                                      <div className="text-center">
+                                        <p className="text-xs font-bold text-white truncate">{ach.member}</p>
+                                        <p className={`text-xs uppercase font-black tracking-tight ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
+                                          {ach.icon} {ach.type}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <p className="text-zinc-600 italic text-sm">No triumphs yet revealed.</p>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-bold text-red-300 uppercase tracking-[0.2em] mb-5 border-b border-red-500/20 pb-3">Costly Misses</h4>
+                            {penalties.length > 0 ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {penalties.map((penalty, i) => (
                                   <div
-                                    key={`${p.id}-history-${i}`}
-                                    className="soft-card soft-card-subtle border-zinc-700/60 rounded-2xl p-3"
+                                    key={`${p.id}-penalty-${i}`}
+                                    className="bg-red-950/40 border border-red-500/30 rounded-2xl p-4"
                                   >
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
-                                      {entry.label}
-                                    </p>
-                                    <p className="text-lg font-black text-zinc-100">
-                                      {formatScore(entry.total as number)}
-                                    </p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-200">{penalty.label}</p>
+                                      <span className="text-sm font-black text-red-300">{formatScore(penalty.points)}</span>
+                                    </div>
+                                    <div className="mt-3 space-y-1">
+                                      {penalty.pick && (
+                                        <p className="text-sm text-zinc-200">
+                                          Your pick: <span className="font-semibold text-white">{penalty.pick}</span>
+                                        </p>
+                                      )}
+                                      {penalty.actual && (
+                                        <p className="text-xs text-zinc-400">
+                                          Result: <span className="text-zinc-200">{penalty.actual}</span>
+                                        </p>
+                                      )}
+                                      {penalty.note && (
+                                        <p className="text-xs text-zinc-400">{penalty.note}</p>
+                                      )}
+                                    </div>
                                   </div>
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-zinc-600 italic text-sm">
-                                Weekly totals will appear once the Admin archives each week.
-                              </p>
+                              <p className="text-zinc-600 italic text-sm">No penalties yet. Clean sheet.</p>
                             )}
                           </div>
                         </div>
-                      </td>
-                    </tr>
+                        <div>
+                          <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
+                            Weekly Progress
+                          </h4>
+                          {scoreHistory.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {getPlayerTimeline(p.id).slice(-6).map((entry, i) => (
+                                <div
+                                  key={`${p.id}-history-${i}`}
+                                  className="soft-card soft-card-subtle border-zinc-700/60 rounded-2xl p-3"
+                                >
+                                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
+                                    {entry.label}
+                                  </p>
+                                  <p className="text-lg font-black text-zinc-100">
+                                    {formatScore(entry.total as number)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-zinc-600 italic text-sm">
+                              Weekly totals will appear once the Admin archives each week.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </React.Fragment>
+                </div>
               );
-              })}
-            </tbody>
-          </table>
+            })}
+          </div>
         </div>
       </div>
 
