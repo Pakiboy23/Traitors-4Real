@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CAST_NAMES, GameState, PlayerEntry } from "../types";
+import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
@@ -10,6 +10,10 @@ interface WeeklyCouncilProps {
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
+const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
+const WEEKLY_LABEL_UPPER = WEEKLY_LABEL.toUpperCase();
+const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
+const JR_LABEL = COUNCIL_LABELS.jr;
 const getWeeklyCouncilData = (
   name: string,
   email: string,
@@ -23,9 +27,9 @@ const getWeeklyCouncilData = (
   leagueLabel?: string
 ) => {
   const header = leagueLabel
-    ? `TRAITORS WEEKLY COUNCIL - ${leagueLabel}`
-    : "TRAITORS WEEKLY COUNCIL";
-  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}`;
+    ? `TRAITORS ${WEEKLY_LABEL_UPPER} - ${leagueLabel}`
+    : `TRAITORS ${WEEKLY_LABEL_UPPER}`;
+  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== ${WEEKLY_LABEL_UPPER} ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}`;
 };
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
@@ -133,7 +137,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         shieldGambit: bonusShield,
       })
     ) {
-      showToast("Please select at least one weekly council or bonus prediction.", "warning");
+      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
       return;
     }
 
@@ -177,13 +181,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "main",
       });
-      showToast("Your weekly council vote has been submitted!", "success");
+      showToast(`Your ${WEEKLY_LABEL} vote has been submitted!`, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
           : "Weekly votes could not be submitted. Please try again.";
-      console.warn("Weekly council submission failed:", err);
+      console.warn(`${WEEKLY_LABEL} submission failed:`, err);
       showToast(message, "error");
     }
 
@@ -203,7 +207,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         "Main League"
       )
     );
-    const subject = encodeURIComponent(`Traitors Weekly Council - ${playerName}`);
+    const subject = encodeURIComponent(`Traitors ${WEEKLY_LABEL} - ${playerName}`);
     window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
     setMainSubmitted(true);
   };
@@ -211,7 +215,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (!jrName || !jrEmail) {
-      showToast("Please enter your name and email before submitting Jr. League votes.", "warning");
+      showToast(`Please enter your name and email before submitting ${JR_LABEL} votes.`, "warning");
       return;
     }
 
@@ -224,7 +228,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         shieldGambit: jrBonusShield,
       })
     ) {
-      showToast("Please select at least one weekly council or bonus prediction.", "warning");
+      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
       return;
     }
 
@@ -245,13 +249,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "jr",
       });
-      showToast("Your Jr. League vote has been submitted!", "success");
+      showToast(`Your ${JR_LABEL} vote has been submitted!`, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
           : "Weekly votes could not be submitted. Please try again.";
-      console.warn("Jr. League weekly submission failed:", err);
+      console.warn(`${JR_LABEL} weekly submission failed:`, err);
       showToast(message, "error");
     }
 
@@ -268,10 +272,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
         },
-        "Jr. League"
+        JR_LABEL
       )
     );
-    const subject = encodeURIComponent(`Traitors Jr. League Council - ${jrName}`);
+    const subject = encodeURIComponent(`Traitors ${JR_LABEL} - ${jrName}`);
     window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
     setJrSubmitted(true);
   };
@@ -292,7 +296,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     <div className="space-y-12">
       <div className="text-center space-y-3">
         <h2 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.22em]">
-          Weekly Council
+          {WEEKLY_LABEL}
         </h2>
         <p className="text-xs text-zinc-500 uppercase tracking-[0.2em]">
           Submit your weekly predictions here
@@ -322,7 +326,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 ⚡ Double or Nothing
               </p>
               <p className="mt-2">
-                Opt in to double your weekly council stakes. Correct picks earn 2x points and misses
+                Opt in to double your {WEEKLY_LABEL_LOWER} stakes. Correct picks earn 2x points and misses
                 are 2x penalties.
               </p>
             </div>
@@ -344,7 +348,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             <div className="grid grid-cols-1 gap-8 flex-1 content-start">
               <div className="space-y-4 text-center lg:text-left">
                 <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-                  Weekly Council Votes
+                  {WEEKLY_LABEL} Votes
                 </h3>
                 <p className="text-sm text-zinc-400 leading-relaxed">
                   Already drafted? Submit your weekly banished and murdered predictions here.
@@ -440,7 +444,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </div>
                   <p className="text-xs text-zinc-300 leading-relaxed">
                     Redemption Roulette doubles for negative scores. Shield Gambit grants an extra +3
-                    if you're in the red. Double or Nothing amplifies weekly council stakes.
+                    if you're in the red. Double or Nothing amplifies {WEEKLY_LABEL_LOWER} stakes.
                   </p>
                   <div className="grid grid-cols-1 gap-4">
                     <div>
@@ -498,7 +502,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   aria-busy={isMainSubmitting}
                 >
                   {isMainSubmitting && <span className="loading-spinner" aria-hidden="true" />}
-                  {isMainSubmitting ? "Submitting..." : "Submit Weekly Council"}
+                  {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
                 </button>
               </div>
             </div>
@@ -509,7 +513,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           <div className="grid grid-cols-1 gap-8 flex-1 content-start">
             <div className="space-y-4 text-center lg:text-left">
               <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-                Jr. League Weekly Council
+                {JR_LABEL} Votes
               </h3>
               <p className="text-sm text-zinc-400 leading-relaxed">
                 Missed the initial draft? You can still play each week by submitting your council
@@ -606,7 +610,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 </div>
                 <p className="text-xs text-zinc-300 leading-relaxed">
                   Redemption Roulette doubles for negative scores. Shield Gambit grants an extra +3
-                  if you're in the red. Double or Nothing amplifies weekly council stakes.
+                  if you're in the red. Double or Nothing amplifies {WEEKLY_LABEL_LOWER} stakes.
                 </p>
                 <div className="grid grid-cols-1 gap-4">
                   <div>
@@ -664,7 +668,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                 aria-busy={isJrSubmitting}
               >
                 {isJrSubmitting && <span className="loading-spinner" aria-hidden="true" />}
-                {isJrSubmitting ? "Submitting..." : "Submit Jr. League Vote"}
+                {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL} Vote`}
               </button>
             </div>
           </div>

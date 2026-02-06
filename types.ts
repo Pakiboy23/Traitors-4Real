@@ -48,6 +48,11 @@ export interface WeeklyScoreSnapshot {
 
 export type League = "main" | "jr";
 
+export const COUNCIL_LABELS = {
+  weekly: "Weekly Council",
+  jr: "Jr. Council",
+} as const;
+
 export interface WeeklySubmissionHistoryEntry {
   id: string;
   name: string;

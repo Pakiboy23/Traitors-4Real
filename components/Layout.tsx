@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { COUNCIL_LABELS } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -89,7 +90,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdm
                   : (isLightMode ? 'border-red-200 text-zinc-600 hover:border-red-900' : 'border-zinc-700 text-zinc-400 hover:border-[color:var(--accent)]')
               }`}
             >
-              Weekly Council
+              {COUNCIL_LABELS.weekly}
             </button>
             <button 
               onClick={() => onTabChange('leaderboard')}

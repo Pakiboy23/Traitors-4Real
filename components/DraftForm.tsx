@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
+import { CAST_NAMES, COUNCIL_LABELS, DraftPick, GameState, PlayerEntry } from '../types';
 import { submitDraftEntry } from '../services/pocketbase';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
@@ -95,7 +95,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (DRAFT_CLOSED) {
-      showToast("Draft submissions are closed. Please use the Weekly Council tab.", "warning");
+      showToast(`Draft submissions are closed. Please use the ${COUNCIL_LABELS.weekly} tab.`, "warning");
       return;
     }
     if (!playerName || !playerEmail) {
@@ -171,7 +171,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           <div className="glass-panel p-6 rounded-3xl border border-red-500/40 bg-red-950/30 text-center">
             <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-3">Draft Closed</p>
             <p className="text-sm text-zinc-300">
-              Draft submissions are no longer accepted. Head to the Weekly Council tab to submit weekly votes.
+              Draft submissions are no longer accepted. Head to the {COUNCIL_LABELS.weekly} tab to submit weekly votes.
             </p>
           </div>
         )}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { CAST_NAMES, GameState, PlayerEntry, WeeklyScoreSnapshot } from '../types';
+import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, WeeklyScoreSnapshot } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 
@@ -88,7 +88,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       weeklyResults.nextBanished !== weeklyPredictions.nextBanished
     ) {
       penalties.push({
-        label: "Weekly Council: Banished",
+        label: `${COUNCIL_LABELS.weekly}: Banished`,
         points: -weeklyIncorrectPoints,
         pick: weeklyPredictions.nextBanished,
         actual: weeklyResults.nextBanished,
@@ -102,7 +102,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       weeklyResults.nextMurdered !== weeklyPredictions.nextMurdered
     ) {
       penalties.push({
-        label: "Weekly Council: Murdered",
+        label: `${COUNCIL_LABELS.weekly}: Murdered`,
         points: -weeklyIncorrectPoints,
         pick: weeklyPredictions.nextMurdered,
         actual: weeklyResults.nextMurdered,
@@ -186,7 +186,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                           <span className="text-xs text-zinc-500 uppercase tracking-tighter">Tap for breakdown</span>
                           {p.league === "jr" && (
                             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                              JR League
+                              {COUNCIL_LABELS.jr}
                             </span>
                           )}
                         </div>

@@ -52,8 +52,8 @@ View your app in AI Studio: https://ai.studio/apps/drive/1x7fQsJeDPeXMHWLokiShFF
 
 ## Weekly Council Submissions
 
-Weekly council votes are stored in the `submissions` collection (public create, admin-only read).
-Admins can merge weekly votes into the main `games` record from the Admin panel.
+Weekly Council votes are stored in the `submissions` collection (public create, admin-only read).
+Admins can merge Weekly Council votes into the main `games` record from the Admin panel.
 
 ### Restore game state from a backup
 `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`

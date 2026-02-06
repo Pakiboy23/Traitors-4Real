@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   GameState,
   CAST_NAMES,
+  COUNCIL_LABELS,
   PlayerEntry,
   DraftPick,
   WeeklySubmissionHistoryEntry,
@@ -650,7 +651,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       },
     });
     setMsg({
-      text: `Weekly council updated for ${selectedPlayer.name}.`,
+      text: `${COUNCIL_LABELS.weekly} updated for ${selectedPlayer.name}.`,
       type: "success",
     });
   };
@@ -910,7 +911,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </select>
           </div>
         </div>
-        <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score weekly council picks</p>
+        <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score {COUNCIL_LABELS.weekly.toLowerCase()} picks</p>
 
         <div className="mt-6 pt-6 border-t soft-divider">
           <h4 className="text-sm gothic-font text-[color:var(--accent)] uppercase tracking-[0.24em] mb-4">
@@ -1039,7 +1040,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div>
             <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Submissions</h3>
             <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
-              New council votes · API: {pocketbaseUrl}
+              New {COUNCIL_LABELS.weekly} votes · API: {pocketbaseUrl}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1456,7 +1457,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
 
               <div className="p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60">
-                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Weekly Council</p>
+                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit {COUNCIL_LABELS.weekly}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em]">
