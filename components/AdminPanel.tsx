@@ -806,6 +806,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
+  const updateBonusResult = (
+    key: "redemptionRoulette" | "shieldGambit",
+    value: string
+  ) => {
+    const nextState = {
+      ...gameStateRef.current,
+      weeklyResults: {
+        ...(gameStateRef.current.weeklyResults ?? {}),
+        bonusGames: {
+          ...(gameStateRef.current.weeklyResults?.bonusGames ?? {}),
+          [key]: value,
+        },
+      },
+    };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
+  };
 
   return (
     <div className="w-full animate-in fade-in duration-500">
@@ -924,18 +941,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </label>
               <select
                 value={bonusResults.redemptionRoulette ?? ""}
-                onChange={(e) =>
-                  updateGameState({
-                    ...gameState,
-                    weeklyResults: {
-                      ...(gameState.weeklyResults ?? {}),
-                      bonusGames: {
-                        ...(gameState.weeklyResults?.bonusGames ?? {}),
-                        redemptionRoulette: e.target.value,
-                      },
-                    },
-                  })
-                }
+                onChange={(e) => updateBonusResult("redemptionRoulette", e.target.value)}
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
@@ -952,18 +958,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </label>
               <select
                 value={bonusResults.shieldGambit ?? ""}
-                onChange={(e) =>
-                  updateGameState({
-                    ...gameState,
-                    weeklyResults: {
-                      ...(gameState.weeklyResults ?? {}),
-                      bonusGames: {
-                        ...(gameState.weeklyResults?.bonusGames ?? {}),
-                        shieldGambit: e.target.value,
-                      },
-                    },
-                  })
-                }
+                onChange={(e) => updateBonusResult("shieldGambit", e.target.value)}
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
