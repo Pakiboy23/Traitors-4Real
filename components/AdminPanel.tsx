@@ -172,7 +172,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (records.length === 0) {
         try {
           const response = await fetch(
-            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&filter=${encodeURIComponent(
+            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created&filter=${encodeURIComponent(
               '(kind="weekly")'
             )}`
           );
