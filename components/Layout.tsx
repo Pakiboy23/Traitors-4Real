@@ -6,11 +6,10 @@ interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
-  isAdmin?: boolean;
   lastSync?: number;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, isAdmin = false, lastSync }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, lastSync }) => {
   const [isLightMode, setIsLightMode] = useState(() => {
     return localStorage.getItem('traitors_theme') === 'light';
   });

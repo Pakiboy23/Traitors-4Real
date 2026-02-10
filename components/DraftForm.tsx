@@ -24,14 +24,17 @@ function shuffleArray<T>(array: T[]): T[] {
   return result;
 }
 
-const DRAFT_CLOSED = true;
+const DRAFT_CLOSED = String(import.meta.env.VITE_DRAFT_CLOSED ?? 'true').toLowerCase() !== 'false';
+const DRAFT_SIZE = 10;
+const createEmptyPick = (): DraftPick => ({ member: '', rank: 1, role: 'Faithful' });
+const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);
 
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
   const [playerName, setPlayerName] = useState('');
   const [playerEmail, setPlayerEmail] = useState('');
-  const [picks, setPicks] = useState<DraftPick[]>(Array(10).fill({ member: '', rank: 1, role: 'Faithful' }));
-  const [sealedPicks, setSealedPicks] = useState<boolean[]>(Array(10).fill(false));
+  const [picks, setPicks] = useState<DraftPick[]>(createEmptyPicks());
+  const [sealedPicks, setSealedPicks] = useState<boolean[]>(Array(DRAFT_SIZE).fill(false));
   const [predFirstOut, setPredFirstOut] = useState('');
   const [predWinner, setPredWinner] = useState('');
   const [traitors, setTraitors] = useState(['', '', '']);
@@ -68,8 +71,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   const autoGeneratePicks = () => {
     const shuffled = shuffleArray(CAST_NAMES);
-    const selected = shuffled.slice(0, 10);
-    const ranks = shuffleArray([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    const selected = shuffled.slice(0, DRAFT_SIZE);
+    const ranks = shuffleArray(Array.from({ length: DRAFT_SIZE }, (_, index) => index + 1));
+    const bonusPool = shuffled.slice(DRAFT_SIZE);
     
     const newPicks: DraftPick[] = selected.map((member, i) => ({
       member,
@@ -78,18 +82,13 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     }));
 
     setPicks(newPicks);
-    setSealedPicks(Array(10).fill(true));
+    setSealedPicks(Array(DRAFT_SIZE).fill(true));
     
-    if (!predFirstOut) setPredFirstOut(shuffled[11]);
-    if (!predWinner) setPredWinner(shuffled[12]);
+    if (!predFirstOut) setPredFirstOut(bonusPool[0] ?? '');
+    if (!predWinner) setPredWinner(bonusPool[1] ?? '');
     if (traitors.every(t => t === '')) {
-       setTraitors([shuffled[13], shuffled[14], shuffled[15]]);
+       setTraitors([bonusPool[2] ?? '', bonusPool[3] ?? '', bonusPool[4] ?? '']);
     }
-  };
-
-  const getFormData = () => {
-    let draftText = picks.map((p, i) => `Pick #${i+1}: ${p.member || 'None'} | Rank: ${p.rank} | Pred: ${p.role}`).join('\n');
-    return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -138,9 +137,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     setIsSubmitting(false);
     setIsSubmitted(true);
 
-    const body = encodeURIComponent(getFormData());
-    const subject = encodeURIComponent(`Traitors Draft Picks - ${playerName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
   };
 
   if (isSubmitted) {
@@ -151,8 +147,8 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           setIsSubmitted(false);
           setPlayerName('');
           setPlayerEmail('');
-          setPicks(Array(10).fill({ member: '', rank: 1, role: 'Faithful' }));
-          setSealedPicks(Array(10).fill(false));
+          setPicks(createEmptyPicks());
+          setSealedPicks(Array(DRAFT_SIZE).fill(false));
           setPredFirstOut('');
           setPredWinner('');
           setTraitors(['', '', '']);
