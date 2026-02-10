@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
 import Welcome from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
@@ -155,9 +155,9 @@ const App: React.FC = () => {
     return normalizeGameState({ players: [] });
   });
 
-  const updateGameState = (newState: GameState) => {
+  const updateGameState = useCallback((newState: GameState) => {
     setGameState(normalizeGameState(newState));
-  };
+  }, []);
 
   const normalizeUndefined = (value: any): any => {
     if (value === undefined) return null;
@@ -170,7 +170,7 @@ const App: React.FC = () => {
     return value;
   };
 
-  const saveNow = async () => {
+  const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated) return;
     try {
       const safeState = normalizeUndefined(gameState);
@@ -186,7 +186,7 @@ const App: React.FC = () => {
       );
       console.warn("Manual save failed:", error);
     }
-  };
+  }, [gameState, isAdminAuthenticated]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
@@ -304,7 +304,7 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const handleAddEntry = (entry: PlayerEntry) => {
+  const handleAddEntry = useCallback((entry: PlayerEntry) => {
     const normalizedEmail = normalizeEmail(entry.email || "");
     const updatedPlayers = [
       ...gameState.players.filter((p) => {
@@ -316,9 +316,10 @@ const App: React.FC = () => {
       }),
       { ...entry, league: entry.league === "jr" ? "jr" : "main" },
     ];
-    setGameState({ ...gameState, players: updatedPlayers });
-  };
-  const authenticateAdmin = async (
+    updateGameState({ ...gameState, players: updatedPlayers });
+  }, [gameState, updateGameState]);
+
+  const authenticateAdmin = useCallback(async (
     email: string,
     password: string
   ): Promise<boolean> => {
@@ -328,11 +329,11 @@ const App: React.FC = () => {
     } catch {
       return false;
     }
-  };
+  }, []);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     signOutAdmin();
-  };
+  }, []);
 
   const scoreHistory = Array.isArray(gameState.weeklyScoreHistory)
     ? gameState.weeklyScoreHistory
@@ -420,7 +421,20 @@ const App: React.FC = () => {
       default:
         return <Welcome onStart={() => setActiveTab("weekly")} />;
     }
-  }, [activeTab, gameState, isAdminAuthenticated]);
+  }, [
+    activeTab,
+    gameState,
+    handleAddEntry,
+    authenticateAdmin,
+    handleSignOut,
+    isAdminAuthenticated,
+    lastSavedAt,
+    lastWriteError,
+    overallMvp,
+    saveNow,
+    updateGameState,
+    weeklyMvp,
+  ]);
 
   return (
     <ToastProvider>

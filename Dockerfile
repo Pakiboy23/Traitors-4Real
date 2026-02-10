@@ -1,6 +1,6 @@
 FROM alpine:3.19
 
-ARG PB_VERSION=0.36.1
+ARG PB_VERSION=0.25.2
 ARG TARGETARCH=amd64
 
 RUN apk add --no-cache ca-certificates curl \

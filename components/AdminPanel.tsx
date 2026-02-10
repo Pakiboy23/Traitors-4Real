@@ -29,6 +29,17 @@ interface AdminPanelProps {
   onSaveNow?: () => void;
 }
 
+type ConfirmDialogState = {
+  message: string;
+  resolve: (value: boolean) => void;
+};
+
+type PromptDialogState = {
+  title: string;
+  initialValue: string;
+  resolve: (value: string | null) => void;
+};
+
 const AdminPanel: React.FC<AdminPanelProps> = ({
   gameState,
   updateGameState,
@@ -65,6 +76,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     weeklyBanished: string;
     weeklyMurdered: string;
   }>>({});
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
+  const [promptDialog, setPromptDialog] = useState<PromptDialogState | null>(null);
+  const [promptValue, setPromptValue] = useState("");
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
@@ -72,6 +86,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   }, [gameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
+  const requestConfirm = (message: string) =>
+    new Promise<boolean>((resolve) => {
+      setConfirmDialog({ message, resolve });
+    });
+
+  const requestPrompt = (title: string, initialValue = "") =>
+    new Promise<string | null>((resolve) => {
+      setPromptValue(initialValue);
+      setPromptDialog({ title, initialValue, resolve });
+    });
+
   const normalizeEmpty = <T,>(value: T | null | undefined) => {
     if (value === undefined || value === null || value === "") return null;
     return value;
@@ -370,16 +395,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const setCastPortrait = (name: string) => {
+  const setCastPortrait = async (name: string) => {
     const current = gameState.castStatus[name]?.portraitUrl || "";
-    const url = prompt("Enter image URL for cast portrait:", current);
+    const url = await requestPrompt("Enter image URL for cast portrait:", current);
     if (url === null) return;
     const trimmed = url.trim();
     updateCastMember(name, 'portraitUrl', trimmed ? trimmed : null);
   };
 
-  const clearAllPortraits = () => {
-    if (!confirm("Remove all stored portraits?")) return;
+  const clearAllPortraits = async () => {
+    if (!(await requestConfirm("Remove all stored portraits?"))) return;
     const updatedStatus = { ...gameState.castStatus };
     Object.keys(updatedStatus).forEach((name) => {
       updatedStatus[name] = { ...updatedStatus[name], portraitUrl: null };
@@ -615,7 +640,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const dismissSubmission = async (submission: SubmissionRecord) => {
-    if (!confirm(`Dismiss submission from ${submission.name}?`)) return;
+    if (!(await requestConfirm(`Dismiss submission from ${submission.name}?`))) return;
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
@@ -741,8 +766,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     });
   };
 
-  const clearHistory = () => {
-    if (!confirm("Clear merged submission history?")) return;
+  const clearHistory = async () => {
+    if (!(await requestConfirm("Clear merged submission history?"))) return;
     const nextState = { ...gameState, weeklySubmissionHistory: [] };
     gameStateRef.current = nextState;
     updateGameState(nextState);
@@ -763,13 +788,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     ? scoreHistory
     : scoreHistory.slice(-6);
 
-  const archiveWeeklyScores = () => {
+  const archiveWeeklyScores = async () => {
     if (gameState.players.length === 0) {
       setMsg({ text: "No players to score yet.", type: "error" });
       return;
     }
     const defaultLabel = `Week ${scoreHistory.length + 1}`;
-    const labelInput = prompt("Label this week:", defaultLabel);
+    const labelInput = await requestPrompt("Label this week:", defaultLabel);
     if (labelInput === null) return;
     const label = labelInput.trim() || defaultLabel;
     const totals: Record<string, number> = {};
@@ -1378,8 +1403,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <h3 className="text-3xl gothic-font text-[color:var(--accent)]">{selectedPlayer.name}</h3>
                     <div className="flex gap-2 mt-2">
                       <button 
-                        onClick={() => {
-                          const url = prompt("Enter image URL for player avatar:", selectedPlayer.portraitUrl || "");
+                        onClick={async () => {
+                          const url = await requestPrompt(
+                            "Enter image URL for player avatar:",
+                            selectedPlayer.portraitUrl || ""
+                          );
                           if (url !== null) updatePlayerAvatar(selectedPlayer.id, url);
                         }}
                         className="text-xs uppercase font-semibold text-zinc-500 border border-zinc-800 px-3 py-1.5 rounded-full hover:text-white transition-all"
@@ -1630,6 +1658,71 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           })}
         </div>
       </div>
+      {confirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            <p className="text-sm text-zinc-200 leading-relaxed">{confirmDialog.message}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] border border-zinc-700 text-zinc-300"
+                onClick={() => {
+                  confirmDialog.resolve(false);
+                  setConfirmDialog(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] bg-[color:var(--accent)] text-black font-bold"
+                onClick={() => {
+                  confirmDialog.resolve(true);
+                  setConfirmDialog(null);
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {promptDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            <label className="block text-sm text-zinc-200">{promptDialog.title}</label>
+            <input
+              autoFocus
+              type="text"
+              value={promptValue}
+              onChange={(e) => setPromptValue(e.target.value)}
+              className="w-full p-3 rounded-xl field-soft text-sm text-white"
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] border border-zinc-700 text-zinc-300"
+                onClick={() => {
+                  promptDialog.resolve(null);
+                  setPromptDialog(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] bg-[color:var(--accent)] text-black font-bold"
+                onClick={() => {
+                  promptDialog.resolve(promptValue);
+                  setPromptDialog(null);
+                }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { formatScore } from '../src/utils/scoring';
 
 export interface MvpHighlight {
   name: string;
@@ -13,9 +14,6 @@ interface WelcomeProps {
   mvp?: MvpHighlight | null;
   weeklyMvp?: MvpHighlight | null;
 }
-
-const formatScore = (value: number) =>
-  Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 
 const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
   return (

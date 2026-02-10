@@ -11,26 +11,8 @@ interface WeeklyCouncilProps {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
-const WEEKLY_LABEL_UPPER = WEEKLY_LABEL.toUpperCase();
 const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
 const JR_LABEL = COUNCIL_LABELS.jr;
-const getWeeklyCouncilData = (
-  name: string,
-  email: string,
-  banished: string,
-  murdered: string,
-  bonus: {
-    redemptionRoulette?: string;
-    doubleOrNothing?: boolean;
-    shieldGambit?: string;
-  },
-  leagueLabel?: string
-) => {
-  const header = leagueLabel
-    ? `TRAITORS ${WEEKLY_LABEL_UPPER} - ${leagueLabel}`
-    : `TRAITORS ${WEEKLY_LABEL_UPPER}`;
-  return `${header}\nPlayer: ${name}\nEmail: ${email}\n\n=== ${WEEKLY_LABEL_UPPER} ===\nNext Banished: ${banished || "None"}\nNext Murdered: ${murdered || "None"}\n\n=== BONUS GAMES ===\nRedemption Roulette: ${bonus.redemptionRoulette || "None"}\nDouble or Nothing: ${bonus.doubleOrNothing ? "Yes" : "No"}\nShield Gambit: ${bonus.shieldGambit || "None"}`;
-};
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
@@ -46,6 +28,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [bonusRedemption, setBonusRedemption] = useState("");
   const [bonusDoubleOrNothing, setBonusDoubleOrNothing] = useState(false);
   const [bonusShield, setBonusShield] = useState("");
+  const [bonusTrio, setBonusTrio] = useState<string[]>(["", "", ""]);
   const [mainSubmitted, setMainSubmitted] = useState(false);
   const [isMainSubmitting, setIsMainSubmitting] = useState(false);
 
@@ -56,6 +39,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const [jrBonusRedemption, setJrBonusRedemption] = useState("");
   const [jrBonusDoubleOrNothing, setJrBonusDoubleOrNothing] = useState(false);
   const [jrBonusShield, setJrBonusShield] = useState("");
+  const [jrBonusTrio, setJrBonusTrio] = useState<string[]>(["", "", ""]);
   const [jrSubmitted, setJrSubmitted] = useState(false);
   const [isJrSubmitting, setIsJrSubmitting] = useState(false);
 
@@ -63,12 +47,25 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
     shieldGambit?: string;
+    traitorTrio?: string[];
   }) =>
     Boolean(
       bonus.redemptionRoulette ||
         bonus.doubleOrNothing ||
-        bonus.shieldGambit
+        bonus.shieldGambit ||
+        bonus.traitorTrio?.some(Boolean)
     );
+
+  const updateTrioPick = (
+    picks: string[],
+    setPicks: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
+    value: string
+  ) => {
+    const next = [...picks];
+    next[index] = value;
+    setPicks(next);
+  };
 
   const findExistingPlayer = (league?: "main" | "jr") => {
     if (!playerName && !playerEmail) return undefined;
@@ -135,6 +132,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: bonusRedemption,
         doubleOrNothing: bonusDoubleOrNothing,
         shieldGambit: bonusShield,
+        traitorTrio: bonusTrio,
       })
     ) {
       showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
@@ -160,6 +158,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
+          traitorTrio: bonusTrio.filter(Boolean),
         },
       },
     };
@@ -178,6 +177,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
           shieldGambit: bonusShield,
+          traitorTrio: bonusTrio.filter(Boolean),
         },
         league: "main",
       });
@@ -192,23 +192,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     }
 
     setIsMainSubmitting(false);
-
-    const body = encodeURIComponent(
-      getWeeklyCouncilData(
-        playerName,
-        playerEmail,
-        weeklyBanished,
-        weeklyMurdered,
-        {
-          redemptionRoulette: bonusRedemption,
-          doubleOrNothing: bonusDoubleOrNothing,
-          shieldGambit: bonusShield,
-        },
-        "Main League"
-      )
-    );
-    const subject = encodeURIComponent(`Traitors ${WEEKLY_LABEL} - ${playerName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
     setMainSubmitted(true);
   };
 
@@ -226,6 +209,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         redemptionRoulette: jrBonusRedemption,
         doubleOrNothing: jrBonusDoubleOrNothing,
         shieldGambit: jrBonusShield,
+        traitorTrio: jrBonusTrio,
       })
     ) {
       showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
@@ -246,6 +230,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           redemptionRoulette: jrBonusRedemption,
           doubleOrNothing: jrBonusDoubleOrNothing,
           shieldGambit: jrBonusShield,
+          traitorTrio: jrBonusTrio.filter(Boolean),
         },
         league: "jr",
       });
@@ -260,23 +245,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     }
 
     setIsJrSubmitting(false);
-
-    const body = encodeURIComponent(
-      getWeeklyCouncilData(
-        jrName,
-        jrEmail,
-        jrWeeklyBanished,
-        jrWeeklyMurdered,
-        {
-          redemptionRoulette: jrBonusRedemption,
-          doubleOrNothing: jrBonusDoubleOrNothing,
-          shieldGambit: jrBonusShield,
-        },
-        JR_LABEL
-      )
-    );
-    const subject = encodeURIComponent(`Traitors ${JR_LABEL} - ${jrName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
     setJrSubmitted(true);
   };
 
@@ -492,6 +460,28 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         ))}
                       </select>
                     </div>
+                    <div>
+                      <p className="block text-xs text-emerald-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                        Traitor Trio
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {bonusTrio.map((pick, index) => (
+                          <select
+                            key={`main-trio-${index}`}
+                            value={pick}
+                            onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
+                            className="w-full p-3 rounded-xl field-soft border-emerald-500/40 text-xs text-[color:var(--text)] text-center transition-colors"
+                          >
+                            <option value="">Pick {index + 1}</option>
+                            {activeCastNames.map((c) => (
+                              <option key={`main-trio-${index}-${c}`} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <button
@@ -657,6 +647,28 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         </option>
                       ))}
                       </select>
+                    </div>
+                    <div>
+                      <p className="block text-xs text-emerald-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
+                        Traitor Trio
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {jrBonusTrio.map((pick, index) => (
+                          <select
+                            key={`jr-trio-${index}`}
+                            value={pick}
+                            onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
+                            className="w-full p-3 rounded-xl field-soft border-emerald-500/40 text-xs text-[color:var(--text)] text-center transition-colors"
+                          >
+                            <option value="">Pick {index + 1}</option>
+                            {activeCastNames.map((c) => (
+                              <option key={`jr-trio-${index}-${c}`} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        ))}
+                      </div>
                     </div>
                 </div>
               </div>

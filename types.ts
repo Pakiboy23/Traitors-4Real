@@ -4,7 +4,7 @@ export interface CastMemberStatus {
   isFirstOut: boolean;
   isTraitor: boolean;
   isEliminated: boolean;
-  portraitUrl?: string;
+  portraitUrl?: string | null;
 }
 
 export interface DraftPick {
