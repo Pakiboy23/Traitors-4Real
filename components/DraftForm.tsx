@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { CAST_NAMES, DraftPick, GameState, PlayerEntry } from '../types';
+import { CAST_NAMES, GameState, PlayerEntry, DraftPick } from '../types';
 import ConfirmationCard from './ConfirmationCard';
 import { getCastPortraitSrc } from "../src/castPortraits";
 
@@ -17,8 +17,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [predFirstOut, setPredFirstOut] = useState('');
   const [predWinner, setPredWinner] = useState('');
   const [traitors, setTraitors] = useState(['', '', '']);
-  const [weeklyBanished, setWeeklyBanished] = useState('');
-  const [weeklyMurdered, setWeeklyMurdered] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   // Validation: Check for duplicates in the squad
@@ -72,59 +70,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   const getFormData = () => {
     let draftText = picks.map((p, i) => `Pick #${i+1}: ${p.member || 'None'} | Rank: ${p.rank} | Pred: ${p.role}`).join('\n');
-    return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
-  };
-
-  const getWeeklyCouncilData = () => {
-    return `TRAITORS WEEKLY COUNCIL\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== WEEKLY COUNCIL ===\nNext Banished: ${weeklyBanished || 'None'}\nNext Murdered: ${weeklyMurdered || 'None'}`;
-  };
-
-  const findExistingPlayer = () => {
-    if (!playerName && !playerEmail) return undefined;
-    const normalizedEmail = playerEmail.trim().toLowerCase();
-    const normalizedName = playerName.trim().toLowerCase();
-    return gameState.players.find(player => {
-      if (normalizedEmail) {
-        return player.email.trim().toLowerCase() === normalizedEmail;
-      }
-      return player.name.trim().toLowerCase() === normalizedName;
-    });
-  };
-
-  const handleWeeklySubmit = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    if (!playerName || !playerEmail) {
-      alert("Please enter your name and email before submitting weekly votes.");
-      return;
-    }
-
-    if (!weeklyBanished && !weeklyMurdered) {
-      alert("Please select at least one weekly council prediction.");
-      return;
-    }
-
-    const existingPlayer = findExistingPlayer();
-    if (!existingPlayer) {
-      alert("We couldn't find your draft entry yet. Please submit your draft once first.");
-      return;
-    }
-
-    const updatedEntry: PlayerEntry = {
-      ...existingPlayer,
-      name: playerName,
-      email: playerEmail,
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
-    };
-
-    onAddEntry(updatedEntry);
-    setIsSubmitted(true);
-
-    const body = encodeURIComponent(getWeeklyCouncilData());
-    const subject = encodeURIComponent(`Traitors Weekly Council - ${playerName}`);
-    window.location.href = `mailto:s.haarisshariff@gmail.com,haaris.shariff@universalorlando.com?subject=${subject}&body=${body}`;
+    return `TRAITORS SEASON 4 FANTASY DRAFT\nPlayer: ${playerName}\nEmail: ${playerEmail}\n\n=== THE DRAFT SQUAD ===\n${draftText}\n\n=== BONUS PREDICTIONS ===\nFirst Eliminated: ${predFirstOut || 'None'}\nWinner Pick: ${predWinner || 'None'}\n\n=== TRAITOR GUESSES ===\n1. ${traitors[0] || '-'}\n2. ${traitors[1] || '-'}\n3. ${traitors[2] || '-'}`;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -152,10 +98,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
       predFirstOut,
       predWinner,
       predTraitors: traitors.filter(t => t !== ''),
-      weeklyPredictions: {
-        nextBanished: weeklyBanished,
-        nextMurdered: weeklyMurdered,
-      },
     };
 
     onAddEntry(newEntry);
@@ -179,8 +121,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           setPredFirstOut('');
           setPredWinner('');
           setTraitors(['', '', '']);
-          setWeeklyBanished('');
-          setWeeklyMurdered('');
         }} 
       />
     );
@@ -188,76 +128,27 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 px-2">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs md:text-sm">
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+10 PTS</span> Winner
+        </div>
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+5 PTS</span> 1st Out
+        </div>
+        <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
+          <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+3 PTS</span> Traitor ID
+        </div>
+        <div className="p-3 bg-red-950/40 rounded border border-red-600/40 text-center">
+          <span className="block text-red-500 font-bold text-sm md:text-base">-2 PTS</span> Penalty
+        </div>
+      </div>
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="glass-panel p-5 rounded-2xl">
           <h3 className="text-lg text-[color:var(--accent)] mb-4 gothic-font uppercase text-center tracking-[0.25em]">Identify Yourself</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input required type="text" placeholder="Name" value={playerName} onChange={e => setPlayerName(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none" />
             <input required type="email" placeholder="Email" value={playerEmail} onChange={e => setPlayerEmail(e.target.value)} className="p-3 rounded bg-black border border-zinc-800 text-white focus:border-[color:var(--accent)] outline-none" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-4">
-          <div className="glass-panel p-5 rounded-2xl border border-[color:var(--accent)]/30">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg text-[color:var(--accent)] gothic-font uppercase tracking-[0.2em]">Weekly Council</h3>
-                <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-1">Separate from the season draft</p>
-              </div>
-              <span className="text-[9px] text-zinc-400 uppercase tracking-[0.3em]">+1 / -0.5</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-[0.2em]">⚖️ Next Banished</label>
-                <select
-                  value={weeklyBanished}
-                  onChange={e => setWeeklyBanished(e.target.value)}
-                  className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] text-fuchsia-400 font-semibold mb-1 uppercase tracking-[0.2em]">🗡️ Next Murdered</label>
-                <select
-                  value={weeklyMurdered}
-                  onChange={e => setWeeklyMurdered(e.target.value)}
-                  className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-                >
-                  <option value="">Select...</option>
-                  {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-[9px] text-zinc-500 uppercase tracking-[0.2em]">Weekly votes submit independently</p>
-              <button
-                type="button"
-                onClick={handleWeeklySubmit}
-                className="px-4 py-2 rounded-full text-[10px] font-semibold uppercase tracking-[0.25em] border border-[color:var(--accent)]/40 text-[color:var(--accent)] hover:bg-[color:var(--accent)] hover:text-black transition-all"
-              >
-                Submit Weekly Council
-              </button>
-            </div>
-          </div>
-
-          <div className="glass-panel p-4 rounded-2xl border border-zinc-800">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mb-3 text-center">Season-long scoring</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs md:text-sm">
-              <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
-                <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+10 PTS</span> Winner
-              </div>
-              <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
-                <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+5 PTS</span> 1st Out
-              </div>
-              <div className="p-3 bg-black/70 rounded border border-[color:var(--accent)]/30 text-center">
-                <span className="block text-[color:var(--accent)] font-semibold text-sm md:text-base">+3 PTS</span> Traitor ID
-              </div>
-              <div className="p-3 bg-red-950/40 rounded border border-red-600/40 text-center">
-                <span className="block text-red-500 font-bold text-sm md:text-base">-2 PTS</span> Penalty
-              </div>
-            </div>
           </div>
         </div>
 

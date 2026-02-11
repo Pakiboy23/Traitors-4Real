@@ -1,14 +1,15 @@
 {
-  "name": "the-traitors-titanic-swim-team-draft",
+  "name": "the-traitors:-titanic-swim-team-draft",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "start": "vite preview --host 0.0.0.0 --port $PORT",
-    "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run deploy:frontend",
+    "deploy:frontend": "fly deploy",
+    "deploy:backend": "firebase deploy --only functions,firestore:rules"
   },
   "dependencies": {
     "@google/genai": "^1.35.0",

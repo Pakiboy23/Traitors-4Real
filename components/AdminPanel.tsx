@@ -2,8 +2,6 @@
 import React, { useState } from 'react';
 import { GameState, CAST_NAMES, PlayerEntry, DraftPick } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
-import { generateTraitorImage } from '../services/gemini';
-import { savePlayerPortrait } from '../services/firebase';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -46,8 +44,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       let predFirstOut = "";
       let predWinner = "";
       let predTraitors: string[] = [];
-      let weeklyBanished = "";
-      let weeklyMurdered = "";
       
       let inTraitorSection = false;
 
@@ -93,15 +89,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           predWinner = CAST_NAMES.find(c => val.includes(c)) || val;
         }
 
-        if (lowerLine.includes("next banished:")) {
-          const val = line.split(":")[1]?.trim() || "";
-          weeklyBanished = CAST_NAMES.find(c => val.includes(c)) || val;
-        }
-        if (lowerLine.includes("next murdered:")) {
-          const val = line.split(":")[1]?.trim() || "";
-          weeklyMurdered = CAST_NAMES.find(c => val.includes(c)) || val;
-        }
-
         if (lowerLine.includes("traitor guesses") || lowerLine.includes("traitor suspects") || lowerLine.includes("the traitors")) {
           inTraitorSection = true;
         } else if (inTraitorSection) {
@@ -124,11 +111,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         picks,
         predFirstOut,
         predWinner,
-        predTraitors,
-        weeklyPredictions: {
-          nextBanished: weeklyBanished,
-          nextMurdered: weeklyMurdered,
-        },
+        predTraitors
       };
 
       const updatedPlayers = [...gameState.players.filter(p => p.name.toLowerCase() !== playerName.toLowerCase()), newPlayer];
@@ -155,15 +138,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       p.id === playerId ? { ...p, portraitUrl: url } : p
     );
     updateGameState({ ...gameState, players: updatedPlayers });
-    const targetPlayer = updatedPlayers.find(p => p.id === playerId);
     if (selectedPlayer?.id === playerId) {
       setSelectedPlayer(prev => prev ? { ...prev, portraitUrl: url } : null);
-    }
-    if (targetPlayer?.email) {
-      savePlayerPortrait(targetPlayer.email, targetPlayer.name, url).catch((err) => {
-        console.error("Failed to persist player portrait:", err);
-        setMsg({ text: "Portrait saved locally. Firestore writes are blocked until auth is added.", type: 'error' });
-      });
     }
   };
 
@@ -274,51 +250,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
 
-      <div className="glass-panel p-6 rounded-2xl">
-        <h3 className="text-lg gothic-font text-[color:var(--accent)] mb-4 uppercase tracking-[0.2em]">Weekly Results</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-[10px] text-red-400 font-semibold mb-1 uppercase tracking-[0.2em]">⚖️ Next Banished</label>
-            <select
-              value={gameState.weeklyResults?.nextBanished ?? ""}
-              onChange={(e) =>
-                updateGameState({
-                  ...gameState,
-                  weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
-                    nextBanished: e.target.value,
-                  },
-                })
-              }
-              className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-            >
-              <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[10px] text-fuchsia-400 font-semibold mb-1 uppercase tracking-[0.2em]">🗡️ Next Murdered</label>
-            <select
-              value={gameState.weeklyResults?.nextMurdered ?? ""}
-              onChange={(e) =>
-                updateGameState({
-                  ...gameState,
-                  weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
-                    nextMurdered: e.target.value,
-                  },
-                })
-              }
-              className="w-full p-3 rounded bg-black border border-zinc-800 text-xs text-white"
-            >
-              <option value="">Select...</option>
-              {CAST_NAMES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-        <p className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] mt-3">Used to score weekly council picks</p>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="glass-panel p-6 rounded-2xl">
           <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-4">League Roster</h3>
@@ -416,17 +347,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3 bg-yellow-900/10 border border-yellow-900/20 rounded">
                   <p className="text-[10px] text-yellow-400 font-bold uppercase mb-1">🏆 Winner</p>
                   <p className="text-sm text-white">{selectedPlayer.predWinner || 'None'}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
-                  <p className="text-[10px] text-red-400 font-bold uppercase mb-1">⚖️ Next Banished</p>
-                  <p className="text-sm text-white">{selectedPlayer.weeklyPredictions?.nextBanished || 'None'}</p>
-                </div>
-                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
-                  <p className="text-[10px] text-fuchsia-300 font-bold uppercase mb-1">🗡️ Next Murdered</p>
-                  <p className="text-sm text-white">{selectedPlayer.weeklyPredictions?.nextMurdered || 'None'}</p>
                 </div>
               </div>
 
@@ -565,3 +485,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 };
 
 export default AdminPanel;
+ git config --global s.haarisshariff@gmail.com
+  git config --global user.name "Syed Shariff"
+  
