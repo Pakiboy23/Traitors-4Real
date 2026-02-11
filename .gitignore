@@ -32,6 +32,3 @@ bin
 bin/pocketbase
 bin/pocketbase.exe
 
-# Firebase generated caches/artifacts
-.firebase/*.cache
-.firebase/hosting.*.cache
