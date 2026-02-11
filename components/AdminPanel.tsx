@@ -485,6 +485,4 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 };
 
 export default AdminPanel;
- git config --global s.haarisshariff@gmail.com
-  git config --global user.name "Syed Shariff"
   
