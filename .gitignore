@@ -31,3 +31,6 @@ pb_public
 bin
 bin/pocketbase
 bin/pocketbase.exe
+
+# Firebase generated caches/artifacts
+.firebase/
