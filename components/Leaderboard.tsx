@@ -25,12 +25,37 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     ? gameState.weeklyScoreHistory
     : [];
 
+  const hasActiveWeeklyResults = useMemo(() => {
+    const weekly = gameState.weeklyResults;
+    return Boolean(
+      weekly?.nextBanished ||
+        weekly?.nextMurdered ||
+        weekly?.bonusGames?.redemptionRoulette ||
+        weekly?.bonusGames?.shieldGambit ||
+        weekly?.bonusGames?.traitorTrio?.length
+    );
+  }, [gameState.weeklyResults]);
+
+  const latestSnapshotTotals = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
+
   const scoredPlayers = gameState.players
     .map((player) => ({
       ...player,
       scoring: calculatePlayerScore(gameState, player),
     }))
-    .sort((a, b) => b.scoring.total - a.scoring.total);
+    .sort((a, b) => {
+      const aArchived = latestSnapshotTotals[a.id];
+      const bArchived = latestSnapshotTotals[b.id];
+      const aTotal =
+        !hasActiveWeeklyResults && typeof aArchived === "number"
+          ? aArchived
+          : a.scoring.total;
+      const bTotal =
+        !hasActiveWeeklyResults && typeof bArchived === "number"
+          ? bArchived
+          : b.scoring.total;
+      return bTotal - aTotal;
+    });
 
   const weeklyDeltaById = useMemo(() => {
     if (scoreHistory.length < 2) return {};
@@ -194,7 +219,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                     </div>
                     <div className="text-right">
                       <div className="text-2xl md:text-3xl font-black text-[#D4AF37]">
-                        {formatScore(p.scoring.total)}
+                        {formatScore(!hasActiveWeeklyResults && typeof latestSnapshotTotals[p.id] === "number" ? latestSnapshotTotals[p.id] : p.scoring.total)}
                       </div>
                       {weeklyDeltaById[p.id] !== undefined && (
                         <div

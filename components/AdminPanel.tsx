@@ -788,7 +788,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     : scoreHistory.slice(-6);
 
   const archiveWeeklyScores = async () => {
-    if (gameState.players.length === 0) {
+    const currentState = gameStateRef.current;
+    if (currentState.players.length === 0) {
       setMsg({ text: "No players to score yet.", type: "error" });
       return;
     }
@@ -797,18 +798,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (labelInput === null) return;
     const label = labelInput.trim() || defaultLabel;
     const totals: Record<string, number> = {};
-    gameState.players.forEach((player) => {
-      totals[player.id] = calculatePlayerScore(gameState, player).total;
+    currentState.players.forEach((player) => {
+      totals[player.id] = calculatePlayerScore(currentState, player).total;
     });
+    const snapshotResults = currentState.weeklyResults
+      ? JSON.parse(JSON.stringify(currentState.weeklyResults))
+      : undefined;
     const snapshot: WeeklyScoreSnapshot = {
       id: `week-${Date.now()}`,
       label,
       createdAt: new Date().toISOString(),
-      weeklyResults: gameState.weeklyResults,
+      weeklyResults: snapshotResults,
       totals,
     };
     const nextHistory = [...scoreHistory, snapshot].slice(-52);
-    const nextState = { ...gameState, weeklyScoreHistory: nextHistory };
+    const nextState = { ...currentState, weeklyScoreHistory: nextHistory };
     gameStateRef.current = nextState;
     updateGameState(nextState);
     setMsg({ text: `Archived scores for ${label}.`, type: "success" });
@@ -1033,6 +1037,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="mt-4 space-y-3">
             {visibleScoreHistory.map((snapshot) => {
               const topper = getScoreTopper(snapshot);
+              const weeklyResults = snapshot.weeklyResults;
               return (
                 <div
                   key={snapshot.id}
@@ -1043,6 +1048,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
                       Archived {new Date(snapshot.createdAt).toLocaleString()}
                     </p>
+                    {(weeklyResults?.nextBanished || weeklyResults?.nextMurdered || weeklyResults?.bonusGames?.redemptionRoulette || weeklyResults?.bonusGames?.shieldGambit) && (
+                      <p className="text-[11px] text-zinc-400 mt-1">
+                        {weeklyResults?.nextBanished ? `Banished: ${weeklyResults.nextBanished}` : ""}
+                        {weeklyResults?.nextBanished && weeklyResults?.nextMurdered ? " • " : ""}
+                        {weeklyResults?.nextMurdered ? `Murdered: ${weeklyResults.nextMurdered}` : ""}
+                        {(weeklyResults?.nextBanished || weeklyResults?.nextMurdered) && (weeklyResults?.bonusGames?.redemptionRoulette || weeklyResults?.bonusGames?.shieldGambit) ? " • " : ""}
+                        {weeklyResults?.bonusGames?.redemptionRoulette ? `Roulette: ${weeklyResults.bonusGames.redemptionRoulette}` : ""}
+                        {weeklyResults?.bonusGames?.redemptionRoulette && weeklyResults?.bonusGames?.shieldGambit ? " • " : ""}
+                        {weeklyResults?.bonusGames?.shieldGambit ? `Shield: ${weeklyResults.bonusGames.shieldGambit}` : ""}
+                      </p>
+                    )}
                   </div>
                   <div className="text-xs text-zinc-400 uppercase tracking-[0.16em]">
                     {topper ? `Top: ${topper.name} (${formatScore(topper.score)})` : "Top: —"}
