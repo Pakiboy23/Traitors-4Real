@@ -21,7 +21,9 @@ import {
 
 interface AdminPanelProps {
   gameState: GameState;
-  updateGameState: (state: GameState) => void;
+  updateGameState: (
+    state: GameState | ((prevState: GameState) => GameState)
+  ) => void;
   onSignOut?: () => void;
   lastSavedAt?: number | null;
   lastWriteError?: string | null;
@@ -47,8 +49,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastWriteError,
   onSaveNow,
 }) => {
-  const BANISHED_OPTIONS = CAST_NAMES;
-  const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
+  const activeCastNames = CAST_NAMES.filter(
+    (name) => !gameState.castStatus[name]?.isEliminated
+  );
+  const BANISHED_OPTIONS = activeCastNames;
+  const MURDER_OPTIONS = ["No Murder", ...activeCastNames];
   const defaultStatus = {
     isWinner: false,
     isFirstOut: false,
@@ -369,12 +374,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const updateCastMember = (name: string, field: string, value: any) => {
-    const updatedStatus = { ...gameState.castStatus };
-    const currentStatus = updatedStatus[name] ?? defaultStatus;
-    updatedStatus[name] = { ...currentStatus, [field]: value };
-    if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
-    if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
-    updateGameState({ ...gameState, castStatus: updatedStatus });
+    updateGameState((prevState) => {
+      const updatedStatus = { ...prevState.castStatus };
+      const currentStatus = updatedStatus[name] ?? defaultStatus;
+      updatedStatus[name] = { ...currentStatus, [field]: value };
+      if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
+      if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
+      return { ...prevState, castStatus: updatedStatus };
+    });
   };
 
   const updatePlayerAvatar = (playerId: string, url: string) => {
@@ -922,13 +929,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <select
               value={gameState.weeklyResults?.nextBanished ?? ""}
               onChange={(e) =>
-                updateGameState({
-                  ...gameState,
+                updateGameState((prevState) => ({
+                  ...prevState,
                   weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
+                    ...(prevState.weeklyResults ?? {}),
                     nextBanished: e.target.value,
                   },
-                })
+                }))
               }
               className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
@@ -941,13 +948,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <select
               value={gameState.weeklyResults?.nextMurdered ?? ""}
               onChange={(e) =>
-                updateGameState({
-                  ...gameState,
+                updateGameState((prevState) => ({
+                  ...prevState,
                   weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
+                    ...(prevState.weeklyResults ?? {}),
                     nextMurdered: e.target.value,
                   },
-                })
+                }))
               }
               className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
@@ -973,7 +980,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
-                {CAST_NAMES.map((c) => (
+                {activeCastNames.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -990,7 +997,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
-                {CAST_NAMES.map((c) => (
+                {activeCastNames.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -1507,7 +1514,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -1524,7 +1531,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
