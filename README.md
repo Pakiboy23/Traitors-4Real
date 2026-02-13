@@ -58,3 +58,6 @@ Admins can merge Weekly Council votes into the main `games` record from the Admi
 ## Legacy Firebase note
 
 The production stack now runs on PocketBase + Fly.io. The old Firebase/Firestore implementation is legacy and should not be used for current deployment workflows.
+
+- Legacy Firebase code is retained under `functions/` for historical reference only.
+- Local Firebase CLI/cache files are intentionally git-ignored to prevent merge conflicts with the current Fly/PocketBase deployment setup.
