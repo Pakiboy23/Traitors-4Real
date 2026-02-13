@@ -58,3 +58,13 @@ Admins can merge Weekly Council votes into the main `games` record from the Admi
 ## Legacy Firebase note
 
 The production stack now runs on PocketBase + Fly.io. The old Firebase/Firestore implementation is legacy and should not be used for current deployment workflows.
+
+### PR #32 conflict-resolution decision
+
+When reconciling old Firebase-to-Fly migration branches, keep the current PocketBase-first deployment model as the source of truth:
+
+- Keep `Dockerfile`, `fly.toml`, and app code aligned to PocketBase backend + Fly.io deployment.
+- Do **not** restore legacy Firebase Hosting cache/artifacts (for example `.firebase/hosting.*`).
+- Keep `firebase.json` / `firestore.rules` out of the active deployment path unless a separate, explicit Firebase backend migration is planned.
+
+This avoids re-introducing stale Firebase hosting assumptions into the current production topology.
