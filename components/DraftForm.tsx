@@ -40,6 +40,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const [traitors, setTraitors] = useState(['', '', '']);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const activeCastNames = CAST_NAMES.filter(
+    (name) => !gameState.castStatus[name]?.isEliminated
+  );
 
   // Validation: Check for duplicates in the squad
   const getDuplicatePicks = () => {
@@ -70,7 +73,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   };
 
   const autoGeneratePicks = () => {
-    const shuffled = shuffleArray(CAST_NAMES);
+    const shuffled = shuffleArray(activeCastNames);
     const selected = shuffled.slice(0, DRAFT_SIZE);
     const ranks = shuffleArray(Array.from({ length: DRAFT_SIZE }, (_, index) => index + 1));
     const bonusPool = shuffled.slice(DRAFT_SIZE);
@@ -324,7 +327,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         }`}
                       >
                         <option value="">Choose Player...</option>
-                        {CAST_NAMES.map((c) => (
+                        {activeCastNames.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -411,7 +414,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
                   >
                     <option value="">Select...</option>
-                    {CAST_NAMES.map((c) => (
+                    {activeCastNames.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -428,7 +431,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
                   >
                     <option value="">Select...</option>
-                    {CAST_NAMES.map((c) => (
+                    {activeCastNames.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
@@ -455,7 +458,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     className="w-full p-3.5 rounded-2xl field-soft bg-red-900/5 border-red-900/30 text-sm text-white"
                   >
                     <option value="">Traitor Guess #{i + 1}</option>
-                    {CAST_NAMES.map((c) => (
+                    {activeCastNames.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>

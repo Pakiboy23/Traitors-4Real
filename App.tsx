@@ -155,8 +155,16 @@ const App: React.FC = () => {
     return normalizeGameState({ players: [] });
   });
 
-  const updateGameState = useCallback((newState: GameState) => {
-    setGameState(normalizeGameState(newState));
+  const updateGameState = useCallback((
+    nextState: GameState | ((prevState: GameState) => GameState)
+  ) => {
+    setGameState((prevState) => {
+      const resolvedState =
+        typeof nextState === "function"
+          ? (nextState as (prevState: GameState) => GameState)(prevState)
+          : nextState;
+      return normalizeGameState(resolvedState);
+    });
   }, []);
 
   const normalizeUndefined = (value: any): any => {
