@@ -8,8 +8,8 @@ const adminDb = getFirestore(adminApp);
 const FIRESTORE_COLLECTION = "games";
 const FIRESTORE_DOC_ID = "default";
 
-const normalize = (value: string | undefined | null) =>
-  (value || "").trim().toLowerCase();
+const clean = (value: string | undefined | null) => (value || "").trim();
+const normalize = (value: string | undefined | null) => clean(value).toLowerCase();
 
 const getEasternNowParts = () => {
   const formatter = new Intl.DateTimeFormat("en-US", {
@@ -62,7 +62,8 @@ export const submitWeeklyVotes = onCall(async (request) => {
     );
   }
 
-  const name = normalize(request.data?.name);
+  const name = clean(request.data?.name);
+  const normalizedName = normalize(name);
   const email = normalize(request.data?.email);
   const league = normalize(request.data?.league) === "jr" ? "jr" : "main";
   const nextBanished = (request.data?.nextBanished || "").toString();
@@ -93,7 +94,7 @@ export const submitWeeklyVotes = onCall(async (request) => {
     const players = state.players as Array<any>;
     let target = players.find((p) => {
       const matchesLeague = league === "jr" ? p.league === "jr" : p.league !== "jr";
-      return matchesLeague && normalize(p.name) === name;
+      return matchesLeague && normalize(p.name) === normalizedName;
     });
     if (!target && email) {
       target = players.find((p) => {

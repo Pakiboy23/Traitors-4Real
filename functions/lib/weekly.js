@@ -5,7 +5,8 @@ const adminApp = getApps().length ? getApps()[0] : initializeApp();
 const adminDb = getFirestore(adminApp);
 const FIRESTORE_COLLECTION = "games";
 const FIRESTORE_DOC_ID = "default";
-const normalize = (value) => (value || "").trim().toLowerCase();
+const clean = (value) => (value || "").trim();
+const normalize = (value) => clean(value).toLowerCase();
 const getEasternNowParts = () => {
     const formatter = new Intl.DateTimeFormat("en-US", {
         timeZone: "America/New_York",
@@ -48,7 +49,8 @@ export const submitWeeklyVotes = onCall(async (request) => {
     if (isWeeklyVoteLocked()) {
         throw new HttpsError("failed-precondition", "Weekly voting is closed between 8:55pm and 11pm ET on Thursdays. Please try again later.");
     }
-    const name = normalize(request.data?.name);
+    const name = clean(request.data?.name);
+    const normalizedName = normalize(name);
     const email = normalize(request.data?.email);
     const league = normalize(request.data?.league) === "jr" ? "jr" : "main";
     const nextBanished = (request.data?.nextBanished || "").toString();
@@ -73,7 +75,7 @@ export const submitWeeklyVotes = onCall(async (request) => {
         const players = state.players;
         let target = players.find((p) => {
             const matchesLeague = league === "jr" ? p.league === "jr" : p.league !== "jr";
-            return matchesLeague && normalize(p.name) === name;
+            return matchesLeague && normalize(p.name) === normalizedName;
         });
         if (!target && email) {
             target = players.find((p) => {
