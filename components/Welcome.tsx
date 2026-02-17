@@ -86,14 +86,13 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
               Draft your castle roster, submit banishment and murder calls each week, and monitor
               traitor-era power shifts in one high-clarity workspace.
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <div className="flex w-full items-center justify-center pt-2">
               <button
                 onClick={onStart}
-                className="btn-primary px-7 md:px-9 py-3 md:py-3.5 text-sm md:text-base"
+                className="btn-primary hero-enter-btn text-sm md:text-base"
               >
-                Start Weekly Picks
+                ENTER THE CASTLE
               </button>
-              <span className="status-pill">Optimized for mobile and desktop</span>
             </div>
           </div>
         </div>
@@ -101,6 +100,9 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
         <div className="space-y-4">
           <ScoreCard title="Season Leader" player={mvp} featured />
           <ScoreCard title="Latest Weekly Gain" player={weeklyMvp} valuePrefix="+" />
+          <div className="text-center">
+            <span className="status-pill">Optimized for mobile and desktop</span>
+          </div>
         </div>
       </section>
 
