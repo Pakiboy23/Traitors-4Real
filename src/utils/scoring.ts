@@ -1,4 +1,5 @@
 import type { GameState, PlayerEntry } from "../../types";
+import { SCORING_POINTS, MULTIPLIERS } from "./scoringConstants";
 
 export interface ScoreAchievement {
   member: string;
@@ -31,7 +32,9 @@ export const calculatePlayerScore = (
   player: PlayerEntry
 ): PlayerScore => {
   const getWeeklyMultiplier = (entry: PlayerEntry) =>
-    entry.weeklyPredictions?.bonusGames?.doubleOrNothing ? 2 : 1;
+    entry.weeklyPredictions?.bonusGames?.doubleOrNothing
+      ? MULTIPLIERS.DOUBLE_OR_NOTHING
+      : MULTIPLIERS.NORMAL;
 
   let score = 0;
   const achievements: ScoreAchievement[] = [];
@@ -48,62 +51,62 @@ export const calculatePlayerScore = (
   player.picks.forEach((pick) => {
     const status = gameState.castStatus[pick.member];
     if (status?.isWinner) {
-      score += 10;
+      score += SCORING_POINTS.DRAFT_WINNER;
       breakdown.draftWinners.push(pick.member);
       achievements.push({
         member: pick.member,
         type: "Winner",
-        points: 10,
+        points: SCORING_POINTS.DRAFT_WINNER,
         icon: "🏆",
       });
     }
   });
 
   if (gameState.castStatus[player.predWinner]?.isWinner) {
-    score += 10;
+    score += SCORING_POINTS.PRED_WINNER;
     breakdown.predWinner = true;
     achievements.push({
       member: player.predWinner,
       type: "Prophecy: Winner",
-      points: 10,
+      points: SCORING_POINTS.PRED_WINNER,
       icon: "✨",
     });
   }
 
   if (gameState.castStatus[player.predFirstOut]?.isFirstOut) {
-    score += 5;
+    score += SCORING_POINTS.PRED_FIRST_OUT;
     breakdown.predFirstOut = true;
     achievements.push({
       member: player.predFirstOut,
       type: "Prophecy: 1st Out",
-      points: 5,
+      points: SCORING_POINTS.PRED_FIRST_OUT,
       icon: "💀",
     });
   }
 
   player.predTraitors.forEach((guess) => {
     if (gameState.castStatus[guess]?.isTraitor) {
-      score += 3;
+      score += SCORING_POINTS.TRAITOR_BONUS;
       breakdown.traitorBonus.push(guess);
       achievements.push({
         member: guess,
         type: "Unmasked Traitor",
-        points: 3,
+        points: SCORING_POINTS.TRAITOR_BONUS,
         icon: "🎭",
       });
     }
   });
 
   if (gameState.castStatus[player.predWinner]?.isFirstOut) {
-    score -= 2;
+    score += SCORING_POINTS.PROPHECY_REVERSED_PENALTY;
     breakdown.penalty = true;
   }
 
   const weeklyResults = gameState.weeklyResults;
   const weeklyPredictions = player.weeklyPredictions;
   const weeklyMultiplier = getWeeklyMultiplier(player);
-  const weeklyCorrectPoints = 1 * weeklyMultiplier;
-  const weeklyIncorrectPoints = 0.5 * weeklyMultiplier;
+  const weeklyCorrectPoints = SCORING_POINTS.WEEKLY_CORRECT_BASE * weeklyMultiplier;
+  const weeklyIncorrectPoints = SCORING_POINTS.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
 
   if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
     if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
@@ -147,7 +150,9 @@ export const calculatePlayerScore = (
 
   if (bonusResults?.redemptionRoulette && bonusPredictions?.redemptionRoulette) {
     if (bonusResults.redemptionRoulette === bonusPredictions.redemptionRoulette) {
-      const points = isNegativeForBonus ? 16 : 8;
+      const points = isNegativeForBonus
+        ? SCORING_POINTS.REDEMPTION_ROULETTE_CORRECT_NEGATIVE
+        : SCORING_POINTS.REDEMPTION_ROULETTE_CORRECT;
       score += points;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
@@ -161,18 +166,20 @@ export const calculatePlayerScore = (
         icon: "🎲",
       });
     } else {
-      score -= 1;
+      score += SCORING_POINTS.REDEMPTION_ROULETTE_INCORRECT;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
         result: "incorrect",
-        points: -1,
+        points: SCORING_POINTS.REDEMPTION_ROULETTE_INCORRECT,
       });
     }
   }
 
   if (bonusResults?.shieldGambit && bonusPredictions?.shieldGambit) {
     if (bonusResults.shieldGambit === bonusPredictions.shieldGambit) {
-      const points = isNegativeForBonus ? 8 : 5;
+      const points = isNegativeForBonus
+        ? SCORING_POINTS.SHIELD_GAMBIT_CORRECT_NEGATIVE
+        : SCORING_POINTS.SHIELD_GAMBIT_CORRECT;
       score += points;
       breakdown.bonusGames.push({
         label: "Shield Gambit",
@@ -205,8 +212,14 @@ export const calculatePlayerScore = (
       resultSet.includes(name)
     ).length;
     if (correctCount > 0) {
-      const points = correctCount === 3 ? 15 : correctCount * 3;
-      const perNamePoints = correctCount === 3 ? 5 : 3;
+      const points =
+        correctCount === 3
+          ? SCORING_POINTS.TRAITOR_TRIO_PERFECT
+          : correctCount * SCORING_POINTS.TRAITOR_TRIO_PARTIAL;
+      const perNamePoints =
+        correctCount === 3
+          ? SCORING_POINTS.TRAITOR_TRIO_PERFECT_PER_MEMBER
+          : SCORING_POINTS.TRAITOR_TRIO_PARTIAL;
       score += points;
       breakdown.bonusGames.push({
         label: "Traitor Trio Challenge",

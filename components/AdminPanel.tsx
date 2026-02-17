@@ -11,6 +11,7 @@ import {
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 import { pocketbaseUrl } from "../src/lib/pocketbase";
+import { LIMITS } from "../src/utils/scoringConstants";
 import {
   deleteSubmission,
   fetchWeeklySubmissions,
@@ -21,7 +22,9 @@ import {
 
 interface AdminPanelProps {
   gameState: GameState;
-  updateGameState: (state: GameState) => void;
+  updateGameState: (
+    state: GameState | ((prevState: GameState) => GameState)
+  ) => void;
   onSignOut?: () => void;
   lastSavedAt?: number | null;
   lastWriteError?: string | null;
@@ -47,8 +50,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastWriteError,
   onSaveNow,
 }) => {
-  const BANISHED_OPTIONS = CAST_NAMES;
-  const MURDER_OPTIONS = ["No Murder", ...CAST_NAMES];
+  const activeCastNames = CAST_NAMES.filter(
+    (name) => !gameState.castStatus[name]?.isEliminated
+  );
+  const BANISHED_OPTIONS = activeCastNames;
+  const MURDER_OPTIONS = ["No Murder", ...activeCastNames];
   const defaultStatus = {
     isWinner: false,
     isFirstOut: false,
@@ -130,7 +136,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const payload = submission.payload as { playerId?: string } | undefined;
     return payload?.playerId ?? null;
   };
-  const HISTORY_LIMIT = 200;
 
   const buildHistoryEntry = (
     submission: SubmissionRecord
@@ -157,7 +162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       merged.unshift(entry);
       seen.add(entry.id);
     });
-    return merged.slice(0, HISTORY_LIMIT);
+    return merged.slice(0, LIMITS.HISTORY_LIMIT);
   };
 
   const findPlayerMatch = (
@@ -253,7 +258,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditPlayerEmail(selectedPlayer.email || "");
     setEditWeeklyBanished(selectedPlayer.weeklyPredictions?.nextBanished || "");
     setEditWeeklyMurdered(selectedPlayer.weeklyPredictions?.nextMurdered || "");
-  }, [selectedPlayer?.id]);
+  }, [selectedPlayer]);
 
   const parseAndAdd = () => {
     try {
@@ -369,12 +374,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const updateCastMember = (name: string, field: string, value: any) => {
-    const updatedStatus = { ...gameState.castStatus };
-    const currentStatus = updatedStatus[name] ?? defaultStatus;
-    updatedStatus[name] = { ...currentStatus, [field]: value };
-    if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
-    if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
-    updateGameState({ ...gameState, castStatus: updatedStatus });
+    updateGameState((prevState) => {
+      const updatedStatus = { ...prevState.castStatus };
+      const currentStatus = updatedStatus[name] ?? defaultStatus;
+      updatedStatus[name] = { ...currentStatus, [field]: value };
+      if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
+      if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
+      return { ...prevState, castStatus: updatedStatus };
+    });
   };
 
   const updatePlayerAvatar = (playerId: string, url: string) => {
@@ -776,7 +783,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const history = Array.isArray(gameState.weeklySubmissionHistory)
     ? gameState.weeklySubmissionHistory
     : [];
-  const visibleHistory = showAllHistory ? history : history.slice(0, 20);
+  const visibleHistory = showAllHistory ? history : history.slice(0, LIMITS.HISTORY_DEFAULT_DISPLAY);
 
   const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(
     gameState.weeklyScoreHistory
@@ -785,7 +792,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     : [];
   const visibleScoreHistory = showAllScoreHistory
     ? scoreHistory
-    : scoreHistory.slice(-6);
+    : scoreHistory.slice(-LIMITS.SCORE_HISTORY_DEFAULT_DISPLAY);
 
   const archiveWeeklyScores = async () => {
     const currentState = gameStateRef.current;
@@ -811,7 +818,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       weeklyResults: snapshotResults,
       totals,
     };
-    const nextHistory = [...scoreHistory, snapshot].slice(-52);
+    const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
     const nextState = { ...currentState, weeklyScoreHistory: nextHistory };
     gameStateRef.current = nextState;
     updateGameState(nextState);
@@ -922,13 +929,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <select
               value={gameState.weeklyResults?.nextBanished ?? ""}
               onChange={(e) =>
-                updateGameState({
-                  ...gameState,
+                updateGameState((prevState) => ({
+                  ...prevState,
                   weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
+                    ...(prevState.weeklyResults ?? {}),
                     nextBanished: e.target.value,
                   },
-                })
+                }))
               }
               className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
@@ -941,13 +948,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <select
               value={gameState.weeklyResults?.nextMurdered ?? ""}
               onChange={(e) =>
-                updateGameState({
-                  ...gameState,
+                updateGameState((prevState) => ({
+                  ...prevState,
                   weeklyResults: {
-                    ...(gameState.weeklyResults ?? {}),
+                    ...(prevState.weeklyResults ?? {}),
                     nextMurdered: e.target.value,
                   },
-                })
+                }))
               }
               className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
             >
@@ -973,7 +980,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
-                {CAST_NAMES.map((c) => (
+                {activeCastNames.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -990,7 +997,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
               >
                 <option value="">Select...</option>
-                {CAST_NAMES.map((c) => (
+                {activeCastNames.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -1010,7 +1017,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {scoreHistory.length > 6 && (
+            {scoreHistory.length > LIMITS.SCORE_HISTORY_DEFAULT_DISPLAY && (
               <button
                 type="button"
                 onClick={() => setShowAllScoreHistory((prev) => !prev)}
@@ -1197,7 +1204,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {history.length > 20 && (
+            {history.length > LIMITS.HISTORY_DEFAULT_DISPLAY && (
               <button
                 type="button"
                 onClick={() => setShowAllHistory((prev) => !prev)}
@@ -1507,7 +1514,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>
@@ -1524,7 +1531,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
                     >
                       <option value="">Select...</option>
-                      {CAST_NAMES.map((c) => (
+                      {activeCastNames.map((c) => (
                         <option key={c} value={c}>
                           {c}
                         </option>

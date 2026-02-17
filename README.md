@@ -61,3 +61,12 @@ The production stack now runs on PocketBase + Fly.io. The old Firebase/Firestore
 
 - Legacy Firebase code is retained under `functions/` for historical reference only.
 - Local Firebase CLI/cache files are intentionally git-ignored to prevent merge conflicts with the current Fly/PocketBase deployment setup.
+### PR #32 conflict-resolution decision
+
+When reconciling old Firebase-to-Fly migration branches, keep the current PocketBase-first deployment model as the source of truth:
+
+- Keep `Dockerfile`, `fly.toml`, and app code aligned to PocketBase backend + Fly.io deployment.
+- Do **not** restore legacy Firebase Hosting cache/artifacts (for example `.firebase/hosting.*`).
+- Keep `firebase.json` / `firestore.rules` out of the active deployment path unless a separate, explicit Firebase backend migration is planned.
+
+This avoids re-introducing stale Firebase hosting assumptions into the current production topology.
