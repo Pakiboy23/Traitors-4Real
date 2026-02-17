@@ -24,9 +24,34 @@ export interface PlayerScore {
   achievements: ScoreAchievement[];
 }
 
+/**
+ * Formats a score for display
+ * @param value - The numeric score to format
+ * @returns Formatted score string (no decimals for integers, 1 decimal for floats)
+ */
 export const formatScore = (value: number) =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 
+/**
+ * Calculates the total score and breakdown for a player based on the current game state
+ *
+ * Scoring breakdown:
+ * - Draft picks: +10 points per winner drafted
+ * - Prophecies: +10 for correct winner, +5 for correct first out, +3 per traitor identified
+ * - Penalty: -2 if winner prediction is eliminated first
+ * - Weekly predictions: +1 per correct (or 2x with Double or Nothing), -0.5 per incorrect
+ * - Bonus games: Variable points based on redemption status and game type
+ *
+ * @param gameState - Current game state including cast status and weekly results
+ * @param player - Player entry to calculate score for
+ * @returns PlayerScore object with total, breakdown, and achievements array
+ *
+ * @example
+ * const score = calculatePlayerScore(gameState, player);
+ * console.log(score.total); // 15.5
+ * console.log(score.breakdown.draftWinners); // ["Player Name"]
+ * console.log(score.achievements); // [{ member: "...", type: "...", points: 10, icon: "🏆" }]
+ */
 export const calculatePlayerScore = (
   gameState: GameState,
   player: PlayerEntry

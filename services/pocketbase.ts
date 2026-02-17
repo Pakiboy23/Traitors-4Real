@@ -8,7 +8,21 @@ const PORTRAITS_COLLECTION = "playerPortraits";
 const ADMIN_COLLECTION = "admins";
 const SUBMISSIONS_COLLECTION = "submissions";
 
-const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
+/**
+ * Escapes special characters in filter values for PocketBase queries
+ * Prevents filter injection by escaping quotes and backslashes
+ *
+ * @param value - The string value to escape
+ * @returns Escaped string safe for use in PocketBase filters
+ *
+ * @example
+ * const filter = `email="${escapeFilterValue(userEmail)}"`;
+ */
+const escapeFilterValue = (value: string): string => {
+  return value
+    .replace(/\\/g, '\\\\') // Escape backslashes first
+    .replace(/"/g, '\\"');   // Then escape quotes
+};
 
 const isNotFound = (error: any) =>
   error?.status === 404 || error?.response?.code === 404;
@@ -37,7 +51,7 @@ export const fetchGameState = async (): Promise<{
   try {
     const record = await pb
       .collection(GAME_COLLECTION)
-      .getFirstListItem(`slug="${GAME_SLUG}"`);
+      .getFirstListItem(`slug="${escapeFilterValue(GAME_SLUG)}"`);
     const updatedAt = record.updated
       ? new Date(record.updated as string).getTime()
       : undefined;
@@ -53,7 +67,7 @@ export const saveGameState = async (state: GameState) => {
   try {
     const record = await pb
       .collection(GAME_COLLECTION)
-      .getFirstListItem(`slug="${GAME_SLUG}"`);
+      .getFirstListItem(`slug="${escapeFilterValue(GAME_SLUG)}"`);
     existing = { id: record.id };
   } catch (error) {
     if (!isNotFound(error)) throw error;
@@ -61,12 +75,12 @@ export const saveGameState = async (state: GameState) => {
 
   if (existing) {
     return pb.collection(GAME_COLLECTION).update(existing.id, {
-      slug: GAME_SLUG,
+      slug: escapeFilterValue(GAME_SLUG),
       state,
     });
   }
   return pb.collection(GAME_COLLECTION).create({
-    slug: GAME_SLUG,
+    slug: escapeFilterValue(GAME_SLUG),
     state,
   });
 };
@@ -76,7 +90,7 @@ export const subscribeToGameState = (
 ) => {
   const callback = (event: any) => {
     if (!event?.record) return;
-    if (event.record.slug !== GAME_SLUG) return;
+    if (event.record.slug !== escapeFilterValue(GAME_SLUG)) return;
     const updatedAt = event.record.updated
       ? new Date(event.record.updated as string).getTime()
       : undefined;
