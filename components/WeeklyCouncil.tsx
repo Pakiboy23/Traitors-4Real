@@ -288,10 +288,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         </aside>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
-          <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
+          <article className="soft-card league-panel-main rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Main League</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">Main League</p>
                 <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
               </div>
               {mainSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
@@ -338,7 +338,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               </select>
             </div>
 
-            <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
+            <div className="soft-card soft-card-subtle league-subpanel-main rounded-2xl p-4 space-y-3">
               <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasMainDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
@@ -408,10 +408,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </button>
           </article>
 
-          <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
+          <article className="soft-card league-panel-jr rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Jr League</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--traitor-crimson-strong)]">Jr League</p>
                 <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
               </div>
               {jrSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
@@ -458,7 +458,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               </select>
             </div>
 
-            <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
+            <div className="soft-card soft-card-subtle league-subpanel-jr rounded-2xl p-4 space-y-3">
               <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasJrDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>

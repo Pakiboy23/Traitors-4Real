@@ -222,6 +222,28 @@ body.light-mode {
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.4);
   }
 
+  .league-panel-main {
+    border-color: color-mix(in srgb, var(--accent-strong) 44%, var(--panel-border));
+    background:
+      radial-gradient(600px 220px at 12% -22%, rgba(228, 196, 129, 0.2), transparent 72%),
+      linear-gradient(148deg, rgba(20, 26, 39, 0.84), rgba(12, 17, 28, 0.74));
+  }
+
+  .league-panel-jr {
+    border-color: color-mix(in srgb, var(--traitor-crimson-strong) 40%, var(--panel-border));
+    background:
+      radial-gradient(620px 240px at 88% -18%, rgba(153, 42, 57, 0.23), transparent 74%),
+      linear-gradient(148deg, rgba(20, 26, 39, 0.84), rgba(12, 17, 28, 0.74));
+  }
+
+  .league-subpanel-main {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-strong) 26%, transparent);
+  }
+
+  .league-subpanel-jr {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--traitor-crimson-strong) 24%, transparent);
+  }
+
   .leader-spotlight {
     position: relative;
     overflow: hidden;
@@ -293,6 +315,28 @@ body.light-mode {
 
   body.light-mode .leader-name {
     text-shadow: 0 2px 10px rgba(175, 123, 31, 0.22);
+  }
+
+  body.light-mode .league-panel-main {
+    border-color: rgba(138, 97, 24, 0.24);
+    background:
+      radial-gradient(580px 220px at 12% -24%, rgba(175, 123, 31, 0.16), transparent 72%),
+      linear-gradient(148deg, rgba(255, 255, 255, 0.95), rgba(245, 248, 252, 0.92));
+  }
+
+  body.light-mode .league-panel-jr {
+    border-color: rgba(111, 22, 35, 0.22);
+    background:
+      radial-gradient(620px 240px at 88% -18%, rgba(143, 36, 51, 0.16), transparent 74%),
+      linear-gradient(148deg, rgba(255, 255, 255, 0.95), rgba(245, 248, 252, 0.92));
+  }
+
+  body.light-mode .league-subpanel-main {
+    box-shadow: inset 0 0 0 1px rgba(138, 97, 24, 0.22);
+  }
+
+  body.light-mode .league-subpanel-jr {
+    box-shadow: inset 0 0 0 1px rgba(111, 22, 35, 0.2);
   }
 
   .pill-nav {
