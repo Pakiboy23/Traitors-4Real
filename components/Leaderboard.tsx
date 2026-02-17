@@ -155,7 +155,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
           </div>
           {topPlayer ? (
             <div className="leader-spotlight rounded-3xl px-5 py-5 md:px-7 md:py-6 w-full max-w-2xl text-center">
-              <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Current Leader</p>
+              <p className="panel-title-strong">Current Leader</p>
               <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">Castle front-runner</p>
               <p className="leader-name headline text-4xl md:text-5xl mt-2 leading-none">{topPlayer.name}</p>
               <p className="text-xl md:text-2xl font-black text-[color:var(--accent-strong)] mt-3">{formatScore(topScore)}</p>

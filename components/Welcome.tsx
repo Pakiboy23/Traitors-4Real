@@ -33,7 +33,7 @@ const ScoreCard: React.FC<{
 
   return (
     <div className={`${featured ? "leader-spotlight" : "soft-card"} rounded-3xl p-5 md:p-6 text-center`}>
-      <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+      <p className="panel-title-strong">
         {title}
       </p>
       {featured && (
