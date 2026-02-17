@@ -18,7 +18,8 @@ const ScoreCard: React.FC<{
   title: string;
   player?: MvpHighlight | null;
   valuePrefix?: string;
-}> = ({ title, player, valuePrefix = "" }) => {
+  featured?: boolean;
+}> = ({ title, player, valuePrefix = "", featured = false }) => {
   if (!player) {
     return (
       <div className="soft-card soft-card-subtle rounded-3xl p-5 md:p-6 text-center">
@@ -31,10 +32,15 @@ const ScoreCard: React.FC<{
   }
 
   return (
-    <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
+    <div className={`${featured ? "leader-spotlight" : "soft-card"} rounded-3xl p-5 md:p-6 text-center`}>
       <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         {title}
       </p>
+      {featured && (
+        <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">
+          Dominating the castle
+        </p>
+      )}
       <div className="mt-4 flex items-center justify-center gap-4">
         <div className="h-14 w-14 rounded-full overflow-hidden border border-[color:var(--panel-border-strong)] bg-black/30 flex items-center justify-center">
           {player.portraitUrl ? (
@@ -53,10 +59,10 @@ const ScoreCard: React.FC<{
           <p className="text-base text-[color:var(--text-muted)] uppercase tracking-[0.12em]">
             {player.label}
           </p>
-          <p className="headline text-xl font-semibold truncate">{player.name}</p>
+          <p className={`${featured ? "leader-name text-2xl md:text-3xl" : "text-xl"} headline font-semibold truncate`}>{player.name}</p>
         </div>
       </div>
-      <p className="mt-4 text-2xl font-extrabold text-[color:var(--accent)]">
+      <p className={`${featured ? "text-3xl md:text-4xl text-[color:var(--accent-strong)]" : "text-2xl text-[color:var(--accent)]"} mt-4 font-extrabold`}>
         {valuePrefix}
         {formatScore(player.score)}
       </p>
@@ -93,7 +99,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
         </div>
 
         <div className="space-y-4">
-          <ScoreCard title="Season Leader" player={mvp} />
+          <ScoreCard title="Season Leader" player={mvp} featured />
           <ScoreCard title="Latest Weekly Gain" player={weeklyMvp} valuePrefix="+" />
         </div>
       </section>
