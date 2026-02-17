@@ -270,12 +270,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         {castPortrait ? (
                           <img src={castPortrait} alt={pick.member} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-sm font-semibold text-[color:var(--text-muted)]">
+                          <span className="text-sm font-semibold text-[color:var(--text)]">
                             {pick.member ? pick.member.charAt(0) : index + 1}
                           </span>
                         )}
                       </div>
-                      <p className="text-base font-semibold text-[color:var(--text-muted)]">Slot {index + 1}</p>
+                      <p className="text-base font-semibold text-[color:var(--text)]">Slot {index + 1}</p>
                     </div>
                     <button
                       type="button"
@@ -315,7 +315,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         const next = Number.parseInt(e.target.value, 10);
                         updatePick(index, "rank", Number.isFinite(next) ? next : 1);
                       }}
-                      className="field-soft p-3 text-base text-center"
+                      className="field-soft p-3 text-base text-center font-bold text-[color:var(--accent-strong)]"
                     />
                     <div className="grid grid-cols-2 gap-1">
                       <button
