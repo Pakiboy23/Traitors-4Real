@@ -3,6 +3,8 @@ import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry } from "../types";
 import { submitWeeklyCouncilVote } from "../services/pocketbase";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
+import { validateWeeklySubmission, sanitizeName, sanitizeEmail } from "../src/utils/validation";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES, WARNING_MESSAGES } from "../src/constants/uiStrings";
 
 interface WeeklyCouncilProps {
   gameState: GameState;
@@ -120,28 +122,33 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
   const handleWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (!playerName || !playerEmail) {
-      showToast("Please enter your name and email before submitting weekly votes.", "warning");
-      return;
-    }
 
-    if (
-      !weeklyBanished &&
-      !weeklyMurdered &&
-      !hasBonusSelection({
+    // Sanitize inputs
+    const sanitizedName = sanitizeName(playerName);
+    const sanitizedEmail = sanitizeEmail(playerEmail);
+
+    // Validate submission
+    const validation = validateWeeklySubmission(
+      sanitizedName,
+      sanitizedEmail,
+      weeklyBanished,
+      weeklyMurdered,
+      {
         redemptionRoulette: bonusRedemption,
         doubleOrNothing: bonusDoubleOrNothing,
         shieldGambit: bonusShield,
         traitorTrio: bonusTrio,
-      })
-    ) {
-      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
+      }
+    );
+
+    if (!validation.isValid) {
+      showToast(validation.errors[0], "warning");
       return;
     }
 
     const existingPlayer = findExistingPlayer("main");
     if (!existingPlayer) {
-      showToast("We couldn't find your draft entry yet. Please submit your draft once first.", "error");
+      showToast(ERROR_MESSAGES.NO_DRAFT_ENTRY, "error");
       return;
     }
 
@@ -149,8 +156,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
     const updatedEntry: PlayerEntry = {
       ...existingPlayer,
-      name: playerName,
-      email: playerEmail,
+      name: sanitizedName,
+      email: sanitizedEmail,
       weeklyPredictions: {
         nextBanished: weeklyBanished,
         nextMurdered: weeklyMurdered,
@@ -167,8 +174,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
     try {
       await submitWeeklyCouncilVote({
-        name: playerName,
-        email: playerEmail,
+        name: sanitizedName,
+        email: sanitizedEmail,
         weeklyPredictions: {
           nextBanished: weeklyBanished,
           nextMurdered: weeklyMurdered,
@@ -181,12 +188,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "main",
       });
-      showToast(`Your ${WEEKLY_LABEL} vote has been submitted!`, "success");
+      showToast(SUCCESS_MESSAGES.WEEKLY_VOTE_SUBMITTED, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
-          : "Weekly votes could not be submitted. Please try again.";
+          : ERROR_MESSAGES.WEEKLY_SUBMISSION_FAILED;
       console.warn(`${WEEKLY_LABEL} submission failed:`, err);
       showToast(message, "error");
     }
@@ -197,22 +204,27 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
   const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    if (!jrName || !jrEmail) {
-      showToast(`Please enter your name and email before submitting ${JR_LABEL} votes.`, "warning");
-      return;
-    }
 
-    if (
-      !jrWeeklyBanished &&
-      !jrWeeklyMurdered &&
-      !hasBonusSelection({
+    // Sanitize inputs
+    const sanitizedName = sanitizeName(jrName);
+    const sanitizedEmail = sanitizeEmail(jrEmail);
+
+    // Validate submission
+    const validation = validateWeeklySubmission(
+      sanitizedName,
+      sanitizedEmail,
+      jrWeeklyBanished,
+      jrWeeklyMurdered,
+      {
         redemptionRoulette: jrBonusRedemption,
         doubleOrNothing: jrBonusDoubleOrNothing,
         shieldGambit: jrBonusShield,
         traitorTrio: jrBonusTrio,
-      })
-    ) {
-      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
+      }
+    );
+
+    if (!validation.isValid) {
+      showToast(validation.errors[0], "warning");
       return;
     }
 
@@ -220,8 +232,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
     try {
       await submitWeeklyCouncilVote({
-        name: jrName,
-        email: jrEmail,
+        name: sanitizedName,
+        email: sanitizedEmail,
         weeklyPredictions: {
           nextBanished: jrWeeklyBanished,
           nextMurdered: jrWeeklyMurdered,
@@ -234,12 +246,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "jr",
       });
-      showToast(`Your ${JR_LABEL} vote has been submitted!`, "success");
+      showToast(SUCCESS_MESSAGES.JR_VOTE_SUBMITTED, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
-          : "Weekly votes could not be submitted. Please try again.";
+          : ERROR_MESSAGES.WEEKLY_SUBMISSION_FAILED;
       console.warn(`${JR_LABEL} weekly submission failed:`, err);
       showToast(message, "error");
     }

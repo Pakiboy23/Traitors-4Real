@@ -86,7 +86,7 @@ export const LABELS = {
   // Predictions
   NEXT_BANISHED: 'Next Banished',
   NEXT_MURDERED: 'Next Murdered',
-  FIRST_OUT: '1st Out',
+  PRED_FIRST_OUT: '1st Out',
   WINNER: 'Winner',
   TRAITOR_GUESSES: 'Traitor Guesses',
 
