@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React from "react";
 
 interface ConfirmationCardProps {
   playerName: string;
@@ -8,46 +7,29 @@ interface ConfirmationCardProps {
 
 const ConfirmationCard: React.FC<ConfirmationCardProps> = ({ playerName, onReset }) => {
   return (
-    <div className="flex flex-col items-center justify-center space-y-10 animate-in fade-in zoom-in duration-700">
-      <div id="card-display" className="w-[360px] sm:w-[680px] h-[440px] glass-panel relative shadow-[0_0_40px_rgba(138,28,28,0.2)] flex flex-col items-center justify-center text-center p-10 overflow-hidden rounded-3xl">
-        {/* Gold Inner Border */}
-        <div className="absolute inset-[10px] border border-[color:var(--accent)]/60 pointer-events-none rounded-xl" />
-        
-        {/* Corners */}
+    <div className="max-w-3xl mx-auto space-y-5 md:space-y-6">
+      <div className="soft-card rounded-3xl p-6 sm:p-8 md:p-10 relative">
         <div className="corner tl" />
         <div className="corner tr" />
         <div className="corner bl" />
         <div className="corner br" />
 
-        {/* Seal */}
-        <div className="wax-seal mb-5">
-            <span className="gothic-font text-2xl text-[#b04a4a] font-black">T</span>
+        <div className="space-y-4 text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-[color:var(--text-muted)]">Submission Complete</p>
+          <h3 className="headline text-4xl md:text-5xl">Draft locked</h3>
+          <p className="text-sm md:text-base text-[color:var(--text-muted)]">Your season board is now stored and queued for scoring.</p>
+
+          <div className="inline-flex items-center justify-center rounded-2xl border border-[color:var(--panel-border-strong)] px-4 py-3 bg-black/20">
+            <span className="headline text-2xl md:text-3xl text-[color:var(--accent)]">{playerName || "Unnamed Player"}</span>
+          </div>
         </div>
-
-        {/* Content */}
-        <h3 className="gothic-font text-[color:var(--accent)] tracking-[0.25em] text-sm sm:text-base uppercase mb-6">Titanic Swim Team</h3>
-        
-        <h1 className="gothic-font text-3xl sm:text-5xl font-bold text-white mb-3 uppercase tracking-wide">Entry Confirmed</h1>
-        
-        <div className="w-16 h-0.5 bg-[color:var(--crimson)] my-4" />
-
-        <p className="text-gray-400 text-base italic mb-4">Your entry is locked,</p>
-        
-        <h2 className="handwriting text-4xl sm:text-6xl text-[color:var(--accent)] mb-6 drop-shadow-md">
-          {playerName || "Faithful..."}
-        </h2>
-
-        <p className="gothic-font text-xs sm:text-sm text-red-500 font-semibold tracking-[0.3em] uppercase opacity-80">
-          Trust no one • Season 4
-        </p>
       </div>
 
-      <button 
-        onClick={onReset}
-        className="text-[color:var(--accent)] hover:text-white transition-colors gothic-font uppercase text-sm tracking-[0.25em] border-b border-[color:var(--accent)] pb-1"
-      >
-        Submit Another Entry
-      </button>
+      <div className="text-center">
+        <button onClick={onReset} className="btn-secondary px-5 py-2.5 text-xs">
+          Submit Another Entry
+        </button>
+      </div>
     </div>
   );
 };
