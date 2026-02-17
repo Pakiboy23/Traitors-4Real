@@ -244,6 +244,34 @@ body.light-mode {
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--traitor-crimson-strong) 24%, transparent);
   }
 
+  .league-glyph {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+  }
+
+  .league-glyph-main {
+    color: color-mix(in srgb, var(--accent-strong) 90%, #fff 10%);
+    border-color: color-mix(in srgb, var(--accent-strong) 48%, transparent);
+    background:
+      radial-gradient(130% 130% at 32% 22%, rgba(243, 216, 162, 0.35), transparent 58%),
+      rgba(10, 15, 24, 0.6);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 26%, transparent);
+  }
+
+  .league-glyph-jr {
+    color: color-mix(in srgb, var(--traitor-crimson-strong) 92%, #fff 8%);
+    border-color: color-mix(in srgb, var(--traitor-crimson-strong) 44%, transparent);
+    background:
+      radial-gradient(130% 130% at 32% 22%, rgba(205, 76, 95, 0.34), transparent 58%),
+      rgba(10, 15, 24, 0.6);
+    box-shadow: 0 0 14px color-mix(in srgb, var(--traitor-crimson) 24%, transparent);
+  }
+
   .leader-spotlight {
     position: relative;
     overflow: hidden;
@@ -337,6 +365,20 @@ body.light-mode {
 
   body.light-mode .league-subpanel-jr {
     box-shadow: inset 0 0 0 1px rgba(111, 22, 35, 0.2);
+  }
+
+  body.light-mode .league-glyph-main {
+    color: #8a6118;
+    border-color: rgba(138, 97, 24, 0.35);
+    background: radial-gradient(130% 130% at 32% 22%, rgba(175, 123, 31, 0.2), transparent 58%), #ffffff;
+    box-shadow: 0 0 10px rgba(175, 123, 31, 0.18);
+  }
+
+  body.light-mode .league-glyph-jr {
+    color: #6f1623;
+    border-color: rgba(111, 22, 35, 0.34);
+    background: radial-gradient(130% 130% at 32% 22%, rgba(143, 36, 51, 0.2), transparent 58%), #ffffff;
+    box-shadow: 0 0 10px rgba(111, 22, 35, 0.16);
   }
 
   .pill-nav {

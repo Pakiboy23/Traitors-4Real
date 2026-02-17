@@ -291,7 +291,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           <article className="soft-card league-panel-main rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">Main League</p>
+                <div className="inline-flex items-center justify-center gap-2">
+                  <span className="league-glyph league-glyph-main" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                      <path d="M12 2 19 5v6c0 5-3.5 9.4-7 11-3.5-1.6-7-6-7-11V5l7-3Zm0 4.2-4 1.7V11c0 3.5 2.2 6.5 4 7.7 1.8-1.2 4-4.2 4-7.7V7.9l-4-1.7Z" />
+                    </svg>
+                  </span>
+                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">Main League</p>
+                </div>
                 <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
               </div>
               {mainSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
@@ -411,7 +418,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           <article className="soft-card league-panel-jr rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex flex-col items-center gap-2 text-center">
               <div>
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--traitor-crimson-strong)]">Jr League</p>
+                <div className="inline-flex items-center justify-center gap-2">
+                  <span className="league-glyph league-glyph-jr" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                      <path d="M20.7 3.3a1 1 0 0 0-1.4 0l-2.8 2.8-1.8-.6-.6-1.8-2.8 2.8a1 1 0 0 0-.2 1l.7 2.2-5.5 5.5-1.7-.3-1.5 1.5 1.8 1.8-1.9 1.9 2.8 2.8 1.9-1.9 1.8 1.8 1.5-1.5-.3-1.7 5.5-5.5 2.2.7a1 1 0 0 0 1-.2l2.8-2.8-1.8-.6-.6-1.8 2.8-2.8a1 1 0 0 0 0-1.4l-1.6-1.6Z" />
+                    </svg>
+                  </span>
+                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--traitor-crimson-strong)]">Jr League</p>
+                </div>
                 <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
               </div>
               {jrSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
