@@ -157,7 +157,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
   return (
     <div className="space-y-6 md:space-y-8 pb-10">
-      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col items-center gap-3 text-center">
         <div>
           <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Castle Draft Workflow</p>
           <h2 className="headline text-3xl md:text-4xl font-semibold">Build your 10-player board</h2>
@@ -167,7 +167,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6 md:space-y-7">
         {DRAFT_CLOSED && (
-          <div className="soft-card rounded-3xl p-4 md:p-5 border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10">
+          <div className="soft-card rounded-3xl p-4 md:p-5 border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10 text-center">
             <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--danger)] font-semibold">Draft Closed</p>
             <p className="mt-1 text-base text-[color:var(--text-muted)]">
               Draft entries are disabled. Continue with weekly voting in {COUNCIL_LABELS.weekly}.
@@ -176,7 +176,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         )}
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="soft-card rounded-3xl p-5 md:p-6">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
             <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 1</p>
             <h3 className="headline text-xl mt-2">Player Identity</h3>
             <div className="grid grid-cols-1 gap-3 mt-4">
@@ -203,7 +203,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             </div>
           </div>
 
-          <div className="soft-card rounded-3xl p-5 md:p-6">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
             <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Scoring Snapshot</p>
             <h3 className="headline text-xl mt-2">Season scoring rules</h3>
             <div className="grid grid-cols-2 gap-3 mt-4 text-base">
@@ -228,12 +228,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         </section>
 
         <section className="soft-card rounded-3xl p-4 md:p-5 space-y-5">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col items-center gap-3 text-center">
             <div>
               <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 2</p>
               <h3 className="headline text-xl">Draft Slots</h3>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               {hasDuplicates && (
                 <span className="status-pill border-[color:var(--danger)]/60 text-[color:var(--danger)]">
                   Duplicate picks found
@@ -351,7 +351,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="soft-card rounded-3xl p-5 md:p-6">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
             <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 3</p>
             <h3 className="headline text-xl mt-2">Round table predictions</h3>
             <div className="space-y-3 mt-4">
@@ -388,7 +388,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
             </div>
           </div>
 
-          <div className="soft-card rounded-3xl p-5 md:p-6">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
             <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 4</p>
             <h3 className="headline text-xl mt-2">Traitor shortlist</h3>
             <div className="space-y-3 mt-4">

@@ -148,13 +148,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
   return (
     <div className="space-y-6 md:space-y-8">
       <section className={`soft-card rounded-3xl p-5 md:p-6 ${isSyncing ? "panel-sync" : ""}`}>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col items-center gap-4 text-center">
           <div>
             <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Standings</p>
             <h2 className="headline text-3xl md:text-4xl">Council leaderboard</h2>
           </div>
           {topPlayer ? (
-            <div className="soft-card soft-card-subtle rounded-2xl px-4 py-3">
+            <div className="soft-card soft-card-subtle rounded-2xl px-4 py-3 w-full max-w-sm text-center">
               <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Current Leader</p>
               <p className="headline text-2xl mt-1">{topPlayer.name}</p>
               <p className="text-base font-bold text-[color:var(--accent)] mt-1">{formatScore(topScore)}</p>
@@ -331,7 +331,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       </section>
 
       <section className="soft-card rounded-3xl p-4 md:p-5">
-        <div className="flex flex-col gap-2 mb-4">
+        <div className="flex flex-col items-center gap-2 mb-4 text-center">
           <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Cast Status</p>
           <h3 className="headline text-2xl">Castle status board</h3>
           <p className="text-base text-[color:var(--text-muted)]">

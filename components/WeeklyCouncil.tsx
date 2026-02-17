@@ -257,7 +257,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
   return (
     <div className="space-y-6 md:space-y-8">
-      <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <header className="flex flex-col items-center gap-3 text-center">
         <div>
           <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Round Table Operations</p>
           <h2 className="headline text-3xl md:text-4xl">Submit episode predictions</h2>
@@ -266,7 +266,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       </header>
 
       <section className="grid grid-cols-1 xl:grid-cols-[0.72fr_1.28fr] gap-4 md:gap-5">
-        <aside className="soft-card rounded-3xl p-5 md:p-6 space-y-4 h-fit">
+        <aside className="soft-card rounded-3xl p-5 md:p-6 space-y-4 h-fit text-center">
           <div>
             <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Mechanics</p>
             <h3 className="headline text-2xl mt-2">How bonus scoring works</h3>
@@ -289,7 +289,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
           <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col items-center gap-2 text-center">
               <div>
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Main League</p>
                 <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
@@ -339,7 +339,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </div>
 
             <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasMainDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
                   {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
@@ -409,7 +409,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           </article>
 
           <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col items-center gap-2 text-center">
               <div>
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Jr League</p>
                 <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
@@ -459,7 +459,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
             </div>
 
             <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
-              <div className="flex items-center justify-between gap-2">
+              <div className="flex flex-col items-center gap-2 text-center">
                 <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasJrDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
                   {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}

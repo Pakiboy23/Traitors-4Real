@@ -21,7 +21,7 @@ const ScoreCard: React.FC<{
 }> = ({ title, player, valuePrefix = "" }) => {
   if (!player) {
     return (
-      <div className="soft-card soft-card-subtle rounded-3xl p-5 md:p-6">
+      <div className="soft-card soft-card-subtle rounded-3xl p-5 md:p-6 text-center">
         <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
           {title}
         </p>
@@ -31,11 +31,11 @@ const ScoreCard: React.FC<{
   }
 
   return (
-    <div className="soft-card rounded-3xl p-5 md:p-6">
+    <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
       <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         {title}
       </p>
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex items-center justify-center gap-4">
         <div className="h-14 w-14 rounded-full overflow-hidden border border-[color:var(--panel-border-strong)] bg-black/30 flex items-center justify-center">
           {player.portraitUrl ? (
             <img
@@ -69,7 +69,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
     <div className="space-y-8 md:space-y-10">
       <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-5 md:gap-6">
         <div className="glass-panel p-6 sm:p-8 md:p-10">
-          <div className="space-y-5">
+          <div className="space-y-5 flex flex-col items-center text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--panel-border-strong)] bg-black/20 px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
               Season 4 Round Table Intelligence
             </div>
@@ -80,7 +80,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
               Draft your castle roster, submit banishment and murder calls each week, and monitor
               traitor-era power shifts in one high-clarity workspace.
             </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
                 onClick={onStart}
                 className="btn-primary px-7 md:px-9 py-3 md:py-3.5 text-sm md:text-base"
@@ -99,7 +99,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
       </section>
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <article className="soft-card rounded-3xl p-5 md:p-6">
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
           <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
             01. Draft Dossier
           </p>
@@ -110,7 +110,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
           </p>
         </article>
 
-        <article className="soft-card rounded-3xl p-5 md:p-6">
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
           <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
             02. Council Predictions
           </p>
@@ -121,7 +121,7 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
           </p>
         </article>
 
-        <article className="soft-card rounded-3xl p-5 md:p-6">
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
           <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
             03. Castle Ledger
           </p>

@@ -45,8 +45,8 @@ const Layout: React.FC<LayoutProps> = ({
     <div className="min-h-screen">
       <div className="app-shell space-y-5 md:space-y-6">
         <header className="glass-panel p-4 md:p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="space-y-2 max-w-3xl">
               <p className="text-sm md:text-base font-semibold tracking-[0.2em] uppercase text-[color:var(--text-muted)]">
                 Round Table Command Center
               </p>
@@ -61,7 +61,7 @@ const Layout: React.FC<LayoutProps> = ({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <div className="status-pill inline-flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-[color:var(--success)] animate-pulse" />
                 Live Sync
@@ -80,7 +80,7 @@ const Layout: React.FC<LayoutProps> = ({
             </div>
           </div>
 
-          <nav className="mt-5 flex items-center gap-2 overflow-x-auto pb-1">
+          <nav className="mt-5 flex items-center justify-center gap-2 overflow-x-auto pb-1">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
