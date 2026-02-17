@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, WeeklyScoreSnapshot } from '../types';
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
+import { TIMING, LIMITS } from "../src/utils/scoringConstants";
 
 interface LeaderboardProps {
   gameState: GameState;
@@ -15,7 +16,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
   // Visual pulse when gameState changes from an external sync
   useEffect(() => {
     setIsSyncing(true);
-    const timer = setTimeout(() => setIsSyncing(false), 1000);
+    const timer = setTimeout(() => setIsSyncing(false), TIMING.SYNC_ANIMATION_MS);
     return () => clearTimeout(timer);
   }, [gameState]);
 
@@ -318,7 +319,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                           </h4>
                           {scoreHistory.length > 0 ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {getPlayerTimeline(p.id).slice(-6).map((entry, i) => (
+                              {getPlayerTimeline(p.id).slice(-LIMITS.PLAYER_TIMELINE_DISPLAY).map((entry, i) => (
                                 <div
                                   key={`${p.id}-history-${i}`}
                                   className="soft-card soft-card-subtle border-zinc-700/60 rounded-2xl p-3"
