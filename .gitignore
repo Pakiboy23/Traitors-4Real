@@ -32,3 +32,8 @@ bin
 bin/pocketbase
 bin/pocketbase.exe
 
+# Legacy Firebase local artifacts (kept ignored after PocketBase migration)
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
