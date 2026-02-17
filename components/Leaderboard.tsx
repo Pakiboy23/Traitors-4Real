@@ -193,7 +193,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                 <button
                   type="button"
                   onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
-                  className="w-full grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
+                  className="w-full bg-transparent border-0 appearance-none grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
                   aria-expanded={isExpanded}
                 >
                   <div className="rank-pill inline-flex min-w-[2.15rem] h-9 items-center justify-center rounded-xl px-2 text-base font-black">

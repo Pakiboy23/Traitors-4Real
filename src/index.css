@@ -375,6 +375,10 @@ body.light-mode {
 
   button {
     min-height: 46px;
+    background: transparent;
+    color: inherit;
+    border: 0;
+    appearance: none;
   }
 
   input,
