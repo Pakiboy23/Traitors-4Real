@@ -11,6 +11,7 @@ import {
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 import { pocketbaseUrl } from "../src/lib/pocketbase";
+import { LIMITS } from "../src/utils/scoringConstants";
 import {
   deleteSubmission,
   fetchWeeklySubmissions,
@@ -135,7 +136,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const payload = submission.payload as { playerId?: string } | undefined;
     return payload?.playerId ?? null;
   };
-  const HISTORY_LIMIT = 200;
 
   const buildHistoryEntry = (
     submission: SubmissionRecord
@@ -162,7 +162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       merged.unshift(entry);
       seen.add(entry.id);
     });
-    return merged.slice(0, HISTORY_LIMIT);
+    return merged.slice(0, LIMITS.HISTORY_LIMIT);
   };
 
   const findPlayerMatch = (
@@ -258,7 +258,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditPlayerEmail(selectedPlayer.email || "");
     setEditWeeklyBanished(selectedPlayer.weeklyPredictions?.nextBanished || "");
     setEditWeeklyMurdered(selectedPlayer.weeklyPredictions?.nextMurdered || "");
-  }, [selectedPlayer?.id]);
+  }, [selectedPlayer]);
 
   const parseAndAdd = () => {
     try {
@@ -783,7 +783,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const history = Array.isArray(gameState.weeklySubmissionHistory)
     ? gameState.weeklySubmissionHistory
     : [];
-  const visibleHistory = showAllHistory ? history : history.slice(0, 20);
+  const visibleHistory = showAllHistory ? history : history.slice(0, LIMITS.HISTORY_DEFAULT_DISPLAY);
 
   const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(
     gameState.weeklyScoreHistory
@@ -792,7 +792,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     : [];
   const visibleScoreHistory = showAllScoreHistory
     ? scoreHistory
-    : scoreHistory.slice(-6);
+    : scoreHistory.slice(-LIMITS.SCORE_HISTORY_DEFAULT_DISPLAY);
 
   const archiveWeeklyScores = async () => {
     const currentState = gameStateRef.current;
@@ -818,7 +818,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       weeklyResults: snapshotResults,
       totals,
     };
-    const nextHistory = [...scoreHistory, snapshot].slice(-52);
+    const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
     const nextState = { ...currentState, weeklyScoreHistory: nextHistory };
     gameStateRef.current = nextState;
     updateGameState(nextState);
@@ -1017,7 +1017,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {scoreHistory.length > 6 && (
+            {scoreHistory.length > LIMITS.SCORE_HISTORY_DEFAULT_DISPLAY && (
               <button
                 type="button"
                 onClick={() => setShowAllScoreHistory((prev) => !prev)}
@@ -1204,7 +1204,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {history.length > 20 && (
+            {history.length > LIMITS.HISTORY_DEFAULT_DISPLAY && (
               <button
                 type="button"
                 onClick={() => setShowAllHistory((prev) => !prev)}

@@ -16,6 +16,7 @@ import {
   WeeklyScoreSnapshot,
 } from "./types";
 import { calculatePlayerScore } from "./src/utils/scoring";
+import { TIMING } from "./src/utils/scoringConstants";
 import {
   fetchGameState,
   fetchPlayerPortraits,
@@ -281,7 +282,7 @@ const App: React.FC = () => {
           );
           console.warn("PocketBase write failed:", error);
         });
-    }, 500);
+    }, TIMING.SAVE_DEBOUNCE_MS);
     return () => {
       if (writeTimerRef.current) {
         window.clearTimeout(writeTimerRef.current);
