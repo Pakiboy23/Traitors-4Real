@@ -315,7 +315,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         const next = Number.parseInt(e.target.value, 10);
                         updatePick(index, "rank", Number.isFinite(next) ? next : 1);
                       }}
-                      className="field-soft p-3 text-base text-center font-bold text-[color:var(--accent-strong)]"
+                      className="field-soft rank-input p-3 text-base text-center font-bold"
                     />
                     <div className="grid grid-cols-2 gap-1">
                       <button

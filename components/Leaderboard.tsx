@@ -167,7 +167,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
 
       <section className="soft-card rounded-3xl p-4 md:p-5">
         <div className="grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 px-2 pb-2 text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-          <span className="text-[color:var(--accent-strong)]">Rank</span>
+          <span className="text-[color:var(--text)]">Rank</span>
           <span>Player</span>
           <span className="text-right">Total</span>
         </div>
@@ -196,7 +196,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   className="w-full grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
                   aria-expanded={isExpanded}
                 >
-                  <div className="inline-flex min-w-[2.15rem] h-9 items-center justify-center rounded-xl border border-[color:var(--accent)]/50 bg-[color:var(--accent-subtle)] px-2 text-base font-black text-[color:var(--accent-strong)] shadow-sm">
+                  <div className="rank-pill inline-flex min-w-[2.15rem] h-9 items-center justify-center rounded-xl px-2 text-base font-black">
                     {index === 0 ? "#1" : index === 1 ? "#2" : index === 2 ? "#3" : `#${index + 1}`}
                   </div>
 
