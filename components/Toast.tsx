@@ -89,11 +89,11 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, onRemove }) => {
   return (
     <div className={`pointer-events-auto rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md ${tone[toast.type]}`} role="alert">
       <div className="flex items-start gap-3">
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-current/35 text-[10px] font-bold uppercase flex-shrink-0">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-current/35 text-xs font-bold uppercase flex-shrink-0">
           {glyph[toast.type]}
         </span>
         <p className="text-sm leading-relaxed flex-1">{toast.message}</p>
-        <button onClick={() => onRemove(toast.id)} className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] hover:text-[color:var(--text)]">
+        <button onClick={() => onRemove(toast.id)} className="text-sm uppercase tracking-[0.12em] text-[color:var(--text-muted)] hover:text-[color:var(--text)]">
           Close
         </button>
       </div>

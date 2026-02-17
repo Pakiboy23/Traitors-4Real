@@ -159,7 +159,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     <div className="space-y-6 md:space-y-8 pb-10">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Draft Workflow</p>
+          <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Castle Draft Workflow</p>
           <h2 className="headline text-3xl md:text-4xl font-semibold">Build your 10-player board</h2>
         </div>
         <div className="status-pill">{sealedCount}/10 sealed</div>
@@ -168,8 +168,8 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
       <form onSubmit={handleSubmit} className="space-y-6 md:space-y-7">
         {DRAFT_CLOSED && (
           <div className="soft-card rounded-3xl p-4 md:p-5 border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10">
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--danger)] font-semibold">Draft Closed</p>
-            <p className="mt-1 text-sm text-[color:var(--text-muted)]">
+            <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--danger)] font-semibold">Draft Closed</p>
+            <p className="mt-1 text-base text-[color:var(--text-muted)]">
               Draft entries are disabled. Continue with weekly voting in {COUNCIL_LABELS.weekly}.
             </p>
           </div>
@@ -177,7 +177,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="soft-card rounded-3xl p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Step 1</p>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 1</p>
             <h3 className="headline text-xl mt-2">Player Identity</h3>
             <div className="grid grid-cols-1 gap-3 mt-4">
               <input
@@ -204,9 +204,9 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           </div>
 
           <div className="soft-card rounded-3xl p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Scoring Snapshot</p>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Scoring Snapshot</p>
             <h3 className="headline text-xl mt-2">Season scoring rules</h3>
-            <div className="grid grid-cols-2 gap-3 mt-4 text-sm">
+            <div className="grid grid-cols-2 gap-3 mt-4 text-base">
               <div className="soft-card soft-card-subtle rounded-2xl p-3 text-center">
                 <p className="text-xl font-bold text-[color:var(--accent)]">+10</p>
                 Winner
@@ -230,7 +230,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
         <section className="soft-card rounded-3xl p-4 md:p-5 space-y-5">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Step 2</p>
+              <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 2</p>
               <h3 className="headline text-xl">Draft Slots</h3>
             </div>
             <div className="flex items-center gap-2">
@@ -239,7 +239,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                   Duplicate picks found
                 </span>
               )}
-              <button type="button" onClick={autoGeneratePicks} className="btn-secondary px-4 text-[11px]">
+              <button type="button" onClick={autoGeneratePicks} className="btn-secondary px-4 text-sm">
                 Auto Fill
               </button>
             </div>
@@ -270,17 +270,17 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         {castPortrait ? (
                           <img src={castPortrait} alt={pick.member} className="h-full w-full object-cover" />
                         ) : (
-                          <span className="text-xs font-semibold text-[color:var(--text-muted)]">
+                          <span className="text-sm font-semibold text-[color:var(--text-muted)]">
                             {pick.member ? pick.member.charAt(0) : index + 1}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-semibold text-[color:var(--text-muted)]">Slot {index + 1}</p>
+                      <p className="text-base font-semibold text-[color:var(--text-muted)]">Slot {index + 1}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => toggleSeal(index)}
-                      className={`btn-secondary px-3 text-[10px] ${
+                      className={`btn-secondary px-3 text-sm ${
                         isSealed
                           ? "border-[color:var(--danger)]/55 text-[color:var(--danger)]"
                           : ""
@@ -294,7 +294,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     disabled={isSealed}
                     value={pick.member}
                     onChange={(e) => updatePick(index, "member", e.target.value)}
-                    className="field-soft p-3 text-sm"
+                    className="field-soft p-3 text-base"
                   >
                     <option value="">Choose player...</option>
                     {activeCastNames.map((name) => (
@@ -315,14 +315,14 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         const next = Number.parseInt(e.target.value, 10);
                         updatePick(index, "rank", Number.isFinite(next) ? next : 1);
                       }}
-                      className="field-soft p-3 text-sm text-center"
+                      className="field-soft p-3 text-base text-center"
                     />
                     <div className="grid grid-cols-2 gap-1">
                       <button
                         type="button"
                         disabled={isSealed}
                         onClick={() => updatePick(index, "role", "Faithful")}
-                        className={`rounded-xl border px-2 text-xs font-semibold uppercase ${
+                        className={`rounded-xl border px-2 py-1 text-sm font-semibold uppercase ${
                           pick.role === "Faithful"
                             ? "bg-[color:var(--success)] text-black border-[color:var(--success)]"
                             : "border-[color:var(--panel-border)] text-[color:var(--text-muted)]"
@@ -334,7 +334,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                         type="button"
                         disabled={isSealed}
                         onClick={() => updatePick(index, "role", "Traitor")}
-                        className={`rounded-xl border px-2 text-xs font-semibold uppercase ${
+                        className={`rounded-xl border px-2 py-1 text-sm font-semibold uppercase ${
                           pick.role === "Traitor"
                             ? "bg-[color:var(--danger)] text-black border-[color:var(--danger)]"
                             : "border-[color:var(--panel-border)] text-[color:var(--text-muted)]"
@@ -352,15 +352,15 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="soft-card rounded-3xl p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Step 3</p>
-            <h3 className="headline text-xl mt-2">Episode predictions</h3>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 3</p>
+            <h3 className="headline text-xl mt-2">Round table predictions</h3>
             <div className="space-y-3 mt-4">
               <div>
-                <label className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">First Out</label>
+                <label className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">First Out</label>
                 <select
                   value={predFirstOut}
                   onChange={(e) => setPredFirstOut(e.target.value)}
-                  className="field-soft p-3 text-sm mt-1"
+                  className="field-soft p-3 text-base mt-1"
                 >
                   <option value="">Select...</option>
                   {activeCastNames.map((name) => (
@@ -371,11 +371,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                 </select>
               </div>
               <div>
-                <label className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Winner</label>
+                <label className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">Winner</label>
                 <select
                   value={predWinner}
                   onChange={(e) => setPredWinner(e.target.value)}
-                  className="field-soft p-3 text-sm mt-1"
+                  className="field-soft p-3 text-base mt-1"
                 >
                   <option value="">Select...</option>
                   {activeCastNames.map((name) => (
@@ -389,7 +389,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           </div>
 
           <div className="soft-card rounded-3xl p-5 md:p-6">
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Step 4</p>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 4</p>
             <h3 className="headline text-xl mt-2">Traitor shortlist</h3>
             <div className="space-y-3 mt-4">
               {traitors.map((value, index) => (
@@ -401,7 +401,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
                     next[index] = e.target.value;
                     setTraitors(next);
                   }}
-                  className="field-soft p-3 text-sm"
+                  className="field-soft p-3 text-base"
                 >
                   <option value="">Traitor guess #{index + 1}</option>
                   {activeCastNames.map((name) => (
@@ -417,7 +417,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
 
         <section className="soft-card rounded-3xl p-4 md:p-5">
           {!allPicksSealed && picks.some((pick) => pick.member !== "") && (
-            <p className="mb-3 text-xs uppercase tracking-[0.18em] text-[color:var(--danger)] font-semibold text-center">
+            <p className="mb-3 text-sm uppercase tracking-[0.16em] text-[color:var(--danger)] font-semibold text-center">
               Seal every slot before final submission
             </p>
           )}
@@ -425,7 +425,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
           <button
             type="submit"
             disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
-            className={`w-full py-4 md:py-5 rounded-2xl font-extrabold uppercase tracking-[0.18em] transition-all ${
+            className={`w-full py-4 md:py-5 rounded-2xl text-sm md:text-base font-extrabold uppercase tracking-[0.16em] transition-all ${
               DRAFT_CLOSED
                 ? "bg-[color:var(--danger)]/70 text-white cursor-not-allowed"
                 : hasDuplicates || !allPicksSealed || isSubmitting

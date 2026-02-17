@@ -150,14 +150,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       <section className={`soft-card rounded-3xl p-5 md:p-6 ${isSyncing ? "panel-sync" : ""}`}>
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Standings</p>
-            <h2 className="headline text-3xl md:text-4xl">Official leaderboard</h2>
+            <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Standings</p>
+            <h2 className="headline text-3xl md:text-4xl">Council leaderboard</h2>
           </div>
           {topPlayer ? (
             <div className="soft-card soft-card-subtle rounded-2xl px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Current Leader</p>
-              <p className="headline text-xl mt-1">{topPlayer.name}</p>
-              <p className="text-sm font-bold text-[color:var(--accent)] mt-1">{formatScore(topScore)}</p>
+              <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Current Leader</p>
+              <p className="headline text-2xl mt-1">{topPlayer.name}</p>
+              <p className="text-base font-bold text-[color:var(--accent)] mt-1">{formatScore(topScore)}</p>
             </div>
           ) : (
             <div className="status-pill">No entries yet</div>
@@ -166,7 +166,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       </section>
 
       <section className="soft-card rounded-3xl p-4 md:p-5">
-        <div className="grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 px-2 pb-2 text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+        <div className="grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 px-2 pb-2 text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
           <span>Rank</span>
           <span>Player</span>
           <span className="text-right">Total</span>
@@ -196,7 +196,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   className="w-full grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
                   aria-expanded={isExpanded}
                 >
-                  <div className="text-sm font-semibold text-[color:var(--text)]">
+                  <div className="text-base font-semibold text-[color:var(--text)]">
                     {index === 0 ? "#1" : index === 1 ? "#2" : index === 2 ? "#3" : `#${index + 1}`}
                   </div>
 
@@ -211,9 +211,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-semibold truncate text-[color:var(--text)]">{player.name}</p>
+                      <p className="font-semibold text-base md:text-lg truncate text-[color:var(--text)]">{player.name}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-[11px] text-[color:var(--text-muted)] uppercase tracking-[0.12em]">Tap for detail</p>
+                        <p className="text-sm text-[color:var(--text-muted)] uppercase tracking-[0.1em]">Tap for detail</p>
                         {player.league === "jr" && <span className="status-pill">{COUNCIL_LABELS.jr}</span>}
                       </div>
                     </div>
@@ -223,7 +223,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                     <p className="text-xl md:text-2xl font-black text-[color:var(--accent)]">{formatScore(total)}</p>
                     {weeklyDeltaById[player.id] !== undefined && (
                       <p
-                        className={`text-xs uppercase tracking-[0.14em] font-semibold ${
+                        className={`text-sm uppercase tracking-[0.12em] font-semibold ${
                           weeklyDeltaById[player.id] >= 0 ? "text-[color:var(--success)]" : "text-[color:var(--danger)]"
                         }`}
                       >
@@ -238,7 +238,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                   <div className="px-3 pb-4 md:px-4 md:pb-5">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       <div className="soft-card soft-card-subtle rounded-2xl p-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)] mb-3">Achievements</p>
+                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Achievements</p>
                         {player.scoring.achievements.length > 0 ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                             {player.scoring.achievements.map((achievement, idx) => {
@@ -255,14 +255,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                                     {castPortrait ? (
                                       <img src={castPortrait} alt={achievement.member} className="h-full w-full object-cover" />
                                     ) : (
-                                      <div className="h-full w-full flex items-center justify-center text-xs text-[color:var(--text-muted)]">
+                                      <div className="h-full w-full flex items-center justify-center text-sm text-[color:var(--text-muted)]">
                                         {achievement.member.charAt(0)}
                                       </div>
                                     )}
                                   </div>
                                   <div className="min-w-0">
-                                    <p className="text-xs font-semibold text-[color:var(--text)] truncate">{achievement.member}</p>
-                                    <p className="text-[11px] uppercase tracking-[0.12em] text-[color:var(--text-muted)] truncate">
+                                    <p className="text-sm font-semibold text-[color:var(--text)] truncate">{achievement.member}</p>
+                                    <p className="text-sm uppercase tracking-[0.1em] text-[color:var(--text-muted)] truncate">
                                       {achievement.icon} {achievement.type}
                                     </p>
                                   </div>
@@ -276,26 +276,26 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                       </div>
 
                       <div className="soft-card soft-card-subtle rounded-2xl p-4">
-                        <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)] mb-3">Penalties</p>
+                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Penalties</p>
                         {penalties.length > 0 ? (
                           <div className="space-y-2">
                             {penalties.map((penalty, idx) => (
                               <div key={`${player.id}-penalty-${idx}`} className="rounded-xl border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/10 p-3">
                                 <div className="flex items-center justify-between gap-3">
-                                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[color:var(--text)]">{penalty.label}</p>
-                                  <p className="text-xs font-black text-[color:var(--danger)]">{formatScore(penalty.points)}</p>
+                                  <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[color:var(--text)]">{penalty.label}</p>
+                                  <p className="text-sm font-black text-[color:var(--danger)]">{formatScore(penalty.points)}</p>
                                 </div>
                                 {penalty.pick && (
-                                  <p className="mt-2 text-xs text-[color:var(--text-muted)]">
+                                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
                                     Pick: <span className="text-[color:var(--text)]">{penalty.pick}</span>
                                   </p>
                                 )}
                                 {penalty.actual && (
-                                  <p className="text-xs text-[color:var(--text-muted)]">
+                                  <p className="text-sm text-[color:var(--text-muted)]">
                                     Result: <span className="text-[color:var(--text)]">{penalty.actual}</span>
                                   </p>
                                 )}
-                                {penalty.note && <p className="text-xs text-[color:var(--text-muted)]">{penalty.note}</p>}
+                                {penalty.note && <p className="text-sm text-[color:var(--text-muted)]">{penalty.note}</p>}
                               </div>
                             ))}
                           </div>
@@ -306,15 +306,15 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
                     </div>
 
                     <div className="soft-card soft-card-subtle rounded-2xl p-4 mt-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)] mb-3">Weekly timeline</p>
+                      <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Weekly timeline</p>
                       {scoreHistory.length > 0 ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                           {getPlayerTimeline(player.id)
                             .slice(-LIMITS.PLAYER_TIMELINE_DISPLAY)
                             .map((entry, idx) => (
                               <div key={`${player.id}-timeline-${idx}`} className="soft-card soft-card-subtle rounded-xl p-2.5">
-                                <p className="text-[10px] uppercase tracking-[0.14em] text-[color:var(--text-muted)]">{entry.label}</p>
-                                <p className="text-sm font-bold text-[color:var(--text)] mt-1">{formatScore(entry.total as number)}</p>
+                                <p className="text-sm uppercase tracking-[0.12em] text-[color:var(--text-muted)]">{entry.label}</p>
+                                <p className="text-base font-bold text-[color:var(--text)] mt-1">{formatScore(entry.total as number)}</p>
                               </div>
                             ))}
                         </div>
@@ -332,11 +332,14 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
 
       <section className="soft-card rounded-3xl p-4 md:p-5">
         <div className="flex flex-col gap-2 mb-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Cast Status</p>
-          <h3 className="headline text-2xl">Roster conditions</h3>
+          <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Cast Status</p>
+          <h3 className="headline text-2xl">Castle status board</h3>
+          <p className="text-base text-[color:var(--text-muted)]">
+            Live reveal board for Traitor, Eliminated, First Out, and Winner statuses.
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-3.5">
           {CAST_NAMES.map((name) => {
             const status = gameState.castStatus[name];
             const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
@@ -349,33 +352,43 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
               ? "Eliminated"
               : status?.isTraitor
               ? "Traitor"
-              : "Active";
+              : "Still In";
 
             const tagClass = status?.isWinner
-              ? "text-[color:var(--success)] border-[color:var(--success)]/45"
+              ? "text-[color:var(--success)] border-[color:var(--success)]/55 bg-[color:var(--success)]/16"
               : status?.isFirstOut
-              ? "text-[color:var(--warning)] border-[color:var(--warning)]/45"
+              ? "text-[color:var(--warning)] border-[color:var(--warning)]/55 bg-[color:var(--warning)]/16"
               : status?.isEliminated
-              ? "text-[color:var(--danger)] border-[color:var(--danger)]/45"
+              ? "text-[color:var(--danger)] border-[color:var(--danger)]/55 bg-[color:var(--danger)]/16"
               : status?.isTraitor
-              ? "text-[#f28bbd] border-[#f28bbd]/45"
-              : "text-[color:var(--text-muted)] border-[color:var(--panel-border)]";
+              ? "text-[color:var(--traitor-crimson-strong)] border-[color:var(--traitor-crimson)]/55 bg-[color:var(--traitor-crimson)]/16"
+              : "text-[color:var(--text)] border-[color:var(--panel-border-strong)] bg-black/20";
+
+            const cardClass = status?.isWinner
+              ? "border-[color:var(--success)]/48 bg-[color:var(--success)]/8"
+              : status?.isFirstOut
+              ? "border-[color:var(--warning)]/48 bg-[color:var(--warning)]/8"
+              : status?.isEliminated
+              ? "border-[color:var(--danger)]/48 bg-[color:var(--danger)]/10"
+              : status?.isTraitor
+              ? "border-[color:var(--traitor-crimson)]/58 bg-[color:var(--traitor-crimson)]/11"
+              : "border-[color:var(--panel-border)]";
 
             return (
-              <article key={name} className="soft-card soft-card-subtle rounded-2xl p-3 flex flex-col justify-between gap-3 min-h-[140px]">
+              <article key={name} className={`soft-card soft-card-subtle rounded-2xl p-4 flex flex-col justify-between gap-4 min-h-[168px] ${cardClass}`}>
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-xs leading-snug font-semibold text-[color:var(--text)]">{name}</p>
-                  <div className="h-8 w-8 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
+                  <p className="text-sm md:text-base leading-snug font-semibold text-[color:var(--text)]">{name}</p>
+                  <div className="h-10 w-10 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
                     {portraitSrc ? (
                       <img src={portraitSrc} alt={name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center text-[11px] font-bold text-[color:var(--text-muted)]">
+                      <div className="h-full w-full flex items-center justify-center text-sm font-bold text-[color:var(--text-muted)]">
                         {name.charAt(0)}
                       </div>
                     )}
                   </div>
                 </div>
-                <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] ${tagClass}`}>
+                <span className={`inline-flex w-fit rounded-full border px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.1em] font-semibold ${tagClass}`}>
                   {tag}
                 </span>
               </article>

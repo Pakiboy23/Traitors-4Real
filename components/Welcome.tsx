@@ -22,17 +22,17 @@ const ScoreCard: React.FC<{
   if (!player) {
     return (
       <div className="soft-card soft-card-subtle rounded-3xl p-5 md:p-6">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+        <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
           {title}
         </p>
-        <p className="mt-3 text-sm text-[color:var(--text-muted)]">No score data yet.</p>
+        <p className="mt-3 text-base text-[color:var(--text-muted)]">No score data yet.</p>
       </div>
     );
   }
 
   return (
     <div className="soft-card rounded-3xl p-5 md:p-6">
-      <p className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--text-muted)]">
+      <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
         {title}
       </p>
       <div className="mt-4 flex items-center gap-4">
@@ -50,7 +50,7 @@ const ScoreCard: React.FC<{
           )}
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-[color:var(--text-muted)] uppercase tracking-[0.14em]">
+          <p className="text-base text-[color:var(--text-muted)] uppercase tracking-[0.12em]">
             {player.label}
           </p>
           <p className="headline text-xl font-semibold truncate">{player.name}</p>
@@ -70,20 +70,20 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
       <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-5 md:gap-6">
         <div className="glass-panel p-6 sm:p-8 md:p-10">
           <div className="space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--panel-border-strong)] bg-black/20 px-3 py-1 text-[10px] sm:text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
-              Season 4 Intelligence Center
+            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--panel-border-strong)] bg-black/20 px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+              Season 4 Round Table Intelligence
             </div>
             <h2 className="headline text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
-              A cleaner way to run your league strategy.
+              Run your league like a Traitor.
             </h2>
             <p className="max-w-2xl text-base md:text-lg text-[color:var(--text-muted)] leading-relaxed">
-              Draft your roster, submit weekly predictions, and monitor leader movement in one
-              streamlined workspace designed for fast decisions.
+              Draft your castle roster, submit banishment and murder calls each week, and monitor
+              traitor-era power shifts in one high-clarity workspace.
             </p>
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 onClick={onStart}
-                className="btn-primary px-7 md:px-9 py-3 md:py-3.5 text-xs md:text-sm"
+                className="btn-primary px-7 md:px-9 py-3 md:py-3.5 text-sm md:text-base"
               >
                 Start Weekly Picks
               </button>
@@ -100,33 +100,33 @@ const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
 
       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <article className="soft-card rounded-3xl p-5 md:p-6">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
-            01. Draft Engine
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            01. Draft Dossier
           </p>
           <h3 className="headline text-xl mt-3">Structured submissions</h3>
-          <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-muted)]">
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
             Build your ten-player board with ranking and role assumptions, then lock picks with
             clear validation before submitting.
           </p>
         </article>
 
         <article className="soft-card rounded-3xl p-5 md:p-6">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
-            02. Weekly Ops
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            02. Council Predictions
           </p>
           <h3 className="headline text-xl mt-3">Single-week cadence</h3>
-          <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-muted)]">
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
             Submit banished and murdered predictions plus bonus games each week without clutter or
             duplicate entry confusion.
           </p>
         </article>
 
         <article className="soft-card rounded-3xl p-5 md:p-6">
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
-            03. Score Clarity
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            03. Castle Ledger
           </p>
           <h3 className="headline text-xl mt-3">Transparent standings</h3>
-          <p className="mt-3 text-sm leading-relaxed text-[color:var(--text-muted)]">
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
             Expand any player for scoring detail, penalties, and week-over-week trend so results are
             easy to audit.
           </p>

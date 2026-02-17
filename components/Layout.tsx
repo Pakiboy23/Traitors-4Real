@@ -47,14 +47,17 @@ const Layout: React.FC<LayoutProps> = ({
         <header className="glass-panel p-4 md:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
-              <p className="text-[10px] md:text-xs font-semibold tracking-[0.24em] uppercase text-[color:var(--text-muted)]">
-                Fantasy Operations Console
+              <p className="text-sm md:text-base font-semibold tracking-[0.2em] uppercase text-[color:var(--text-muted)]">
+                Round Table Command Center
               </p>
               <h1 className="headline text-2xl sm:text-3xl md:text-4xl font-semibold">
                 The Traitors Draft League
               </h1>
-              <p className="text-xs md:text-sm text-[color:var(--text-muted)]">
-                Season 4 strategy hub for picks, weekly calls, and standings.
+              <p className="text-base md:text-lg text-[color:var(--text-muted)]">
+                Season 4 strategy hub for castle picks, weekly calls, and standings.
+              </p>
+              <p className="text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--traitor-crimson-strong)] font-semibold">
+                Trust no one. Audit every move.
               </p>
             </div>
 
@@ -67,7 +70,7 @@ const Layout: React.FC<LayoutProps> = ({
               <button
                 type="button"
                 onClick={() => setIsLightMode((prev) => !prev)}
-                className="btn-secondary px-4 text-[11px]"
+                className="btn-secondary px-4 text-sm"
                 aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
                 aria-pressed={isLightMode}
                 title={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
@@ -98,7 +101,7 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="page-shell">{children}</div>
         </main>
 
-        <footer className="px-2 pb-4 text-center text-xs text-[color:var(--text-muted)] tracking-[0.12em] uppercase">
+        <footer className="px-2 pb-4 text-center text-sm text-[color:var(--text-muted)] tracking-[0.1em] uppercase">
           Premium fantasy tracking experience for the league
         </footer>
       </div>

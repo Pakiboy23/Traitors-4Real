@@ -259,7 +259,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     <div className="space-y-6 md:space-y-8">
       <header className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Weekly Operations</p>
+          <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Round Table Operations</p>
           <h2 className="headline text-3xl md:text-4xl">Submit episode predictions</h2>
         </div>
         <div className="status-pill">Main + Jr workflows</div>
@@ -268,10 +268,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       <section className="grid grid-cols-1 xl:grid-cols-[0.72fr_1.28fr] gap-4 md:gap-5">
         <aside className="soft-card rounded-3xl p-5 md:p-6 space-y-4 h-fit">
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Bonus Mechanics</p>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Mechanics</p>
             <h3 className="headline text-2xl mt-2">How bonus scoring works</h3>
           </div>
-          <div className="space-y-3 text-sm text-[color:var(--text-muted)] leading-relaxed">
+          <div className="space-y-3 text-base text-[color:var(--text-muted)] leading-relaxed">
             <article className="soft-card soft-card-subtle rounded-2xl p-3">
               <p className="font-semibold text-[color:var(--text)]">Redemption Roulette</p>
               <p className="mt-1">Pick the next revealed traitor. Correct picks score +8 and misses score -1.</p>
@@ -291,7 +291,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Main League</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Main League</p>
                 <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
               </div>
               {mainSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
@@ -315,7 +315,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={weeklyBanished}
                 onChange={(e) => setWeeklyBanished(e.target.value)}
-                className="field-soft p-3.5 text-sm"
+                className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Banished</option>
                 {banishedOptions.map((name) => (
@@ -327,7 +327,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={weeklyMurdered}
                 onChange={(e) => setWeeklyMurdered(e.target.value)}
-                className="field-soft p-3.5 text-sm"
+                className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Murdered</option>
                 {murderOptions.map((name) => (
@@ -340,7 +340,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
             <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Bonus Inputs</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasMainDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
                   {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
                 </span>
@@ -348,7 +348,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={bonusRedemption}
                 onChange={(e) => setBonusRedemption(e.target.value)}
-                className="field-soft p-3 text-sm"
+                className="field-soft p-3 text-base"
               >
                 <option value="">Redemption Roulette</option>
                 {activeCastNames.map((name) => (
@@ -360,7 +360,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={bonusShield}
                 onChange={(e) => setBonusShield(e.target.value)}
-                className="field-soft p-3 text-sm"
+                className="field-soft p-3 text-base"
               >
                 <option value="">Shield Gambit</option>
                 {activeCastNames.map((name) => (
@@ -369,7 +369,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </option>
                 ))}
               </select>
-              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2 flex items-center justify-between text-xs uppercase tracking-[0.14em]">
+              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
                 Double or Nothing
                 <input
                   type="checkbox"
@@ -384,7 +384,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     key={`main-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
-                    className="field-soft p-2.5 text-xs"
+                    className="field-soft p-2.5 text-sm"
                   >
                     <option value="">Trio {index + 1}</option>
                     {activeCastNames.map((name) => (
@@ -401,7 +401,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               type="button"
               onClick={handleWeeklySubmit}
               disabled={isMainSubmitting}
-              className="w-full btn-primary py-3.5 text-xs md:text-sm"
+              className="w-full btn-primary py-3.5 text-sm md:text-base"
             >
               {isMainSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
               {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
@@ -411,7 +411,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           <article className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Jr League</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Jr League</p>
                 <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
               </div>
               {jrSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
@@ -435,7 +435,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrWeeklyBanished}
                 onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                className="field-soft p-3.5 text-sm"
+                className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Banished</option>
                 {banishedOptions.map((name) => (
@@ -447,7 +447,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrWeeklyMurdered}
                 onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                className="field-soft p-3.5 text-sm"
+                className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Murdered</option>
                 {murderOptions.map((name) => (
@@ -460,7 +460,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
             <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
               <div className="flex items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Bonus Inputs</p>
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
                 <span className={`status-pill ${hasJrDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
                   {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}
                 </span>
@@ -468,7 +468,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrBonusRedemption}
                 onChange={(e) => setJrBonusRedemption(e.target.value)}
-                className="field-soft p-3 text-sm"
+                className="field-soft p-3 text-base"
               >
                 <option value="">Redemption Roulette</option>
                 {activeCastNames.map((name) => (
@@ -480,7 +480,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrBonusShield}
                 onChange={(e) => setJrBonusShield(e.target.value)}
-                className="field-soft p-3 text-sm"
+                className="field-soft p-3 text-base"
               >
                 <option value="">Shield Gambit</option>
                 {activeCastNames.map((name) => (
@@ -489,7 +489,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                   </option>
                 ))}
               </select>
-              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2 flex items-center justify-between text-xs uppercase tracking-[0.14em]">
+              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
                 Double or Nothing
                 <input
                   type="checkbox"
@@ -504,7 +504,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     key={`jr-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
-                    className="field-soft p-2.5 text-xs"
+                    className="field-soft p-2.5 text-sm"
                   >
                     <option value="">Trio {index + 1}</option>
                     {activeCastNames.map((name) => (
@@ -521,7 +521,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               type="button"
               onClick={handleJrWeeklySubmit}
               disabled={isJrSubmitting}
-              className="w-full btn-primary py-3.5 text-xs md:text-sm"
+              className="w-full btn-primary py-3.5 text-sm md:text-base"
             >
               {isJrSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
               {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
