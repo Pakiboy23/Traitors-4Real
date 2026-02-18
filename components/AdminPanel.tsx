@@ -223,9 +223,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       }
       setSubmissions(records);
-      if (records.length > 0) {
-        await mergeSubmissionList(records, { announce: false });
-      }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
@@ -241,7 +238,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? prev
           : [submission, ...prev]
       );
-      mergeSubmissionRecord(submission, { announce: false });
     });
     return () => {
       unsubscribe?.();
