@@ -648,6 +648,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+      setMsg({
+        text: `Dismissed submission from ${submission.name}.`,
+        type: "success",
+      });
     } catch (err: any) {
       setMsg({
         text: `Failed to dismiss submission: ${err?.message || err}`,
