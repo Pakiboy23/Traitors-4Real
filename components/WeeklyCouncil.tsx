@@ -143,6 +143,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       return;
     }
 
+    setMainSubmitted(false);
     setIsMainSubmitting(true);
 
     const updatedEntry: PlayerEntry = {
@@ -180,6 +181,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         league: "main",
       });
       showToast(`${WEEKLY_LABEL} submitted.`, "success");
+      setMainSubmitted(true);
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
@@ -187,10 +189,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           : "Submission failed. Please try again.";
       console.warn(`${WEEKLY_LABEL} submission failed:`, err);
       showToast(message, "error");
+    } finally {
+      setIsMainSubmitting(false);
     }
-
-    setIsMainSubmitting(false);
-    setMainSubmitted(true);
   };
 
   const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -215,6 +216,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       return;
     }
 
+    setJrSubmitted(false);
     setIsJrSubmitting(true);
 
     try {
@@ -234,6 +236,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         league: "jr",
       });
       showToast(`${JR_LABEL} vote submitted.`, "success");
+      setJrSubmitted(true);
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
@@ -241,10 +244,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
           : "Submission failed. Please try again.";
       console.warn(`${JR_LABEL} submission failed:`, err);
       showToast(message, "error");
+    } finally {
+      setIsJrSubmitting(false);
     }
-
-    setIsJrSubmitting(false);
-    setJrSubmitted(true);
   };
 
   const mainPlayerMatch = findExistingPlayer("main");

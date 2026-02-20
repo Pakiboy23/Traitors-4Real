@@ -38,6 +38,12 @@ export interface BonusGameResults {
   traitorTrio?: string[];
 }
 
+export interface BonusPointBreakdownEntry {
+  label: string;
+  result: "correct" | "incorrect" | "partial";
+  points: number;
+}
+
 export interface WeeklyScoreSnapshot {
   id: string;
   label: string;
@@ -59,6 +65,9 @@ export interface WeeklySubmissionHistoryEntry {
   email: string;
   weeklyBanished?: string;
   weeklyMurdered?: string;
+  bonusGames?: BonusGamePredictions;
+  bonusPoints?: number;
+  bonusPointBreakdown?: BonusPointBreakdownEntry[];
   league?: League;
   created?: string;
   mergedAt: string;

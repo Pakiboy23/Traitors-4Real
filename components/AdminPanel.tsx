@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  BonusGamePredictions,
+  BonusPointBreakdownEntry,
   GameState,
   CAST_NAMES,
   COUNCIL_LABELS,
@@ -110,7 +112,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
     const payload = submission.payload as { league?: string } | undefined;
-    return payload?.league === "jr" ? "jr" : "main";
+    const league = payload?.league || submission.league;
+    return league === "jr" ? "jr" : "main";
   };
   const getSubmissionBonusGames = (submission: SubmissionRecord) => {
     const payload = submission.payload as
@@ -134,30 +137,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       | undefined;
     return payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
   };
+  const normalizeSubmissionBonusGames = (
+    submission: SubmissionRecord
+  ): BonusGamePredictions | undefined => {
+    const bonusGames = getSubmissionBonusGames(submission);
+    const redemptionRoulette =
+      typeof bonusGames?.redemptionRoulette === "string"
+        ? bonusGames.redemptionRoulette.trim()
+        : "";
+    const shieldGambit =
+      typeof bonusGames?.shieldGambit === "string"
+        ? bonusGames.shieldGambit.trim()
+        : "";
+    const traitorTrio = Array.isArray(bonusGames?.traitorTrio)
+      ? bonusGames.traitorTrio
+          .map((name) => (typeof name === "string" ? name.trim() : ""))
+          .filter(Boolean)
+      : [];
+    const normalized: BonusGamePredictions = {};
+    if (redemptionRoulette) normalized.redemptionRoulette = redemptionRoulette;
+    if (typeof bonusGames?.doubleOrNothing === "boolean") {
+      normalized.doubleOrNothing = bonusGames.doubleOrNothing;
+    }
+    if (shieldGambit) normalized.shieldGambit = shieldGambit;
+    if (traitorTrio.length > 0) normalized.traitorTrio = traitorTrio;
+    return Object.keys(normalized).length > 0 ? normalized : undefined;
+  };
   const getSubmissionPlayerId = (submission: SubmissionRecord) => {
     const payload = submission.payload as { playerId?: string } | undefined;
     return payload?.playerId ?? null;
   };
-
-  const buildHistoryEntry = (
-    submission: SubmissionRecord
-  ): WeeklySubmissionHistoryEntry => ({
-    id: submission.id,
-    name: submission.name || "",
-    email: submission.email || "",
-    weeklyBanished: submission.weeklyBanished || "",
-    weeklyMurdered: submission.weeklyMurdered || "",
-  const isWeeklySubmissionRecord = (submission: SubmissionRecord) => {
-    const kind = String(submission.kind ?? "").trim().toLowerCase();
-    if (kind === "weekly") return true;
-    if (submission.weeklyBanished?.trim()) return true;
-    if (submission.weeklyMurdered?.trim()) return true;
-    return Boolean(getSubmissionBonusGames(submission));
-  };
-    league: getSubmissionLeague(submission),
-    created: submission.created,
-    mergedAt: new Date().toISOString(),
-  });
 
   const mergeHistoryEntries = (
     existing: WeeklySubmissionHistoryEntry[],
@@ -203,40 +212,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return null;
   };
 
+  type SubmissionBonusScore = {
+    hasResults: boolean;
+    points: number;
+    breakdown: BonusPointBreakdownEntry[];
+  };
+
+  const getSubmissionBonusScore = (
+    submission: SubmissionRecord,
+    players: PlayerEntry[]
+  ): SubmissionBonusScore => {
+    const bonusResults = gameStateRef.current.weeklyResults?.bonusGames;
+    const hasBonusResults = Boolean(
+      bonusResults?.redemptionRoulette ||
+        bonusResults?.shieldGambit ||
+        (Array.isArray(bonusResults?.traitorTrio) &&
+          bonusResults.traitorTrio.length > 0)
+    );
+
+    if (!hasBonusResults) {
+      return { hasResults: false, points: 0, breakdown: [] };
+    }
+
+    const league = getSubmissionLeague(submission);
+    const match = findPlayerMatch(players, submission, league);
+    const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
+    const basePlayer: PlayerEntry = match
+      ? players[match.index]
+      : {
+          id: `submission-${submission.id}`,
+          name: submission.name || "",
+          email: submission.email || "",
+          league,
+          picks: [],
+          predFirstOut: "",
+          predWinner: "",
+          predTraitors: [],
+        };
+
+    const scoringPlayer: PlayerEntry = {
+      ...basePlayer,
+      name: submission.name || basePlayer.name,
+      email: submission.email || basePlayer.email,
+      weeklyPredictions: {
+        nextBanished: submission.weeklyBanished || "",
+        nextMurdered: submission.weeklyMurdered || "",
+        bonusGames: {
+          redemptionRoulette: normalizedBonusGames?.redemptionRoulette || "",
+          doubleOrNothing: Boolean(normalizedBonusGames?.doubleOrNothing),
+          shieldGambit: normalizedBonusGames?.shieldGambit || "",
+          traitorTrio: normalizedBonusGames?.traitorTrio ?? [],
+        },
+      },
+    };
+
+    const scored = calculatePlayerScore(gameStateRef.current, scoringPlayer);
+    const breakdown: BonusPointBreakdownEntry[] = scored.breakdown.bonusGames.map(
+      (item) => ({
+        label: item.label,
+        result: item.result,
+        points: item.points,
+      })
+    );
+    const points = breakdown.reduce((sum, item) => sum + item.points, 0);
+
+    return { hasResults: true, points, breakdown };
+  };
+
+  const buildHistoryEntry = (
+    submission: SubmissionRecord,
+    players: PlayerEntry[]
+  ): WeeklySubmissionHistoryEntry => {
+    const bonusScore = getSubmissionBonusScore(submission, players);
+    return {
+      id: submission.id,
+      name: submission.name || "",
+      email: submission.email || "",
+      weeklyBanished: submission.weeklyBanished || "",
+      weeklyMurdered: submission.weeklyMurdered || "",
+      bonusGames: normalizeSubmissionBonusGames(submission),
+      bonusPoints: bonusScore.hasResults ? bonusScore.points : undefined,
+      bonusPointBreakdown: bonusScore.hasResults
+        ? bonusScore.breakdown
+        : undefined,
+      league: getSubmissionLeague(submission),
+      created: submission.created,
+      mergedAt: new Date().toISOString(),
+    };
+  };
+
   const refreshSubmissions = async () => {
     setIsLoadingSubmissions(true);
     setSubmissionsError(null);
     try {
-      let records = await fetchWeeklySubmissions();
-      if (records.length === 0) {
-        try {
-          const response = await fetch(
-            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created&filter=${encodeURIComponent(
-  const refreshSubmissions = useCallback(async () => {
-            )}`
-          );
-          if (response.ok) {
-            const data = (await response.json()) as { items?: SubmissionRecord[] };
-            if (Array.isArray(data.items) && data.items.length > 0) {
-              records = data.items;
-              setMsg({
-            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created`
-              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
-          }
-        } catch (fallbackError) {
-          console.warn("Fallback submissions fetch failed:", fallbackError);
-        }
-      }
+      const records = await fetchWeeklySubmissions();
       setSubmissions(records);
-  }, []);
-    const pollInterval = window.setInterval(() => {
-      refreshSubmissions();
-    }, 30000);
-      // Re-fetch to avoid missing records when real-time delivery is delayed/dropped.
-      refreshSubmissions();
-      window.clearInterval(pollInterval);
-  }, [refreshSubmissions]);
-      }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
@@ -465,20 +535,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   ) => {
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
-    const bonusGames = getSubmissionBonusGames(submission);
+    const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
     const incomingBanished = normalizeEmpty(submission.weeklyBanished);
     const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
     const incomingBonusGames = {
-      redemptionRoulette: normalizeEmpty(bonusGames?.redemptionRoulette) ?? undefined,
-      doubleOrNothing:
-        typeof bonusGames?.doubleOrNothing === "boolean"
-          ? bonusGames?.doubleOrNothing
-          : undefined,
-      shieldGambit: normalizeEmpty(bonusGames?.shieldGambit) ?? undefined,
-      traitorTrio:
-        Array.isArray(bonusGames?.traitorTrio)
-          ? bonusGames?.traitorTrio
-          : undefined,
+      redemptionRoulette: normalizedBonusGames?.redemptionRoulette,
+      doubleOrNothing: normalizedBonusGames?.doubleOrNothing,
+      shieldGambit: normalizedBonusGames?.shieldGambit,
+      traitorTrio: normalizedBonusGames?.traitorTrio,
     };
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
@@ -558,6 +622,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { announce = true }: { announce?: boolean } = {}
   ) => {
     const currentState = gameStateRef.current;
+    const historyEntry = buildHistoryEntry(submission, currentState.players);
     const result = applySubmissionToPlayers(currentState.players, submission);
     if (!result.matched) {
       if (announce) {
@@ -568,7 +633,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       return;
     }
-    const historyEntry = buildHistoryEntry(submission);
     const nextHistory = mergeHistoryEntries(
       Array.isArray(currentState.weeklySubmissionHistory)
         ? currentState.weeklySubmissionHistory
@@ -612,11 +676,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     let skipped = 0;
 
     list.forEach((submission) => {
+      const historyEntry = buildHistoryEntry(submission, updatedPlayers);
       const result = applySubmissionToPlayers(updatedPlayers, submission);
       if (result.matched) {
         updatedPlayers = result.players;
         mergedIds.push(submission.id);
-        historyAdds.push(buildHistoryEntry(submission));
+        historyAdds.push(historyEntry);
       } else {
         skipped += 1;
       }
@@ -658,18 +723,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const dismissSubmission = async (submission: SubmissionRecord) => {
-    const confirmed =
-      typeof window === "undefined"
-        ? true
-        : window.confirm(`Dismiss submission from ${submission.name}?`);
-    if (!confirmed) return;
+    if (!(await requestConfirm(`Dismiss submission from ${submission.name}?`))) return;
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
-      setMsg({
-        text: `Dismissed submission from ${submission.name}.`,
-        type: "success",
-      });
     } catch (err: any) {
       setMsg({
         text: `Failed to dismiss submission: ${err?.message || err}`,
@@ -940,6 +997,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       onMergeAllSubmissions={mergeAllSubmissions}
       mergeAllDisabled={submissions.length === 0}
       getSubmissionLeague={getSubmissionLeague}
+      getSubmissionBonusGames={normalizeSubmissionBonusGames}
+      getSubmissionBonusScore={(submission) =>
+        getSubmissionBonusScore(submission, gameState.players)
+      }
       findPlayerMatch={findPlayerMatch}
       onMergeSubmission={(submission) => {
         void mergeSubmissionRecord(submission);

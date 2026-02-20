@@ -1,6 +1,17 @@
 import React from "react";
-import { PlayerEntry, WeeklySubmissionHistoryEntry } from "../../types";
+import {
+  BonusGamePredictions,
+  BonusPointBreakdownEntry,
+  PlayerEntry,
+  WeeklySubmissionHistoryEntry,
+} from "../../types";
 import { SubmissionRecord } from "../../services/pocketbase";
+
+type SubmissionBonusScore = {
+  hasResults: boolean;
+  points: number;
+  breakdown: BonusPointBreakdownEntry[];
+};
 
 interface SubmissionsSectionProps {
   pocketbaseUrl: string;
@@ -12,6 +23,12 @@ interface SubmissionsSectionProps {
   onMergeAllSubmissions: () => void;
   mergeAllDisabled: boolean;
   getSubmissionLeague: (submission: SubmissionRecord) => "main" | "jr";
+  getSubmissionBonusGames: (
+    submission: SubmissionRecord
+  ) => BonusGamePredictions | undefined;
+  getSubmissionBonusScore: (
+    submission: SubmissionRecord
+  ) => SubmissionBonusScore;
   findPlayerMatch: (
     players: PlayerEntry[],
     submission: SubmissionRecord,
@@ -27,6 +44,75 @@ interface SubmissionsSectionProps {
   onClearHistory: () => void;
 }
 
+const renderBonusSummary = (bonusGames?: BonusGamePredictions) => {
+  const traitorTrio = Array.isArray(bonusGames?.traitorTrio)
+    ? bonusGames.traitorTrio.filter(Boolean)
+    : [];
+  const doubleOrNothing =
+    bonusGames?.doubleOrNothing === true
+      ? "On"
+      : bonusGames?.doubleOrNothing === false
+        ? "Off"
+        : "Not set";
+
+  return (
+    <p className="text-xs text-[color:var(--text-muted)] mt-1">
+      Bonus: <span className="text-[color:var(--text)]">Roulette {bonusGames?.redemptionRoulette || "None"}</span> ·
+      <span className="text-[color:var(--text)]"> Shield {bonusGames?.shieldGambit || "None"}</span> ·
+      <span className="text-[color:var(--text)]"> Double {doubleOrNothing}</span> ·
+      <span className="text-[color:var(--text)]">
+        {" "}
+        Trio {traitorTrio.length > 0 ? traitorTrio.join(", ") : "None"}
+      </span>
+    </p>
+  );
+};
+
+const formatPoints = (value: number) => {
+  const normalized = Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+  return value > 0 ? `+${normalized}` : normalized;
+};
+
+const formatBreakdown = (items: BonusPointBreakdownEntry[]) => {
+  if (items.length === 0) return "No scored bonus picks.";
+  return items.map((item) => `${item.label} ${formatPoints(item.points)}`).join(" · ");
+};
+
+const renderBonusPointsPreview = (score: SubmissionBonusScore) => {
+  if (!score.hasResults) {
+    return (
+      <p className="text-xs text-[color:var(--text-muted)] mt-1">
+        Bonus points: <span className="text-[color:var(--text)]">Pending results</span>
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs text-[color:var(--text-muted)] mt-1">
+      Bonus points: <span className="text-[color:var(--text)]">{formatPoints(score.points)}</span> ·{" "}
+      <span className="text-[color:var(--text)]">{formatBreakdown(score.breakdown)}</span>
+    </p>
+  );
+};
+
+const renderHistoryBonusPoints = (entry: WeeklySubmissionHistoryEntry) => {
+  if (typeof entry.bonusPoints !== "number") {
+    return (
+      <p className="text-xs text-[color:var(--text-muted)] mt-1">
+        Bonus points: <span className="text-[color:var(--text)]">Pending results</span>
+      </p>
+    );
+  }
+  const breakdown = Array.isArray(entry.bonusPointBreakdown)
+    ? entry.bonusPointBreakdown
+    : [];
+  return (
+    <p className="text-xs text-[color:var(--text-muted)] mt-1">
+      Bonus points: <span className="text-[color:var(--text)]">{formatPoints(entry.bonusPoints)}</span> ·{" "}
+      <span className="text-[color:var(--text)]">{formatBreakdown(breakdown)}</span>
+    </p>
+  );
+};
+
 const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
   pocketbaseUrl,
   players,
@@ -37,6 +123,8 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
   onMergeAllSubmissions,
   mergeAllDisabled,
   getSubmissionLeague,
+  getSubmissionBonusGames,
+  getSubmissionBonusScore,
   findPlayerMatch,
   onMergeSubmission,
   onDismissSubmission,
@@ -84,6 +172,8 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
         <div className="space-y-3">
           {submissions.map((submission) => {
             const league = getSubmissionLeague(submission);
+            const bonusGames = getSubmissionBonusGames(submission);
+            const bonusScore = getSubmissionBonusScore(submission);
             const match = findPlayerMatch(players, submission, league);
             const canMerge = Boolean(match) || league === "jr";
             const createdLabel = submission.created ? new Date(submission.created).toLocaleString() : "";
@@ -101,6 +191,8 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                       Banished: <span className="text-[color:var(--text)]">{submission.weeklyBanished || "None"}</span> ·
                       Murdered: <span className="text-[color:var(--text)]">{submission.weeklyMurdered || "None"}</span>
                     </p>
+                    {renderBonusSummary(bonusGames)}
+                    {renderBonusPointsPreview(bonusScore)}
                     <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] mt-1">
                       {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
                       {match ? ` · Match by ${match.type}` : league === "jr" ? " · New Jr player" : " · No match"}
@@ -175,6 +267,8 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                     Banished: <span className="text-[color:var(--text)]">{entry.weeklyBanished || "None"}</span> ·
                     Murdered: <span className="text-[color:var(--text)]">{entry.weeklyMurdered || "None"}</span>
                   </p>
+                  {renderBonusSummary(entry.bonusGames)}
+                  {renderHistoryBonusPoints(entry)}
                   <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] mt-1">
                     {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
                     {mergedLabel ? ` · Merged ${mergedLabel}` : ""}

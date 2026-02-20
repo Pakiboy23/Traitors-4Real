@@ -7,6 +7,7 @@ const GAME_SLUG = "default";
 const PORTRAITS_COLLECTION = "playerPortraits";
 const ADMIN_COLLECTION = "admins";
 const SUBMISSIONS_COLLECTION = "submissions";
+const SUBMISSIONS_SORT = "-id";
 
 const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
 
@@ -143,6 +144,7 @@ export interface SubmissionRecord extends RecordModel {
   name: string;
   email: string;
   kind: string;
+  league?: string;
   weeklyBanished?: string;
   weeklyMurdered?: string;
   payload?: unknown;
@@ -150,78 +152,103 @@ export interface SubmissionRecord extends RecordModel {
   updated?: string;
 }
 
-const isWeeklySubmission = (record: Partial<SubmissionRecord> | null | undefined) => {
-  if (!record) return false;
-  const kind = String(record.kind ?? "").trim().toLowerCase();
-  if (kind === "weekly") return true;
+const sortSubmissions = (items: SubmissionRecord[]) =>
+  [...items].sort((a, b) => (b.id || "").localeCompare(a.id || ""));
 
-  const payload = record.payload as
+const isWeeklySubmissionRecord = (item: SubmissionRecord) => {
+  if (item.kind === "weekly") return true;
+
+  // Some API responses can omit `kind`; keep weekly records visible by shape.
+  const payload = item.payload as
     | {
-        weeklyPredictions?: unknown;
-        bonusGames?: unknown;
+        weeklyPredictions?: {
+          nextBanished?: string;
+          nextMurdered?: string;
+        };
       }
     | undefined;
 
-  if (payload?.weeklyPredictions || payload?.bonusGames) return true;
-  if ((record.weeklyBanished ?? "").trim()) return true;
-  if ((record.weeklyMurdered ?? "").trim()) return true;
+  const hasWeeklyFields =
+    typeof item.weeklyBanished === "string" ||
+    typeof item.weeklyMurdered === "string";
+  const hasWeeklyPayload =
+    typeof payload?.weeklyPredictions?.nextBanished === "string" ||
+    typeof payload?.weeklyPredictions?.nextMurdered === "string";
 
-  return false;
+  return hasWeeklyFields || hasWeeklyPayload;
+};
+
+const normalizeWeeklySubmissions = (items: unknown): SubmissionRecord[] => {
+  if (!Array.isArray(items)) return [];
+  return sortSubmissions(
+    (items as SubmissionRecord[]).filter(
+      (item) => Boolean(item) && isWeeklySubmissionRecord(item)
+    )
+  );
 };
 
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
-  // Check if admin is authenticated
-  if (!pb.authStore.isValid) {
-    console.warn("fetchWeeklySubmissions: Admin not authenticated");
-    return [];
-  }
-
   try {
     const perPage = 200;
     const firstPage = await pb
       .collection(SUBMISSIONS_COLLECTION)
       .getList<SubmissionRecord>(1, perPage, {
-        sort: "-created",
+        sort: SUBMISSIONS_SORT,
+        filter: 'kind="weekly"',
       });
     const items = [...firstPage.items];
     for (let page = 2; page <= firstPage.totalPages; page += 1) {
       const nextPage = await pb
         .collection(SUBMISSIONS_COLLECTION)
         .getList<SubmissionRecord>(page, perPage, {
-          sort: "-created",
+          sort: SUBMISSIONS_SORT,
+          filter: 'kind="weekly"',
         });
       items.push(...nextPage.items);
     }
-    const weeklyItems = items.filter((record) => isWeeklySubmission(record));
-    console.log(`fetchWeeklySubmissions: Loaded ${weeklyItems.length} weekly submissions via SDK`);
-    return weeklyItems;
+    const normalized = normalizeWeeklySubmissions(items);
+    console.log(
+      `fetchWeeklySubmissions: Loaded ${normalized.length} submissions via SDK`
+    );
+    return normalized;
   } catch (error) {
     console.warn("PocketBase SDK submissions fetch failed:", error);
   }
 
-  // Fallback: use fetch with auth header
+  // Fallback: use fetch with and without sort/filter variants.
   try {
-    const params = new URLSearchParams({
-      perPage: "200",
-      sort: "-created",
-    });
     const headers: Record<string, string> = {};
     if (pb.authStore.token) {
       headers["Authorization"] = pb.authStore.token;
     }
-    const response = await fetch(
-      `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`,
-      { headers }
-    );
-    if (!response.ok) {
-      console.warn(`Fallback fetch failed with status ${response.status}`);
-      return [];
+    const queryVariants = [
+      { perPage: "200", sort: SUBMISSIONS_SORT, filter: '(kind="weekly")' },
+      { perPage: "200", filter: '(kind="weekly")' },
+      { perPage: "200", sort: SUBMISSIONS_SORT },
+      { perPage: "200" },
+    ];
+
+    for (const query of queryVariants) {
+      const params = new URLSearchParams(query);
+      const url = `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`;
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        console.warn(
+          `Fallback submissions fetch failed (${response.status}) for ${params.toString()}`
+        );
+        continue;
+      }
+      const data = (await response.json()) as { items?: SubmissionRecord[] };
+      const normalized = normalizeWeeklySubmissions(data.items);
+      if (normalized.length > 0) {
+        console.log(
+          `fetchWeeklySubmissions: Loaded ${normalized.length} submissions via fallback`
+        );
+        return normalized;
+      }
     }
-    const data = (await response.json()) as { items?: SubmissionRecord[] };
-    const items = Array.isArray(data.items) ? data.items : [];
-    const weeklyItems = items.filter((record) => isWeeklySubmission(record));
-    console.log(`fetchWeeklySubmissions: Loaded ${weeklyItems.length} weekly submissions via fallback`);
-    return weeklyItems;
+
+    return [];
   } catch (fallbackError) {
     console.warn("Fallback submissions fetch failed:", fallbackError);
     return [];
@@ -238,7 +265,7 @@ export const subscribeToWeeklySubmissions = (
 
   const callback = (event: any) => {
     const record = event?.record as SubmissionRecord | undefined;
-    if (!isWeeklySubmission(record)) return;
+    if (!record || record.kind !== "weekly") return;
     if (event?.action !== "create") return;
     console.log("New weekly submission received:", record.id, record.name);
     handler(record);
@@ -256,27 +283,7 @@ export const subscribeToWeeklySubmissions = (
 };
 
 export const deleteSubmission = async (id: string) => {
-  try {
-    await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
-    return;
-  } catch (error) {
-    console.warn("PocketBase SDK delete failed, attempting fetch fallback:", error);
-  }
-
-  const headers: Record<string, string> = {};
-  if (pb.authStore.token) {
-    headers.Authorization = pb.authStore.token;
-  }
-  const response = await fetch(
-    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records/${id}`,
-    {
-      method: "DELETE",
-      headers,
-    }
-  );
-  if (!response.ok && response.status !== 404) {
-    throw new Error(`Failed to delete submission (${response.status})`);
-  }
+  await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
 };
 
 export const submitWeeklyCouncilVote = async (input: {
