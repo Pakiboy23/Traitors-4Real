@@ -14,12 +14,14 @@ export interface DraftPick {
 }
 
 export interface WeeklyPredictions {
+  weekId?: string;
   nextBanished: string;
   nextMurdered: string;
   bonusGames?: BonusGamePredictions;
 }
 
 export interface WeeklyResults {
+  weekId?: string;
   nextBanished?: string;
   nextMurdered?: string;
   bonusGames?: BonusGameResults;
@@ -64,6 +66,7 @@ export interface WeeklySubmissionHistoryEntry {
   id: string;
   name: string;
   email: string;
+  weekId?: string;
   weeklyBanished?: string;
   weeklyMurdered?: string;
   bonusGames?: BonusGamePredictions;
@@ -89,12 +92,31 @@ export interface PlayerEntry {
 }
 
 export interface GameState {
+  activeWeekId?: string;
   players: PlayerEntry[];
   castStatus: Record<string, CastMemberStatus>;
   weeklyResults?: WeeklyResults;
   weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
   weeklyScoreHistory?: WeeklyScoreSnapshot[];
 }
+
+export const normalizeWeekId = (value?: string | null): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+export const inferActiveWeekId = (input?: {
+  activeWeekId?: string;
+  weeklyScoreHistory?: WeeklyScoreSnapshot[];
+} | null): string => {
+  const explicit = normalizeWeekId(input?.activeWeekId);
+  if (explicit) return explicit;
+  const historyLength = Array.isArray(input?.weeklyScoreHistory)
+    ? input.weeklyScoreHistory.length
+    : 0;
+  return `week-${historyLength + 1}`;
+};
 
 export const CAST_NAMES = [
   "Candiace Dillard Bassett (RHOP)", "Caroline Stanbury (RHODubai)", "Dorinda Medley (RHONY)", 

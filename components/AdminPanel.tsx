@@ -5,6 +5,8 @@ import {
   GameState,
   CAST_NAMES,
   COUNCIL_LABELS,
+  inferActiveWeekId,
+  normalizeWeekId,
   PlayerEntry,
   UiVariant,
   DraftPick,
@@ -119,6 +121,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const normalizeEmpty = <T,>(value: T | null | undefined) => {
     if (value === undefined || value === null || value === "") return null;
     return value;
+  };
+  const getActiveWeekId = () => inferActiveWeekId(gameStateRef.current);
+  const createEmptyWeeklyResults = (weekId: string) => ({
+    weekId,
+    nextBanished: "",
+    nextMurdered: "",
+    bonusGames: {
+      redemptionRoulette: "",
+      shieldGambit: "",
+      traitorTrio: [],
+    },
+  });
+  const getSubmissionWeekId = (submission: SubmissionRecord) => {
+    const payload = submission.payload as
+      | {
+          weekId?: string;
+          weeklyPredictions?: { weekId?: string };
+        }
+      | undefined;
+    return normalizeWeekId(payload?.weekId ?? payload?.weeklyPredictions?.weekId);
+  };
+  const getCurrentWeekStartMs = () => {
+    const history = Array.isArray(gameStateRef.current.weeklyScoreHistory)
+      ? gameStateRef.current.weeklyScoreHistory
+      : [];
+    if (history.length === 0) return null;
+    const last = history[history.length - 1];
+    const createdAtMs = Date.parse(last.createdAt || "");
+    return Number.isNaN(createdAtMs) ? null : createdAtMs;
+  };
+  const isSubmissionForActiveWeek = (submission: SubmissionRecord) => {
+    const activeWeekId = getActiveWeekId();
+    const submissionWeekId = getSubmissionWeekId(submission);
+    if (submissionWeekId) return submissionWeekId === activeWeekId;
+    const currentWeekStartMs = getCurrentWeekStartMs();
+    if (currentWeekStartMs === null) return true;
+    const createdAtMs = Date.parse(submission.created || "");
+    if (Number.isNaN(createdAtMs)) return false;
+    return createdAtMs >= currentWeekStartMs;
   };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
     const payload = submission.payload as { league?: string } | undefined;
@@ -254,6 +295,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
+    const submissionWeekId = getSubmissionWeekId(submission) ?? getActiveWeekId();
     const basePlayer: PlayerEntry = match
       ? players[match.index]
       : {
@@ -272,6 +314,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       name: submission.name || basePlayer.name,
       email: submission.email || basePlayer.email,
       weeklyPredictions: {
+        weekId: submissionWeekId,
         nextBanished: submission.weeklyBanished || "",
         nextMurdered: submission.weeklyMurdered || "",
         bonusGames: {
@@ -305,6 +348,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       id: submission.id,
       name: submission.name || "",
       email: submission.email || "",
+      weekId: getSubmissionWeekId(submission) ?? getActiveWeekId(),
       weeklyBanished: submission.weeklyBanished || "",
       weeklyMurdered: submission.weeklyMurdered || "",
       bonusGames: normalizeSubmissionBonusGames(submission),
@@ -338,7 +382,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           console.warn("Fallback submissions fetch failed:", fallbackError);
         }
       }
-      setSubmissions(records);
+      setSubmissions(records.filter((record) => isSubmissionForActiveWeek(record)));
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
@@ -349,6 +393,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     refreshSubmissions();
     const unsubscribe = subscribeToWeeklySubmissions((submission) => {
+      if (!isSubmissionForActiveWeek(submission)) return;
       setSubmissions((prev) =>
         prev.some((existing) => existing.id === submission.id)
           ? prev
@@ -475,6 +520,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predWinner,
         predTraitors,
         weeklyPredictions: {
+          weekId: getActiveWeekId(),
           nextBanished: weeklyBanished,
           nextMurdered: weeklyMurdered,
           bonusGames: {
@@ -574,6 +620,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     players: PlayerEntry[],
     submission: SubmissionRecord
   ) => {
+    const activeWeekId = getActiveWeekId();
+    if (!isSubmissionForActiveWeek(submission)) {
+      return { matched: false as const, stale: true as const, players };
+    }
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
@@ -602,6 +652,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predWinner: "",
         predTraitors: [],
         weeklyPredictions: {
+          weekId: activeWeekId,
           nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
           nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
           bonusGames: {
@@ -621,6 +672,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const updatedPlayers = players.map((player, idx) => {
       if (idx !== match.index) return player;
       const existingWeekly = player.weeklyPredictions ?? {
+        weekId: activeWeekId,
         nextBanished: "",
         nextMurdered: "",
         bonusGames: {},
@@ -643,6 +695,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         name: submission.name || player.name,
         email: submission.email || player.email,
         weeklyPredictions: {
+          weekId: activeWeekId,
           nextBanished:
             typeof incomingBanished === "string"
               ? incomingBanished
@@ -668,7 +721,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!result.matched) {
       if (announce) {
         setMsg({
-          text: `No matching player found for ${submission.name}.`,
+          text: result.stale
+            ? `Skipped stale vote for ${submission.name}; it belongs to a previous week.`
+            : `No matching player found for ${submission.name}.`,
           type: "error",
         });
       }
@@ -715,6 +770,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const mergedIds: string[] = [];
     const historyAdds: WeeklySubmissionHistoryEntry[] = [];
     let skipped = 0;
+    let staleSkipped = 0;
 
     list.forEach((submission) => {
       const historyEntry = buildHistoryEntry(submission, updatedPlayers);
@@ -723,6 +779,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         updatedPlayers = result.players;
         mergedIds.push(submission.id);
         historyAdds.push(historyEntry);
+      } else if (result.stale) {
+        staleSkipped += 1;
       } else {
         skipped += 1;
       }
@@ -749,7 +807,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
       if (announce) {
         setMsg({
-          text: `Merged ${mergedIds.length} weekly votes${skipped ? `, skipped ${skipped}` : ""}.`,
+          text:
+            `Merged ${mergedIds.length} weekly votes` +
+            `${staleSkipped ? `, skipped ${staleSkipped} stale` : ""}` +
+            `${skipped ? `, skipped ${skipped}` : ""}.`,
           type: "success",
         });
       }
@@ -794,6 +855,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!selectedPlayer) return;
     updateSelectedPlayer({
       weeklyPredictions: {
+        weekId: getActiveWeekId(),
         nextBanished: editWeeklyBanished,
         nextMurdered: editWeeklyMurdered,
         bonusGames: selectedPlayer.weeklyPredictions?.bonusGames,
@@ -862,12 +924,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             ...p,
             name: nextName,
             email: nextEmail,
-          weeklyPredictions: {
-            nextBanished: edit.weeklyBanished,
-            nextMurdered: edit.weeklyMurdered,
-            bonusGames: player.weeklyPredictions?.bonusGames,
-          },
-        }
+            weeklyPredictions: {
+              weekId: getActiveWeekId(),
+              nextBanished: edit.weeklyBanished,
+              nextMurdered: edit.weeklyMurdered,
+              bonusGames: player.weeklyPredictions?.bonusGames,
+            },
+          }
         : p
     );
     updateGameState({ ...gameState, players: updatedPlayers });
@@ -926,9 +989,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     currentState.players.forEach((player) => {
       totals[player.id] = calculatePlayerScore(currentState, player).total;
     });
+    const snapshotWeekId =
+      normalizeWeekId(currentState.weeklyResults?.weekId) ?? getActiveWeekId();
     const snapshotResults = currentState.weeklyResults
       ? JSON.parse(JSON.stringify(currentState.weeklyResults))
-      : undefined;
+      : createEmptyWeeklyResults(snapshotWeekId);
+    snapshotResults.weekId = snapshotWeekId;
     const snapshot: WeeklyScoreSnapshot = {
       id: `week-${Date.now()}`,
       label,
@@ -937,9 +1003,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       totals,
     };
     const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
-    const nextState = { ...currentState, weeklyScoreHistory: nextHistory };
+    const nextActiveWeekId = `week-${nextHistory.length + 1}`;
+    const nextState = {
+      ...currentState,
+      activeWeekId: nextActiveWeekId,
+      weeklyResults: createEmptyWeeklyResults(nextActiveWeekId),
+      weeklyScoreHistory: nextHistory,
+    };
     gameStateRef.current = nextState;
     updateGameState(nextState);
+    void refreshSubmissions();
     setMsg({ text: `Archived scores for ${label}.`, type: "success" });
   };
 
@@ -963,10 +1036,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     key: "redemptionRoulette" | "shieldGambit",
     value: string
   ) => {
+    const currentWeekId =
+      normalizeWeekId(gameStateRef.current.weeklyResults?.weekId) ??
+      getActiveWeekId();
     const nextState = {
       ...gameStateRef.current,
       weeklyResults: {
         ...(gameStateRef.current.weeklyResults ?? {}),
+        weekId: currentWeekId,
         bonusGames: {
           ...(gameStateRef.current.weeklyResults?.bonusGames ?? {}),
           [key]: value,
@@ -1004,6 +1081,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ...prevState,
           weeklyResults: {
             ...(prevState.weeklyResults ?? {}),
+            weekId:
+              normalizeWeekId(prevState.weeklyResults?.weekId) ??
+              inferActiveWeekId(prevState),
             nextBanished: value,
           },
         }))
@@ -1013,6 +1093,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ...prevState,
           weeklyResults: {
             ...(prevState.weeklyResults ?? {}),
+            weekId:
+              normalizeWeekId(prevState.weeklyResults?.weekId) ??
+              inferActiveWeekId(prevState),
             nextMurdered: value,
           },
         }))

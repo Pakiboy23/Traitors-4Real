@@ -176,6 +176,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
       name: playerName,
       email: playerEmail,
       weeklyPredictions: {
+        weekId: gameState.activeWeekId,
         nextBanished: weeklyBanished,
         nextMurdered: weeklyMurdered,
         bonusGames: {
@@ -197,6 +198,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
           nextBanished: weeklyBanished,
           nextMurdered: weeklyMurdered,
         },
+        weekId: gameState.activeWeekId,
         bonusGames: {
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: bonusDoubleOrNothing,
@@ -284,6 +286,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         name: jrName,
         email: jrEmail,
         weeklyPredictions: jrWeeklyPrediction,
+        weekId: gameState.activeWeekId,
         bonusGames: jrBonusPrediction,
         league: "jr",
       });

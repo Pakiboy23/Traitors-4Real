@@ -11,6 +11,8 @@ import {
   CastMemberStatus,
   CAST_NAMES,
   GameState,
+  inferActiveWeekId,
+  normalizeWeekId,
   PlayerEntry,
   UiVariant,
   WeeklySubmissionHistoryEntry,
@@ -43,10 +45,12 @@ const DEFAULT_WEEKLY_RESULTS = {
 };
 
 const normalizeWeeklyResults = (
-  input?: GameState["weeklyResults"] | null
+  input?: GameState["weeklyResults"] | null,
+  fallbackWeekId?: string
 ): GameState["weeklyResults"] => {
   const bonusGames = input?.bonusGames ?? DEFAULT_WEEKLY_RESULTS.bonusGames;
   return {
+    weekId: normalizeWeekId(input?.weekId) ?? normalizeWeekId(fallbackWeekId) ?? undefined,
     nextBanished: input?.nextBanished ?? DEFAULT_WEEKLY_RESULTS.nextBanished,
     nextMurdered: input?.nextMurdered ?? DEFAULT_WEEKLY_RESULTS.nextMurdered,
     bonusGames: {
@@ -64,6 +68,14 @@ const normalizeWeeklyResults = (
 };
 
 const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
+  const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
+    ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
+    : [];
+  const activeWeekId = inferActiveWeekId({
+    activeWeekId: input?.activeWeekId,
+    weeklyScoreHistory,
+  });
+
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
     input?.castStatus ?? {};
@@ -105,6 +117,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
         ? player.predTraitors
         : [],
       weeklyPredictions: {
+        weekId: normalizeWeekId(player.weeklyPredictions?.weekId) ?? undefined,
         nextBanished: player.weeklyPredictions?.nextBanished ?? "",
         nextMurdered: player.weeklyPredictions?.nextMurdered ?? "",
         bonusGames: {
@@ -124,14 +137,12 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const history = Array.isArray(input?.weeklySubmissionHistory)
     ? (input!.weeklySubmissionHistory as WeeklySubmissionHistoryEntry[])
     : [];
-  const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
-    ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
-    : [];
 
   return {
+    activeWeekId,
     players: normalizedPlayers,
     castStatus,
-    weeklyResults: normalizeWeeklyResults(input?.weeklyResults),
+    weeklyResults: normalizeWeeklyResults(input?.weeklyResults, activeWeekId),
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
   };
@@ -380,6 +391,14 @@ const App: React.FC = () => {
   }, []);
 
   const handleAddEntry = useCallback((entry: PlayerEntry) => {
+    const activeWeekId = inferActiveWeekId(gameState);
+    const normalizedWeeklyPredictions = entry.weeklyPredictions
+      ? {
+          ...entry.weeklyPredictions,
+          weekId:
+            normalizeWeekId(entry.weeklyPredictions.weekId) ?? activeWeekId,
+        }
+      : undefined;
     const normalizedEmail = normalizeEmail(entry.email || "");
     const updatedPlayers = [
       ...gameState.players.filter((p) => {
@@ -389,7 +408,11 @@ const App: React.FC = () => {
         }
         return p.name !== entry.name;
       }),
-      { ...entry, league: entry.league === "jr" ? "jr" : "main" },
+      {
+        ...entry,
+        weeklyPredictions: normalizedWeeklyPredictions,
+        league: entry.league === "jr" ? "jr" : "main",
+      },
     ];
     updateGameState({ ...gameState, players: updatedPlayers });
   }, [gameState, updateGameState]);

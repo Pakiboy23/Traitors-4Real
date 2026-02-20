@@ -1,4 +1,5 @@
 import type { GameState, PlayerEntry } from "../../types";
+import { normalizeWeekId } from "../../types";
 import { SCORING_POINTS, MULTIPLIERS } from "./scoringConstants";
 
 export interface ScoreAchievement {
@@ -104,11 +105,26 @@ export const calculatePlayerScore = (
 
   const weeklyResults = gameState.weeklyResults;
   const weeklyPredictions = player.weeklyPredictions;
+  const currentWeekId =
+    normalizeWeekId(gameState.activeWeekId) ??
+    normalizeWeekId(weeklyResults?.weekId);
+  const weeklyResultWeekId =
+    normalizeWeekId(weeklyResults?.weekId) ?? currentWeekId;
+  const weeklyPredictionWeekId = normalizeWeekId(weeklyPredictions?.weekId);
+  const hasMatchingWeeklyWeek = Boolean(
+    weeklyPredictionWeekId &&
+      weeklyResultWeekId &&
+      weeklyPredictionWeekId === weeklyResultWeekId
+  );
   const weeklyMultiplier = getWeeklyMultiplier(player);
   const weeklyCorrectPoints = SCORING_POINTS.WEEKLY_CORRECT_BASE * weeklyMultiplier;
   const weeklyIncorrectPoints = SCORING_POINTS.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
 
-  if (weeklyResults?.nextBanished && weeklyPredictions?.nextBanished) {
+  if (
+    hasMatchingWeeklyWeek &&
+    weeklyResults?.nextBanished &&
+    weeklyPredictions?.nextBanished
+  ) {
     if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
       score += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Banished", result: "correct" });
@@ -125,6 +141,7 @@ export const calculatePlayerScore = (
   }
 
   if (
+    hasMatchingWeeklyWeek &&
     weeklyResults?.nextMurdered &&
     weeklyPredictions?.nextMurdered &&
     weeklyResults.nextMurdered !== "No Murder"
@@ -148,7 +165,11 @@ export const calculatePlayerScore = (
   const bonusPredictions = weeklyPredictions?.bonusGames;
   const isNegativeForBonus = score < 0;
 
-  if (bonusResults?.redemptionRoulette && bonusPredictions?.redemptionRoulette) {
+  if (
+    hasMatchingWeeklyWeek &&
+    bonusResults?.redemptionRoulette &&
+    bonusPredictions?.redemptionRoulette
+  ) {
     if (bonusResults.redemptionRoulette === bonusPredictions.redemptionRoulette) {
       const points = isNegativeForBonus
         ? SCORING_POINTS.REDEMPTION_ROULETTE_CORRECT_NEGATIVE
@@ -175,7 +196,11 @@ export const calculatePlayerScore = (
     }
   }
 
-  if (bonusResults?.shieldGambit && bonusPredictions?.shieldGambit) {
+  if (
+    hasMatchingWeeklyWeek &&
+    bonusResults?.shieldGambit &&
+    bonusPredictions?.shieldGambit
+  ) {
     if (bonusResults.shieldGambit === bonusPredictions.shieldGambit) {
       const points = isNegativeForBonus
         ? SCORING_POINTS.SHIELD_GAMBIT_CORRECT_NEGATIVE
@@ -201,7 +226,11 @@ export const calculatePlayerScore = (
     }
   }
 
-  if (bonusResults?.traitorTrio?.length && bonusPredictions?.traitorTrio?.length) {
+  if (
+    hasMatchingWeeklyWeek &&
+    bonusResults?.traitorTrio?.length &&
+    bonusPredictions?.traitorTrio?.length
+  ) {
     const resultSet = Array.from(
       new Set(bonusResults.traitorTrio.filter(Boolean))
     );

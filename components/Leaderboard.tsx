@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, UiVariant, WeeklyScoreSnapshot } from "../types";
+import {
+  CAST_NAMES,
+  COUNCIL_LABELS,
+  GameState,
+  normalizeWeekId,
+  PlayerEntry,
+  UiVariant,
+  WeeklyScoreSnapshot,
+} from "../types";
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 import { LIMITS, TIMING } from "../src/utils/scoringConstants";
@@ -101,6 +109,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
 
     const weeklyResults = gameState.weeklyResults;
     const weeklyPredictions = player.weeklyPredictions;
+    const currentWeekId =
+      normalizeWeekId(gameState.activeWeekId) ??
+      normalizeWeekId(weeklyResults?.weekId);
+    const weeklyResultWeekId =
+      normalizeWeekId(weeklyResults?.weekId) ?? currentWeekId;
+    const weeklyPredictionWeekId = normalizeWeekId(weeklyPredictions?.weekId);
+    const hasMatchingWeeklyWeek = Boolean(
+      weeklyPredictionWeekId &&
+        weeklyResultWeekId &&
+        weeklyPredictionWeekId === weeklyResultWeekId
+    );
     const weeklyMultiplier = weeklyPredictions?.bonusGames?.doubleOrNothing ? 2 : 1;
     const weeklyIncorrectPoints = 0.5 * weeklyMultiplier;
 
@@ -114,6 +133,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
     }
 
     if (
+      hasMatchingWeeklyWeek &&
       weeklyResults?.nextBanished &&
       weeklyPredictions?.nextBanished &&
       weeklyResults.nextBanished !== weeklyPredictions.nextBanished
@@ -127,6 +147,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
     }
 
     if (
+      hasMatchingWeeklyWeek &&
       weeklyResults?.nextMurdered &&
       weeklyPredictions?.nextMurdered &&
       weeklyResults.nextMurdered !== "No Murder" &&
@@ -141,6 +162,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
     }
 
     if (
+      hasMatchingWeeklyWeek &&
       weeklyResults?.bonusGames?.redemptionRoulette &&
       weeklyPredictions?.bonusGames?.redemptionRoulette &&
       weeklyResults.bonusGames.redemptionRoulette !== weeklyPredictions.bonusGames.redemptionRoulette
