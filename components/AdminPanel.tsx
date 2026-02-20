@@ -147,6 +147,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     email: submission.email || "",
     weeklyBanished: submission.weeklyBanished || "",
     weeklyMurdered: submission.weeklyMurdered || "",
+  const isWeeklySubmissionRecord = (submission: SubmissionRecord) => {
+    const kind = String(submission.kind ?? "").trim().toLowerCase();
+    if (kind === "weekly") return true;
+    if (submission.weeklyBanished?.trim()) return true;
+    if (submission.weeklyMurdered?.trim()) return true;
+    return Boolean(getSubmissionBonusGames(submission));
+  };
     league: getSubmissionLeague(submission),
     created: submission.created,
     mergedAt: new Date().toISOString(),
@@ -213,10 +220,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             if (Array.isArray(data.items) && data.items.length > 0) {
               records = data.items;
               setMsg({
-                text: "Loaded weekly submissions from API fallback.",
-                type: "success",
-              });
-            }
+            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created`
+              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
           }
         } catch (fallbackError) {
           console.warn("Fallback submissions fetch failed:", fallbackError);
