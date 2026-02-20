@@ -238,7 +238,27 @@ export const subscribeToWeeklySubmissions = (
 };
 
 export const deleteSubmission = async (id: string) => {
-  await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
+  try {
+    await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
+    return;
+  } catch (error) {
+    console.warn("PocketBase SDK delete failed, attempting fetch fallback:", error);
+  }
+
+  const headers: Record<string, string> = {};
+  if (pb.authStore.token) {
+    headers.Authorization = pb.authStore.token;
+  }
+  const response = await fetch(
+    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records/${id}`,
+    {
+      method: "DELETE",
+      headers,
+    }
+  );
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete submission (${response.status})`);
+  }
 };
 
 export const submitWeeklyCouncilVote = async (input: {
