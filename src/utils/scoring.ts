@@ -66,6 +66,40 @@ const hasAnyScopedWeeklyPredictions = (gameState: GameState) =>
     Boolean(normalizeWeekId(entry.weeklyPredictions?.weekId))
   );
 
+const isLikelyCurrentWeekLegacyPrediction = (
+  gameState: GameState,
+  player: PlayerEntry
+) => {
+  const weeklyPredictions = player.weeklyPredictions;
+  if (!weeklyPredictions) return false;
+
+  const weeklyResults = gameState.weeklyResults;
+  const isValidCurrentWeekPick = (pick?: string) => {
+    if (typeof pick !== "string" || !pick.trim()) return true;
+    const status = gameState.castStatus[pick];
+    if (!status) return true;
+    if (!status.isEliminated) return true;
+    if (weeklyResults?.nextBanished === pick) return true;
+    if (weeklyResults?.nextMurdered === pick) return true;
+    return false;
+  };
+
+  if (!isValidCurrentWeekPick(weeklyPredictions.nextBanished)) return false;
+  if (!isValidCurrentWeekPick(weeklyPredictions.nextMurdered)) return false;
+
+  const bonus = weeklyPredictions.bonusGames;
+  if (!bonus) return true;
+  if (!isValidCurrentWeekPick(bonus.redemptionRoulette)) return false;
+  if (!isValidCurrentWeekPick(bonus.shieldGambit)) return false;
+  if (
+    Array.isArray(bonus.traitorTrio) &&
+    bonus.traitorTrio.some((pick) => !isValidCurrentWeekPick(pick))
+  ) {
+    return false;
+  }
+  return true;
+};
+
 export const resolveEffectiveWeeklyPredictionWeekId = (
   gameState: GameState,
   player: PlayerEntry,
@@ -76,8 +110,12 @@ export const resolveEffectiveWeeklyPredictionWeekId = (
   if (!hasWeeklyPredictionContent(player.weeklyPredictions)) return null;
 
   // Backward-compatibility: if no player has scoped week IDs yet,
-  // treat populated legacy predictions as current-week picks.
-  if (!hasAnyScopedWeeklyPredictions(gameState)) {
+  // only treat legacy predictions as current-week when the picks are
+  // still plausible for the current cast/week state.
+  if (
+    !hasAnyScopedWeeklyPredictions(gameState) &&
+    isLikelyCurrentWeekLegacyPrediction(gameState, player)
+  ) {
     return (
       normalizeWeekId(weeklyResultWeekId) ??
       normalizeWeekId(gameState.activeWeekId)
