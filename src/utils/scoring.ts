@@ -74,6 +74,7 @@ const isLikelyCurrentWeekLegacyPrediction = (
   if (!weeklyPredictions) return false;
 
   const weeklyResults = gameState.weeklyResults;
+  const bonusResults = weeklyResults?.bonusGames;
   const isValidCurrentWeekPick = (pick?: string) => {
     if (typeof pick !== "string" || !pick.trim()) return true;
     const status = gameState.castStatus[pick];
@@ -89,9 +90,14 @@ const isLikelyCurrentWeekLegacyPrediction = (
 
   const bonus = weeklyPredictions.bonusGames;
   if (!bonus) return true;
-  if (!isValidCurrentWeekPick(bonus.redemptionRoulette)) return false;
-  if (!isValidCurrentWeekPick(bonus.shieldGambit)) return false;
+  if (bonusResults?.redemptionRoulette && !isValidCurrentWeekPick(bonus.redemptionRoulette)) {
+    return false;
+  }
+  if (bonusResults?.shieldGambit && !isValidCurrentWeekPick(bonus.shieldGambit)) {
+    return false;
+  }
   if (
+    bonusResults?.traitorTrio?.length &&
     Array.isArray(bonus.traitorTrio) &&
     bonus.traitorTrio.some((pick) => !isValidCurrentWeekPick(pick))
   ) {
