@@ -644,10 +644,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const dismissSubmission = async (submission: SubmissionRecord) => {
-    if (!(await requestConfirm(`Dismiss submission from ${submission.name}?`))) return;
+    const confirmed =
+      typeof window === "undefined"
+        ? true
+        : window.confirm(`Dismiss submission from ${submission.name}?`);
+    if (!confirmed) return;
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+      setMsg({
+        text: `Dismissed submission from ${submission.name}.`,
+        type: "success",
+      });
     } catch (err: any) {
       setMsg({
         text: `Failed to dismiss submission: ${err?.message || err}`,
