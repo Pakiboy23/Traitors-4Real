@@ -324,6 +324,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={weeklyBanished}
                 onChange={(e) => setWeeklyBanished(e.target.value)}
+                aria-label="Main league next banished"
                 className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Banished</option>
@@ -336,6 +337,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={weeklyMurdered}
                 onChange={(e) => setWeeklyMurdered(e.target.value)}
+                aria-label="Main league next murdered"
                 className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Murdered</option>
@@ -357,6 +359,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={bonusRedemption}
                 onChange={(e) => setBonusRedemption(e.target.value)}
+                aria-label="Main league redemption roulette"
                 className="field-soft p-3 text-base"
               >
                 <option value="">Redemption Roulette</option>
@@ -369,6 +372,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={bonusShield}
                 onChange={(e) => setBonusShield(e.target.value)}
+                aria-label="Main league shield gambit"
                 className="field-soft p-3 text-base"
               >
                 <option value="">Shield Gambit</option>
@@ -393,6 +397,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     key={`main-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
+                    aria-label={`Main league traitor trio pick ${index + 1}`}
                     className="field-soft p-2.5 text-sm"
                   >
                     <option value="">Trio {index + 1}</option>
@@ -451,6 +456,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrWeeklyBanished}
                 onChange={(e) => setJrWeeklyBanished(e.target.value)}
+                aria-label="Jr league next banished"
                 className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Banished</option>
@@ -463,6 +469,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrWeeklyMurdered}
                 onChange={(e) => setJrWeeklyMurdered(e.target.value)}
+                aria-label="Jr league next murdered"
                 className="field-soft p-3.5 text-base"
               >
                 <option value="">Next Murdered</option>
@@ -484,6 +491,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrBonusRedemption}
                 onChange={(e) => setJrBonusRedemption(e.target.value)}
+                aria-label="Jr league redemption roulette"
                 className="field-soft p-3 text-base"
               >
                 <option value="">Redemption Roulette</option>
@@ -496,6 +504,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               <select
                 value={jrBonusShield}
                 onChange={(e) => setJrBonusShield(e.target.value)}
+                aria-label="Jr league shield gambit"
                 className="field-soft p-3 text-base"
               >
                 <option value="">Shield Gambit</option>
@@ -520,6 +529,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     key={`jr-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
+                    aria-label={`Jr league traitor trio pick ${index + 1}`}
                     className="field-soft p-2.5 text-sm"
                   >
                     <option value="">Trio {index + 1}</option>
