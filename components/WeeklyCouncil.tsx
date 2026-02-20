@@ -16,11 +16,10 @@ const JR_LABEL = COUNCIL_LABELS.jr;
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
-  const activeCastNames = CAST_NAMES.filter(
-    (name) => !gameState.castStatus[name]?.isEliminated
-  );
+  const activeCastNames = CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated);
   const banishedOptions = activeCastNames;
   const murderOptions = ["No Murder", ...activeCastNames];
+
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
   const [weeklyBanished, setWeeklyBanished] = useState("");
@@ -50,10 +49,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     traitorTrio?: string[];
   }) =>
     Boolean(
-      bonus.redemptionRoulette ||
-        bonus.doubleOrNothing ||
-        bonus.shieldGambit ||
-        bonus.traitorTrio?.some(Boolean)
+      bonus.redemptionRoulette || bonus.doubleOrNothing || bonus.shieldGambit || bonus.traitorTrio?.some(Boolean)
     );
 
   const updateTrioPick = (
@@ -71,6 +67,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     if (!playerName && !playerEmail) return undefined;
     const normalizedEmail = normalize(playerEmail);
     const normalizedName = normalize(playerName);
+
     if (normalizedEmail) {
       const matchByEmail = gameState.players.find((player) => {
         const email = normalize(player.email || "");
@@ -83,6 +80,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       });
       if (matchByEmail) return matchByEmail;
     }
+
     if (normalizedName) {
       return gameState.players.find((player) => {
         const matchesLeague = league
@@ -93,6 +91,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         return matchesLeague && normalize(player.name) === normalizedName;
       });
     }
+
     return undefined;
   };
 
@@ -100,28 +99,27 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     if (!jrName && !jrEmail) return undefined;
     const normalizedEmail = normalize(jrEmail);
     const normalizedName = normalize(jrName);
+
     if (normalizedEmail) {
       const matchByEmail = gameState.players.find((player) => {
         const email = normalize(player.email || "");
-        return (
-          player.league === "jr" && email && email === normalizedEmail
-        );
+        return player.league === "jr" && email && email === normalizedEmail;
       });
       if (matchByEmail) return matchByEmail;
     }
+
     if (normalizedName) {
-      return gameState.players.find(
-        (player) =>
-          player.league === "jr" && normalize(player.name) === normalizedName
-      );
+      return gameState.players.find((player) => player.league === "jr" && normalize(player.name) === normalizedName);
     }
+
     return undefined;
   };
 
   const handleWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
     if (!playerName || !playerEmail) {
-      showToast("Please enter your name and email before submitting weekly votes.", "warning");
+      showToast("Enter name and email before submitting.", "warning");
       return;
     }
 
@@ -135,13 +133,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         traitorTrio: bonusTrio,
       })
     ) {
-      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
+      showToast(`Select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
       return;
     }
 
     const existingPlayer = findExistingPlayer("main");
     if (!existingPlayer) {
-      showToast("We couldn't find your draft entry yet. Please submit your draft once first.", "error");
+      showToast("Main league vote requires an existing draft entry.", "error");
       return;
     }
 
@@ -181,12 +179,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "main",
       });
-      showToast(`Your ${WEEKLY_LABEL} vote has been submitted!`, "success");
+      showToast(`${WEEKLY_LABEL} submitted.`, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
-          : "Weekly votes could not be submitted. Please try again.";
+          : "Submission failed. Please try again.";
       console.warn(`${WEEKLY_LABEL} submission failed:`, err);
       showToast(message, "error");
     }
@@ -197,8 +195,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
 
   const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+
     if (!jrName || !jrEmail) {
-      showToast(`Please enter your name and email before submitting ${JR_LABEL} votes.`, "warning");
+      showToast(`Enter name and email before submitting ${JR_LABEL} picks.`, "warning");
       return;
     }
 
@@ -212,7 +211,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         traitorTrio: jrBonusTrio,
       })
     ) {
-      showToast(`Please select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
+      showToast(`Select at least one ${WEEKLY_LABEL_LOWER} or bonus prediction.`, "warning");
       return;
     }
 
@@ -234,13 +233,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
         },
         league: "jr",
       });
-      showToast(`Your ${JR_LABEL} vote has been submitted!`, "success");
+      showToast(`${JR_LABEL} vote submitted.`, "success");
     } catch (err) {
       const message =
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
-          : "Weekly votes could not be submitted. Please try again.";
-      console.warn(`${JR_LABEL} weekly submission failed:`, err);
+          : "Submission failed. Please try again.";
+      console.warn(`${JR_LABEL} submission failed:`, err);
       showToast(message, "error");
     }
 
@@ -249,444 +248,301 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   };
 
   const mainPlayerMatch = findExistingPlayer("main");
-  const mainScoreTotal = mainPlayerMatch
-    ? calculatePlayerScore(gameState, mainPlayerMatch).total
-    : null;
+  const mainScoreTotal = mainPlayerMatch ? calculatePlayerScore(gameState, mainPlayerMatch).total : null;
   const hasMainDouble = mainScoreTotal !== null && mainScoreTotal < 0;
 
   const jrPlayerMatch = findExistingJrPlayer();
-  const jrScoreTotal = jrPlayerMatch
-    ? calculatePlayerScore(gameState, jrPlayerMatch).total
-    : null;
+  const jrScoreTotal = jrPlayerMatch ? calculatePlayerScore(gameState, jrPlayerMatch).total : null;
   const hasJrDouble = jrScoreTotal !== null && jrScoreTotal < 0;
 
   return (
-    <div className="space-y-12">
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.22em]">
-          {WEEKLY_LABEL}
-        </h2>
-        <p className="text-xs text-zinc-500 uppercase tracking-[0.2em]">
-          Submit your weekly predictions here
-        </p>
-      </div>
+    <div className="space-y-6 md:space-y-8">
+      <header className="flex flex-col items-center gap-3 text-center">
+        <div>
+          <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Round Table Operations</p>
+          <h2 className="headline text-3xl md:text-4xl">Submit episode predictions</h2>
+        </div>
+        <div className="status-pill">Main + Jr workflows</div>
+      </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,2fr)] gap-8 items-start">
-        <aside className="glass-panel p-6 rounded-3xl bg-black/40 space-y-5">
+      <section className="grid grid-cols-1 xl:grid-cols-[0.72fr_1.28fr] gap-4 md:gap-5">
+        <aside className="soft-card rounded-3xl p-5 md:p-6 space-y-4 h-fit text-center">
           <div>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em]">Bonus Game Rules</p>
-            <h3 className="text-2xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em] mt-2">
-              Weekly Opportunities
-            </h3>
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Mechanics</p>
+            <h3 className="headline text-2xl mt-2">How bonus scoring works</h3>
           </div>
-          <div className="space-y-4 text-sm text-zinc-300 leading-relaxed">
-            <div className="soft-card soft-card-subtle border-amber-400/30 bg-amber-500/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-amber-200 font-semibold">
-                🎲 Redemption Roulette
-              </p>
-              <p className="mt-2">
-                Predict the next revealed traitor. +8 points if correct, but -1 if wrong. If your
-                total score is negative, you automatically get a 2x boost (+16).
-              </p>
-            </div>
-            <div className="soft-card soft-card-subtle border-indigo-400/30 bg-indigo-500/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-indigo-200 font-semibold">
-                ⚡ Double or Nothing
-              </p>
-              <p className="mt-2">
-                Opt in to double your {WEEKLY_LABEL_LOWER} stakes. Correct picks earn 2x points and misses
-                are 2x penalties.
-              </p>
-            </div>
-            <div className="soft-card soft-card-subtle border-sky-400/30 bg-sky-500/10 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-sky-200 font-semibold">
-                🛡️ Shield Gambit
-              </p>
-              <p className="mt-2">
-                Guess who wins the next shield. +5 points if correct, with an extra +3 bonus when
-                you’re in the red.
-              </p>
-            </div>
+          <div className="space-y-3 text-base text-[color:var(--text-muted)] leading-relaxed">
+            <article className="soft-card soft-card-subtle rounded-2xl p-3">
+              <p className="font-semibold text-[color:var(--text)]">Redemption Roulette</p>
+              <p className="mt-1">Pick the next revealed traitor. Correct picks score +8 and misses score -1.</p>
+            </article>
+            <article className="soft-card soft-card-subtle rounded-2xl p-3">
+              <p className="font-semibold text-[color:var(--text)]">Double or Nothing</p>
+              <p className="mt-1">Applies a 2x multiplier to weekly banished/murdered calls.</p>
+            </article>
+            <article className="soft-card soft-card-subtle rounded-2xl p-3">
+              <p className="font-semibold text-[color:var(--text)]">Shield Gambit + Trio</p>
+              <p className="mt-1">Predict the shield winner and keep a three-person traitor shortlist.</p>
+            </article>
           </div>
         </aside>
 
-        <div className="flex flex-col gap-12">
-          <section className="glass-panel main-panel p-8 rounded-3xl lg:min-h-[620px] flex flex-col">
-            <div className="mb-6 h-8" aria-hidden="true" />
-            <div className="grid grid-cols-1 gap-8 flex-1 content-start">
-              <div className="space-y-4 text-center lg:text-left">
-                <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-                  {WEEKLY_LABEL} Votes
-                </h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  Already drafted? Submit your weekly banished and murdered predictions here.
-                </p>
-                {mainSubmitted && (
-                  <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
-                    Vote Submitted
-                  </div>
-                )}
-              </div>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label htmlFor="main-name" className="sr-only">Your Name</label>
-                    <input
-                      id="main-name"
-                      type="text"
-                      placeholder="Name"
-                      value={playerName}
-                      onChange={(e) => setPlayerName(e.target.value)}
-                      className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                      aria-required="true"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="main-email" className="sr-only">Your Email</label>
-                    <input
-                      id="main-email"
-                      type="email"
-                      placeholder="Email"
-                      value={playerEmail}
-                      onChange={(e) => setPlayerEmail(e.target.value)}
-                      className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                      aria-required="true"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="main-banished" className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Next Banished
-                    </label>
-                    <select
-                      id="main-banished"
-                      value={weeklyBanished}
-                      onChange={(e) => setWeeklyBanished(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
-                    >
-                      <option value="">Select...</option>
-                      {banishedOptions.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="main-murdered" className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Next Murdered
-                    </label>
-                    <select
-                      id="main-murdered"
-                      value={weeklyMurdered}
-                      onChange={(e) => setWeeklyMurdered(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
-                    >
-                      <option value="">Select...</option>
-                      {murderOptions.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="soft-card soft-card-subtle border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-black/25 to-black/60 p-5 space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-xs text-amber-200 font-semibold uppercase tracking-[0.2em]">
-                        🎲 Bonus Round
-                      </p>
-                      <p className="text-[11px] text-amber-100/70 uppercase tracking-[0.18em]">
-                        Extra points, extra danger
-                      </p>
-                    </div>
-                    <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-[0.2em] border ${
-                        hasMainDouble
-                          ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                          : "border-amber-400/30 bg-black/40 text-amber-200"
-                      }`}
-                    >
-                      {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-300 leading-relaxed">
-                    Redemption Roulette doubles for negative scores. Shield Gambit grants an extra +3
-                    if you're in the red. Double or Nothing amplifies {WEEKLY_LABEL_LOWER} stakes.
-                  </p>
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label htmlFor="main-redemption" className="block text-xs text-amber-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Redemption Roulette
-                      </label>
-                      <select
-                        id="main-redemption"
-                        value={bonusRedemption}
-                        onChange={(e) => setBonusRedemption(e.target.value)}
-                        className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                      >
-                        <option value="">Select...</option>
-                        {activeCastNames.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <label className="flex items-center justify-between gap-3 rounded-xl soft-card soft-card-subtle border-amber-400/30 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
-                      <span>Double or Nothing</span>
-                      <input
-                        type="checkbox"
-                        checked={bonusDoubleOrNothing}
-                        onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                        className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
-                      />
-                    </label>
-                  <div>
-                    <label htmlFor="main-shield" className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Shield Gambit
-                    </label>
-                    <select
-                        id="main-shield"
-                        value={bonusShield}
-                        onChange={(e) => setBonusShield(e.target.value)}
-                        className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                      >
-                        <option value="">Select...</option>
-                        {activeCastNames.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <p className="block text-xs text-emerald-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Traitor Trio
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {bonusTrio.map((pick, index) => (
-                          <select
-                            key={`main-trio-${index}`}
-                            value={pick}
-                            onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
-                            className="w-full p-3 rounded-xl field-soft border-emerald-500/40 text-xs text-[color:var(--text)] text-center transition-colors"
-                          >
-                            <option value="">Pick {index + 1}</option>
-                            {activeCastNames.map((c) => (
-                              <option key={`main-trio-${index}-${c}`} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleWeeklySubmit}
-                  disabled={isMainSubmitting}
-                  className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  aria-busy={isMainSubmitting}
-                >
-                  {isMainSubmitting && <span className="loading-spinner" aria-hidden="true" />}
-                  {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="glass-panel jr-panel p-8 rounded-3xl lg:min-h-[620px] flex flex-col">
-          <div className="mb-6 h-8" aria-hidden="true" />
-          <div className="grid grid-cols-1 gap-8 flex-1 content-start">
-            <div className="space-y-4 text-center lg:text-left">
-              <h3 className="text-2xl md:text-3xl gothic-font text-[color:var(--accent)] uppercase tracking-[0.2em]">
-                {JR_LABEL} Votes
-              </h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Missed the initial draft? You can still play each week by submitting your council
-                predictions. No draft entry required.
-              </p>
-              {jrSubmitted && (
-                <div className="inline-flex items-center justify-center px-4 py-2 rounded-full border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 text-xs uppercase tracking-[0.2em]">
-                  Vote Submitted
-                </div>
-              )}
-            </div>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label htmlFor="jr-name" className="sr-only">Your Name</label>
-                  <input
-                    id="jr-name"
-                    type="text"
-                    placeholder="Name"
-                    value={jrName}
-                    onChange={(e) => setJrName(e.target.value)}
-                    className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                    aria-required="true"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="jr-email" className="sr-only">Your Email</label>
-                  <input
-                    id="jr-email"
-                    type="email"
-                    placeholder="Email"
-                    value={jrEmail}
-                    onChange={(e) => setJrEmail(e.target.value)}
-                    className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                    aria-required="true"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="jr-banished" className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    Next Banished
-                  </label>
-                  <select
-                    id="jr-banished"
-                    value={jrWeeklyBanished}
-                    onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                    className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
-                  >
-                    <option value="">Select...</option>
-                    {banishedOptions.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="jr-murdered" className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                    Next Murdered
-                  </label>
-                  <select
-                    id="jr-murdered"
-                    value={jrWeeklyMurdered}
-                    onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                    className="w-full p-3.5 rounded-xl field-soft text-sm text-[color:var(--text)] text-center transition-colors"
-                  >
-                    <option value="">Select...</option>
-                    {murderOptions.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              <div className="soft-card soft-card-subtle border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-black/25 to-black/60 p-5 space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <p className="text-xs text-amber-200 font-semibold uppercase tracking-[0.2em]">
-                      🎲 Bonus Round
-                    </p>
-                    <p className="text-[11px] text-amber-100/70 uppercase tracking-[0.18em]">
-                      Extra points, extra danger
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] uppercase tracking-[0.2em] border ${
-                      hasJrDouble
-                        ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                        : "border-amber-400/30 bg-black/40 text-amber-200"
-                    }`}
-                  >
-                    {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+          <article className="soft-card league-panel-main rounded-3xl p-5 md:p-6 space-y-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div>
+                <div className="inline-flex items-center justify-center gap-2">
+                  <span className="league-glyph league-glyph-main" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                      <path d="M12 2 19 5v6c0 5-3.5 9.4-7 11-3.5-1.6-7-6-7-11V5l7-3Zm0 4.2-4 1.7V11c0 3.5 2.2 6.5 4 7.7 1.8-1.2 4-4.2 4-7.7V7.9l-4-1.7Z" />
+                    </svg>
                   </span>
+                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">Main League</p>
                 </div>
-                <p className="text-xs text-zinc-300 leading-relaxed">
-                  Redemption Roulette doubles for negative scores. Shield Gambit grants an extra +3
-                  if you're in the red. Double or Nothing amplifies {WEEKLY_LABEL_LOWER} stakes.
-                </p>
-                <div className="grid grid-cols-1 gap-4">
-                  <div>
-                    <label htmlFor="jr-redemption" className="block text-xs text-amber-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Redemption Roulette
-                    </label>
-                    <select
-                      id="jr-redemption"
-                      value={jrBonusRedemption}
-                      onChange={(e) => setJrBonusRedemption(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft border-amber-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                    >
-                      <option value="">Select...</option>
-                      {activeCastNames.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-black/40 px-4 py-3 text-xs uppercase tracking-[0.18em] text-amber-100">
-                    <span>Double or Nothing</span>
-                    <input
-                      type="checkbox"
-                      checked={jrBonusDoubleOrNothing}
-                      onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                      className="h-4 w-4 rounded border-amber-300 text-amber-400 focus:ring-amber-300"
-                    />
-                  </label>
-                  <div>
-                    <label htmlFor="jr-shield" className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                      Shield Gambit
-                    </label>
-                    <select
-                      id="jr-shield"
-                      value={jrBonusShield}
-                      onChange={(e) => setJrBonusShield(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft border-sky-500/40 text-sm text-[color:var(--text)] text-center transition-colors"
-                    >
-                      <option value="">Select...</option>
-                      {activeCastNames.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                      </select>
-                    </div>
-                    <div>
-                      <p className="block text-xs text-emerald-300 font-semibold mb-2 uppercase tracking-[0.18em] text-center">
-                        Traitor Trio
-                      </p>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {jrBonusTrio.map((pick, index) => (
-                          <select
-                            key={`jr-trio-${index}`}
-                            value={pick}
-                            onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
-                            className="w-full p-3 rounded-xl field-soft border-emerald-500/40 text-xs text-[color:var(--text)] text-center transition-colors"
-                          >
-                            <option value="">Pick {index + 1}</option>
-                            {activeCastNames.map((c) => (
-                              <option key={`jr-trio-${index}-${c}`} value={c}>
-                                {c}
-                              </option>
-                            ))}
-                          </select>
-                        ))}
-                      </div>
-                    </div>
-                </div>
+                <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
               </div>
-              <button
-                type="button"
-                onClick={handleJrWeeklySubmit}
-                disabled={isJrSubmitting}
-                className="w-full px-10 py-4 rounded-2xl text-sm font-black uppercase tracking-[0.2em] bg-[color:var(--accent-strong)] text-black border border-[color:var(--accent-strong)] shadow-[0_14px_34px_rgba(217,221,227,0.38)] hover:brightness-105 hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                aria-busy={isJrSubmitting}
-              >
-                {isJrSubmitting && <span className="loading-spinner" aria-hidden="true" />}
-                {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL} Vote`}
-              </button>
+              {mainSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
             </div>
-          </div>
-        </section>
-      </div>
-      </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <input
+                type="text"
+                placeholder="Name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                className="field-soft p-3.5"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={playerEmail}
+                onChange={(e) => setPlayerEmail(e.target.value)}
+                className="field-soft p-3.5"
+              />
+              <select
+                value={weeklyBanished}
+                onChange={(e) => setWeeklyBanished(e.target.value)}
+                className="field-soft p-3.5 text-base"
+              >
+                <option value="">Next Banished</option>
+                {banishedOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={weeklyMurdered}
+                onChange={(e) => setWeeklyMurdered(e.target.value)}
+                className="field-soft p-3.5 text-base"
+              >
+                <option value="">Next Murdered</option>
+                {murderOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="soft-card soft-card-subtle league-subpanel-main rounded-2xl p-4 space-y-3">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
+                <span className={`status-pill ${hasMainDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
+                  {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
+                </span>
+              </div>
+              <select
+                value={bonusRedemption}
+                onChange={(e) => setBonusRedemption(e.target.value)}
+                className="field-soft p-3 text-base"
+              >
+                <option value="">Redemption Roulette</option>
+                {activeCastNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={bonusShield}
+                onChange={(e) => setBonusShield(e.target.value)}
+                className="field-soft p-3 text-base"
+              >
+                <option value="">Shield Gambit</option>
+                {activeCastNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
+                Double or Nothing
+                <input
+                  type="checkbox"
+                  checked={bonusDoubleOrNothing}
+                  onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {bonusTrio.map((pick, index) => (
+                  <select
+                    key={`main-trio-${index}`}
+                    value={pick}
+                    onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
+                    className="field-soft p-2.5 text-sm"
+                  >
+                    <option value="">Trio {index + 1}</option>
+                    {activeCastNames.map((name) => (
+                      <option key={`main-trio-${index}-${name}`} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleWeeklySubmit}
+              disabled={isMainSubmitting}
+              className="w-full btn-primary py-3.5 text-sm md:text-base"
+            >
+              {isMainSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
+              {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
+            </button>
+          </article>
+
+          <article className="soft-card league-panel-jr rounded-3xl p-5 md:p-6 space-y-4">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <div>
+                <div className="inline-flex items-center justify-center gap-2">
+                  <span className="league-glyph league-glyph-jr" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
+                      <path d="M20.7 3.3a1 1 0 0 0-1.4 0l-2.8 2.8-1.8-.6-.6-1.8-2.8 2.8a1 1 0 0 0-.2 1l.7 2.2-5.5 5.5-1.7-.3-1.5 1.5 1.8 1.8-1.9 1.9 2.8 2.8 1.9-1.9 1.8 1.8 1.5-1.5-.3-1.7 5.5-5.5 2.2.7a1 1 0 0 0 1-.2l2.8-2.8-1.8-.6-.6-1.8 2.8-2.8a1 1 0 0 0 0-1.4l-1.6-1.6Z" />
+                    </svg>
+                  </span>
+                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--traitor-crimson-strong)]">Jr League</p>
+                </div>
+                <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
+              </div>
+              {jrSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <input
+                type="text"
+                placeholder="Name"
+                value={jrName}
+                onChange={(e) => setJrName(e.target.value)}
+                className="field-soft p-3.5"
+              />
+              <input
+                type="email"
+                placeholder="Email"
+                value={jrEmail}
+                onChange={(e) => setJrEmail(e.target.value)}
+                className="field-soft p-3.5"
+              />
+              <select
+                value={jrWeeklyBanished}
+                onChange={(e) => setJrWeeklyBanished(e.target.value)}
+                className="field-soft p-3.5 text-base"
+              >
+                <option value="">Next Banished</option>
+                {banishedOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={jrWeeklyMurdered}
+                onChange={(e) => setJrWeeklyMurdered(e.target.value)}
+                className="field-soft p-3.5 text-base"
+              >
+                <option value="">Next Murdered</option>
+                {murderOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="soft-card soft-card-subtle league-subpanel-jr rounded-2xl p-4 space-y-3">
+              <div className="flex flex-col items-center gap-2 text-center">
+                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
+                <span className={`status-pill ${hasJrDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
+                  {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}
+                </span>
+              </div>
+              <select
+                value={jrBonusRedemption}
+                onChange={(e) => setJrBonusRedemption(e.target.value)}
+                className="field-soft p-3 text-base"
+              >
+                <option value="">Redemption Roulette</option>
+                {activeCastNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={jrBonusShield}
+                onChange={(e) => setJrBonusShield(e.target.value)}
+                className="field-soft p-3 text-base"
+              >
+                <option value="">Shield Gambit</option>
+                {activeCastNames.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
+                Double or Nothing
+                <input
+                  type="checkbox"
+                  checked={jrBonusDoubleOrNothing}
+                  onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
+                  className="h-4 w-4"
+                />
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {jrBonusTrio.map((pick, index) => (
+                  <select
+                    key={`jr-trio-${index}`}
+                    value={pick}
+                    onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
+                    className="field-soft p-2.5 text-sm"
+                  >
+                    <option value="">Trio {index + 1}</option>
+                    {activeCastNames.map((name) => (
+                      <option key={`jr-trio-${index}-${name}`} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleJrWeeklySubmit}
+              disabled={isJrSubmitting}
+              className="w-full btn-primary py-3.5 text-sm md:text-base"
+            >
+              {isJrSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
+              {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
+            </button>
+          </article>
+        </div>
+      </section>
     </div>
   );
 };

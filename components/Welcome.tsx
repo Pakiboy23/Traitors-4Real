@@ -1,6 +1,5 @@
-
-import React from 'react';
-import { formatScore } from '../src/utils/scoring';
+import React from "react";
+import { formatScore } from "../src/utils/scoring";
 
 export interface MvpHighlight {
   name: string;
@@ -15,183 +14,132 @@ interface WelcomeProps {
   weeklyMvp?: MvpHighlight | null;
 }
 
-const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
-  return (
-    <div className="py-16 md:py-24 animate-in fade-in duration-1000 lg:grid lg:grid-cols-12 lg:gap-16 lg:items-start">
-      {/* Hero Section */}
-      <section className="text-center space-y-8 lg:col-span-7 lg:text-left">
-        <div className="flex justify-center lg:justify-start mb-10">
-          <div className="wax-seal scale-[2.5] shadow-[0_0_30px_rgba(138,28,28,0.35)]">
-            <span className="gothic-font text-2xl text-[#b04a4a] font-black">T</span>
-          </div>
-        </div>
-        
-        <h2 className="text-6xl md:text-8xl gothic-font text-[color:var(--accent)] tracking-[0.18em] leading-[1.05]">
-          WELCOME TO THE <br/>ROUND TABLE
-        </h2>
-        
-        <p className="handwriting text-4xl md:text-5xl text-[color:var(--muted)] opacity-85">
-          Trust No One. Suspect Everyone.
+const ScoreCard: React.FC<{
+  title: string;
+  player?: MvpHighlight | null;
+  valuePrefix?: string;
+  featured?: boolean;
+}> = ({ title, player, valuePrefix = "", featured = false }) => {
+  if (!player) {
+    return (
+      <div className="soft-card soft-card-subtle rounded-3xl p-5 md:p-6 text-center">
+        <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">
+          {title}
         </p>
-      </section>
+        <p className="mt-3 text-base text-[color:var(--text-muted)]">No score data yet.</p>
+      </div>
+    );
+  }
 
-      <div className="space-y-12 mt-16 lg:mt-0 lg:col-span-5">
-        {(mvp || weeklyMvp) && (
-          <div className="relative mx-auto w-full max-w-[560px] overflow-hidden rounded-[36px] border-0 bg-[radial-gradient(120%_120%_at_50%_0%,_rgba(214,179,106,0.24)_0%,_rgba(6,5,10,0.95)_58%)] p-12 shadow-[0_40px_110px_rgba(0,0,0,0.75)] text-center">
-            <div className="absolute -top-28 -right-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(255,255,255,0.16),_transparent_70%)] blur-2xl"></div>
-            <div className="absolute -bottom-36 -left-20 h-80 w-80 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.28),_transparent_70%)] blur-2xl"></div>
-            <div className="absolute inset-0 border border-white/5 rounded-[32px] pointer-events-none"></div>
-            <div className="relative space-y-9">
-              <div className="flex flex-col items-center justify-center gap-3">
-                <div>
-                  <p className="text-[13px] uppercase tracking-[0.34em] text-zinc-400 font-black">Unmissable</p>
-                  <h3 className="text-5xl md:text-6xl uppercase tracking-[0.08em] font-black text-zinc-100">
-                    MVP Spotlight
-                  </h3>
-                </div>
-                <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-[0.3em] text-zinc-500">
-                  <span className="h-2 w-2 rounded-full bg-[color:var(--accent)] animate-ping"></span>
-                  Live Leader
-                </div>
-              </div>
-              <div className="space-y-4">
-                {weeklyMvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-3xl border-0 bg-[linear-gradient(135deg,_rgba(255,255,255,0.08)_0%,_rgba(0,0,0,0.75)_60%,_rgba(214,179,106,0.16)_100%)] p-7 shadow-[0_0_45px_rgba(214,179,106,0.35)]">
-                    <div className="w-20 h-20 rounded-full border border-[color:var(--accent)]/30 overflow-hidden bg-black/70 flex items-center justify-center text-[color:var(--accent)] shadow-[0_0_30px_rgba(214,179,106,0.6)]">
-                      {weeklyMvp.portraitUrl ? (
-                        <img
-                          src={weeklyMvp.portraitUrl}
-                          alt={weeklyMvp.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg viewBox="0 0 64 64" className="w-12 h-12 text-[color:var(--accent)]" aria-hidden="true">
-                          <path
-                            fill="currentColor"
-                            d="M32 6 40 18 32 48 24 18Z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M20 18h24v4H20z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M30 48h4v9h-4z"
-                          />
-                          <circle cx="32" cy="58" r="3" fill="currentColor" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[13px] uppercase tracking-[0.32em] text-[color:var(--accent)]/70 font-black">
-                        {weeklyMvp.label}
-                      </p>
-                      <p className="text-4xl md:text-5xl font-black text-zinc-100">
-                        {weeklyMvp.name}
-                      </p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[13px] text-[color:var(--accent)]/70 uppercase tracking-[0.32em] font-black">Week Gain</p>
-                      <p className="text-5xl md:text-6xl font-black text-[color:var(--accent)]">
-                        +{formatScore(weeklyMvp.score)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {mvp && (
-                  <div className="flex flex-col items-center gap-4 rounded-3xl border-0 bg-[linear-gradient(120deg,_rgba(255,255,255,0.08)_0%,_rgba(0,0,0,0.82)_70%)] p-7">
-                    <div className="w-20 h-20 rounded-full border border-[color:var(--accent)]/25 overflow-hidden bg-black/70 flex items-center justify-center text-[color:var(--accent)] shadow-[0_0_26px_rgba(214,179,106,0.45)]">
-                      {mvp.portraitUrl ? (
-                        <img
-                          src={mvp.portraitUrl}
-                          alt={mvp.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <svg viewBox="0 0 64 64" className="w-12 h-12 text-[color:var(--accent)]" aria-hidden="true">
-                          <path
-                            fill="currentColor"
-                            d="M32 6 40 18 32 48 24 18Z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M20 18h24v4H20z"
-                          />
-                          <path
-                            fill="currentColor"
-                            d="M30 48h4v9h-4z"
-                          />
-                          <circle cx="32" cy="58" r="3" fill="currentColor" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[13px] uppercase tracking-[0.32em] text-zinc-400 font-black">{mvp.label}</p>
-                      <p className="text-4xl md:text-5xl font-black text-zinc-100">{mvp.name}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[13px] text-zinc-400 uppercase tracking-[0.32em] font-black">Total</p>
-                      <p className="text-5xl md:text-6xl font-black text-[color:var(--accent)]">
-                        {formatScore(mvp.score)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-        {/* App Explanation */}
-        <div className="grid grid-cols-1 gap-6">
-          <div className="glass-panel p-9 rounded-3xl relative overflow-hidden group transition-all text-center border-0">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[color:var(--accent)] opacity-60"></div>
-            <h3 className="gothic-font text-[color:var(--accent)] text-2xl mb-5 uppercase tracking-[0.2em]">The Game</h3>
-            <p className="text-zinc-200 text-base leading-relaxed">
-              This is the official <strong>Titanic Swim Team</strong> fantasy draft portal for <em>The Traitors Season 4</em>.
-              Assemble your squad of 10 contestants, assign strategic ranks, and predict the twists of the game.
-              Will your chosen Faithful prevail, or will the Traitors you draft leave you in the shadows?
-            </p>
-          </div>
-
-          <div className="glass-panel p-9 rounded-3xl relative overflow-hidden group transition-all text-center border-0">
-            <div className="absolute top-0 left-0 w-1.5 h-full bg-[color:var(--crimson)] opacity-75"></div>
-            <h3 className="gothic-font text-[color:var(--crimson)] text-2xl mb-5 uppercase tracking-[0.2em]">The Architect</h3>
-            <p className="text-zinc-200 text-base leading-relaxed">
-              Crafted for the elite members of the Titanic Swim Team league. I built this application to bring the mystery
-              and treachery of the castle into our own hands. From real-time scoring to prophecies,
-              this tool is designed to track our collective descent into chaos.
-            </p>
-          </div>
+  return (
+    <div className={`${featured ? "leader-spotlight" : "soft-card"} rounded-3xl p-5 md:p-6 text-center`}>
+      <p className="panel-title-strong">
+        {title}
+      </p>
+      {featured && (
+        <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">
+          Dominating the castle
+        </p>
+      )}
+      <div className="mt-4 flex items-center justify-center gap-4">
+        <div className="h-14 w-14 rounded-full overflow-hidden border border-[color:var(--panel-border-strong)] bg-black/30 flex items-center justify-center">
+          {player.portraitUrl ? (
+            <img
+              src={player.portraitUrl}
+              alt={player.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="text-lg font-bold text-[color:var(--text-muted)]" aria-hidden="true">
+              {player.name.charAt(0)}
+            </span>
+          )}
         </div>
-
-        {/* Feature List */}
-        <section className="glass-panel border-0 py-9 rounded-3xl text-center">
-          <div className="grid grid-cols-2 gap-6 text-center">
-            <div className="space-y-3">
-              <span className="text-3xl">✍️</span>
-              <p className="text-xs text-zinc-400 uppercase font-bold tracking-[0.2em]">Strategic Drafting</p>
-            </div>
-            <div className="space-y-3">
-              <span className="text-3xl">📊</span>
-              <p className="text-xs text-zinc-400 uppercase font-bold tracking-[0.2em]">Live Leaderboard</p>
-            </div>
-          </div>
-        </section>
-
-        {/* Call to Action */}
-        <div className="flex flex-col items-center lg:items-start pt-4">
-          <button
-            onClick={onStart}
-            className="group relative px-16 py-7 bg-[color:var(--accent)] text-black font-bold gothic-font uppercase tracking-[0.28em] text-lg md:text-xl hover:bg-[color:var(--accent-strong)] transition-all hover:scale-[1.04] active:scale-95 rounded-full shadow-[0_14px_46px_rgba(217,221,227,0.42)]"
-          >
-            <span className="relative z-10">Enter the Castle</span>
-            <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
-          </button>
-          <p className="mt-5 text-sm md:text-base text-zinc-500 uppercase tracking-[0.28em] text-center lg:text-left">
-            Your journey begins at the Round Table
+        <div className="min-w-0">
+          <p className="text-base text-[color:var(--text-muted)] uppercase tracking-[0.12em]">
+            {player.label}
           </p>
+          <p className={`${featured ? "leader-name text-2xl md:text-3xl" : "text-xl"} headline font-semibold truncate`}>{player.name}</p>
         </div>
       </div>
+      <p className={`${featured ? "text-3xl md:text-4xl text-[color:var(--accent-strong)]" : "text-2xl text-[color:var(--accent)]"} mt-4 font-extrabold`}>
+        {valuePrefix}
+        {formatScore(player.score)}
+      </p>
+    </div>
+  );
+};
+
+const Welcome: React.FC<WelcomeProps> = ({ onStart, mvp, weeklyMvp }) => {
+  return (
+    <div className="space-y-8 md:space-y-10">
+      <section className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-5 md:gap-6">
+        <div className="glass-panel p-6 sm:p-8 md:p-10">
+          <div className="space-y-5 flex flex-col items-center text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--panel-border-strong)] bg-black/20 px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+              Season 4 Round Table Intelligence
+            </div>
+            <h2 className="headline text-4xl sm:text-5xl lg:text-6xl leading-[1.04]">
+              Run your league like a Traitor.
+            </h2>
+            <p className="max-w-2xl text-base md:text-lg text-[color:var(--text-muted)] leading-relaxed">
+              Draft your castle roster, submit banishment and murder calls each week, and monitor
+              traitor-era power shifts in one high-clarity workspace.
+            </p>
+            <div className="flex w-full items-center justify-center pt-2">
+              <button
+                onClick={onStart}
+                className="btn-primary hero-enter-btn text-sm md:text-base"
+              >
+                ENTER THE CASTLE
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <ScoreCard title="Season Leader" player={mvp} featured />
+          <ScoreCard title="Latest Weekly Gain" player={weeklyMvp} valuePrefix="+" />
+          <div className="text-center">
+            <span className="status-pill">Optimized for mobile and desktop</span>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            01. Draft Dossier
+          </p>
+          <h3 className="headline text-xl mt-3">Structured submissions</h3>
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
+            Build your ten-player board with ranking and role assumptions, then lock picks with
+            clear validation before submitting.
+          </p>
+        </article>
+
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            02. Council Predictions
+          </p>
+          <h3 className="headline text-xl mt-3">Single-week cadence</h3>
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
+            Submit banished and murdered predictions plus bonus games each week without clutter or
+            duplicate entry confusion.
+          </p>
+        </article>
+
+        <article className="soft-card rounded-3xl p-5 md:p-6 text-center">
+          <p className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
+            03. Castle Ledger
+          </p>
+          <h3 className="headline text-xl mt-3">Transparent standings</h3>
+          <p className="mt-3 text-base leading-relaxed text-[color:var(--text-muted)]">
+            Expand any player for scoring detail, penalties, and week-over-week trend so results are
+            easy to audit.
+          </p>
+        </article>
+      </section>
     </div>
   );
 };

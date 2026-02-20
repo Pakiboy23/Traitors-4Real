@@ -150,6 +150,25 @@ export interface SubmissionRecord extends RecordModel {
   updated?: string;
 }
 
+const isWeeklySubmission = (record: Partial<SubmissionRecord> | null | undefined) => {
+  if (!record) return false;
+  const kind = String(record.kind ?? "").trim().toLowerCase();
+  if (kind === "weekly") return true;
+
+  const payload = record.payload as
+    | {
+        weeklyPredictions?: unknown;
+        bonusGames?: unknown;
+      }
+    | undefined;
+
+  if (payload?.weeklyPredictions || payload?.bonusGames) return true;
+  if ((record.weeklyBanished ?? "").trim()) return true;
+  if ((record.weeklyMurdered ?? "").trim()) return true;
+
+  return false;
+};
+
 export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
   // Check if admin is authenticated
   if (!pb.authStore.isValid) {
@@ -163,7 +182,6 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
       .collection(SUBMISSIONS_COLLECTION)
       .getList<SubmissionRecord>(1, perPage, {
         sort: "-created",
-        filter: 'kind="weekly"',
       });
     const items = [...firstPage.items];
     for (let page = 2; page <= firstPage.totalPages; page += 1) {
@@ -171,12 +189,12 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
         .collection(SUBMISSIONS_COLLECTION)
         .getList<SubmissionRecord>(page, perPage, {
           sort: "-created",
-          filter: 'kind="weekly"',
         });
       items.push(...nextPage.items);
     }
-    console.log(`fetchWeeklySubmissions: Loaded ${items.length} submissions via SDK`);
-    return items;
+    const weeklyItems = items.filter((record) => isWeeklySubmission(record));
+    console.log(`fetchWeeklySubmissions: Loaded ${weeklyItems.length} weekly submissions via SDK`);
+    return weeklyItems;
   } catch (error) {
     console.warn("PocketBase SDK submissions fetch failed:", error);
   }
@@ -186,7 +204,6 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
     const params = new URLSearchParams({
       perPage: "200",
       sort: "-created",
-      filter: 'kind="weekly"',
     });
     const headers: Record<string, string> = {};
     if (pb.authStore.token) {
@@ -202,8 +219,9 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
     }
     const data = (await response.json()) as { items?: SubmissionRecord[] };
     const items = Array.isArray(data.items) ? data.items : [];
-    console.log(`fetchWeeklySubmissions: Loaded ${items.length} submissions via fallback`);
-    return items;
+    const weeklyItems = items.filter((record) => isWeeklySubmission(record));
+    console.log(`fetchWeeklySubmissions: Loaded ${weeklyItems.length} weekly submissions via fallback`);
+    return weeklyItems;
   } catch (fallbackError) {
     console.warn("Fallback submissions fetch failed:", fallbackError);
     return [];
@@ -220,7 +238,7 @@ export const subscribeToWeeklySubmissions = (
 
   const callback = (event: any) => {
     const record = event?.record as SubmissionRecord | undefined;
-    if (!record || record.kind !== "weekly") return;
+    if (!isWeeklySubmission(record)) return;
     if (event?.action !== "create") return;
     console.log("New weekly submission received:", record.id, record.name);
     handler(record);
@@ -238,7 +256,27 @@ export const subscribeToWeeklySubmissions = (
 };
 
 export const deleteSubmission = async (id: string) => {
-  await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
+  try {
+    await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
+    return;
+  } catch (error) {
+    console.warn("PocketBase SDK delete failed, attempting fetch fallback:", error);
+  }
+
+  const headers: Record<string, string> = {};
+  if (pb.authStore.token) {
+    headers.Authorization = pb.authStore.token;
+  }
+  const response = await fetch(
+    `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records/${id}`,
+    {
+      method: "DELETE",
+      headers,
+    }
+  );
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Failed to delete submission (${response.status})`);
+  }
 };
 
 export const submitWeeklyCouncilVote = async (input: {

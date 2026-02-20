@@ -8,8 +8,7 @@ import {
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
 } from '../types';
-import { getCastPortraitSrc } from "../src/castPortraits";
-import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
+import { calculatePlayerScore } from "../src/utils/scoring";
 import { pocketbaseUrl } from "../src/lib/pocketbase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import {
@@ -19,6 +18,13 @@ import {
   SubmissionRecord,
   subscribeToWeeklySubmissions,
 } from '../services/pocketbase';
+import AdminWorkspaceHeader from './admin/AdminWorkspaceHeader';
+import OperationsSection from './admin/OperationsSection';
+import SubmissionsSection from './admin/SubmissionsSection';
+import RosterSection from './admin/RosterSection';
+import CastSection from './admin/CastSection';
+import DatabaseSection from './admin/DatabaseSection';
+import { AdminSection, AdminSectionTab, InlineEditMap } from './admin/types';
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -75,15 +81,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editWeeklyMurdered, setEditWeeklyMurdered] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showAllScoreHistory, setShowAllScoreHistory] = useState(false);
-  const [inlineEdits, setInlineEdits] = useState<Record<string, {
-    name: string;
-    email: string;
-    weeklyBanished: string;
-    weeklyMurdered: string;
-  }>>({});
+  const [inlineEdits, setInlineEdits] = useState<InlineEditMap>({});
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [promptDialog, setPromptDialog] = useState<PromptDialogState | null>(null);
   const [promptValue, setPromptValue] = useState("");
+  const [activeSection, setActiveSection] = useState<AdminSection>("operations");
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
@@ -145,6 +147,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     email: submission.email || "",
     weeklyBanished: submission.weeklyBanished || "",
     weeklyMurdered: submission.weeklyMurdered || "",
+  const isWeeklySubmissionRecord = (submission: SubmissionRecord) => {
+    const kind = String(submission.kind ?? "").trim().toLowerCase();
+    if (kind === "weekly") return true;
+    if (submission.weeklyBanished?.trim()) return true;
+    if (submission.weeklyMurdered?.trim()) return true;
+    return Boolean(getSubmissionBonusGames(submission));
+  };
     league: getSubmissionLeague(submission),
     created: submission.created,
     mergedAt: new Date().toISOString(),
@@ -211,10 +220,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             if (Array.isArray(data.items) && data.items.length > 0) {
               records = data.items;
               setMsg({
-                text: "Loaded weekly submissions from API fallback.",
-                type: "success",
-              });
-            }
+            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created`
+              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
           }
         } catch (fallbackError) {
           console.warn("Fallback submissions fetch failed:", fallbackError);
@@ -245,7 +252,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ? prev
           : [submission, ...prev]
       );
-      mergeSubmissionRecord(submission, { announce: false });
     });
     return () => {
       unsubscribe?.();
@@ -652,10 +658,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const dismissSubmission = async (submission: SubmissionRecord) => {
-    if (!(await requestConfirm(`Dismiss submission from ${submission.name}?`))) return;
+    const confirmed =
+      typeof window === "undefined"
+        ? true
+        : window.confirm(`Dismiss submission from ${submission.name}?`);
+    if (!confirmed) return;
     try {
       await deleteSubmission(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+      setMsg({
+        text: `Dismissed submission from ${submission.name}.`,
+        type: "success",
+      });
     } catch (err: any) {
       setMsg({
         text: `Failed to dismiss submission: ${err?.message || err}`,
@@ -865,835 +879,210 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     updateGameState(nextState);
   };
 
-  return (
-    <div className="w-full animate-in fade-in duration-500">
-      <div className="w-full max-w-[960px] mx-auto space-y-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <h2 className="text-4xl gothic-font text-[color:var(--accent)]">Admin Console</h2>
-          <div className="flex flex-wrap gap-2 justify-start md:justify-end">
-            <div className="text-xs text-zinc-500 uppercase tracking-[0.2em] self-center w-full md:w-auto mb-2 md:mb-0">
-              {lastWriteError
-                ? `Save failed: ${lastWriteError}`
-                : lastSavedAt
-                ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
-                : "Not saved yet"}
-            </div>
-            {onSaveNow && (
-              <button
-                onClick={onSaveNow}
-                className="px-4 py-2 md:px-6 md:py-3 bg-black/60 text-xs md:text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
-              >
-                Save Now
-              </button>
-            )}
-            {onSignOut && (
-              <button
-                onClick={onSignOut}
-                className="px-4 py-2 md:px-6 md:py-3 bg-black/60 text-xs md:text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-red-900/40 transition-all"
-              >
-                Sign Out
-              </button>
-            )}
-            <button
-              onClick={() => setIsManagingTome(!isManagingTome)}
-              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-zinc-300 rounded-2xl border border-zinc-700 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:text-white transition-all"
-            >
-              {isManagingTome ? "Close DB" : "DB Tools"}
-            </button>
-            <button
-              onClick={clearAllPortraits}
-              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-red-200 rounded-2xl border border-red-900/60 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-red-900/40 transition-all"
-            >
-              Clear Portraits
-            </button>
-            <button
-              onClick={downloadGameState}
-              className="px-4 py-2 md:px-6 md:py-3 bg-black/50 text-xs md:text-sm text-zinc-200 rounded-2xl border border-[color:var(--accent)]/40 uppercase font-semibold tracking-[0.12em] md:tracking-[0.16em] hover:bg-[color:var(--accent)] hover:text-black transition-all"
-            >
-              Download JSON
-            </button>
-          </div>
-        </div>
+  const sectionTabs: AdminSectionTab[] = [
+    { id: "operations", label: "Operations", summary: "Weekly outcomes and score archives" },
+    { id: "submissions", label: "Submissions", summary: "Incoming weekly votes and merge history" },
+    { id: "roster", label: "Roster", summary: "Players, edits, and manual intake" },
+    { id: "cast", label: "Cast", summary: "Status and portrait controls" },
+    { id: "database", label: "Database", summary: "Backups and raw JSON tools" },
+  ];
 
-      {isManagingTome && (
-        <div className="glass-panel py-6 px-12 rounded-2xl animate-in slide-in-from-top-4">
-          <h3 className="text-[color:var(--accent)] gothic-font mb-3 uppercase text-base">Data Import (JSON)</h3>
-          <textarea 
-            className="w-full h-36 field-soft text-xs font-mono p-5 rounded-2xl text-zinc-400 focus:border-[#D4AF37] outline-none"
-            defaultValue={JSON.stringify(gameState, null, 2)}
-            onChange={handleTomeImport}
-            placeholder="Paste JSON Tome here to overwrite database..."
-          />
+  const saveStatus = lastWriteError
+    ? `Save failed: ${lastWriteError}`
+    : lastSavedAt
+    ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
+    : "Not saved yet";
+
+  const renderOperationsSection = () => (
+    <OperationsSection
+      banishedOptions={BANISHED_OPTIONS}
+      murderOptions={MURDER_OPTIONS}
+      activeCastNames={activeCastNames}
+      nextBanished={gameState.weeklyResults?.nextBanished ?? ""}
+      nextMurdered={gameState.weeklyResults?.nextMurdered ?? ""}
+      bonusResults={bonusResults}
+      onSetNextBanished={(value) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          weeklyResults: {
+            ...(prevState.weeklyResults ?? {}),
+            nextBanished: value,
+          },
+        }))
+      }
+      onSetNextMurdered={(value) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          weeklyResults: {
+            ...(prevState.weeklyResults ?? {}),
+            nextMurdered: value,
+          },
+        }))
+      }
+      onUpdateBonusResult={updateBonusResult}
+      scoreHistory={scoreHistory}
+      visibleScoreHistory={visibleScoreHistory}
+      showAllScoreHistory={showAllScoreHistory}
+      onToggleShowAllScoreHistory={() => setShowAllScoreHistory((prev) => !prev)}
+      onArchiveWeeklyScores={archiveWeeklyScores}
+      getScoreTopper={getScoreTopper}
+    />
+  );
+
+  const renderSubmissionsSection = () => (
+    <SubmissionsSection
+      pocketbaseUrl={pocketbaseUrl}
+      players={gameState.players}
+      submissions={submissions}
+      isLoadingSubmissions={isLoadingSubmissions}
+      submissionsError={submissionsError}
+      onRefreshSubmissions={refreshSubmissions}
+      onMergeAllSubmissions={mergeAllSubmissions}
+      mergeAllDisabled={submissions.length === 0}
+      getSubmissionLeague={getSubmissionLeague}
+      findPlayerMatch={findPlayerMatch}
+      onMergeSubmission={(submission) => {
+        void mergeSubmissionRecord(submission);
+      }}
+      onDismissSubmission={(submission) => {
+        void dismissSubmission(submission);
+      }}
+      history={history}
+      visibleHistory={visibleHistory}
+      showAllHistory={showAllHistory}
+      canToggleShowAllHistory={history.length > LIMITS.HISTORY_DEFAULT_DISPLAY}
+      onToggleShowAllHistory={() => setShowAllHistory((prev) => !prev)}
+      onClearHistory={() => {
+        void clearHistory();
+      }}
+    />
+  );
+
+  const renderRosterSection = () => (
+    <RosterSection
+      players={gameState.players}
+      selectedPlayer={selectedPlayer}
+      onSelectPlayer={setSelectedPlayer}
+      inlineEdits={inlineEdits}
+      buildInlineEdit={buildInlineEdit}
+      updateInlineEdit={updateInlineEdit}
+      saveInlineEdit={saveInlineEdit}
+      onDeletePlayer={(playerId) => {
+        updateGameState({
+          ...gameState,
+          players: gameState.players.filter((p) => p.id !== playerId),
+        });
+        if (selectedPlayer?.id === playerId) setSelectedPlayer(null);
+      }}
+      banishedOptions={BANISHED_OPTIONS}
+      murderOptions={MURDER_OPTIONS}
+      pasteContent={pasteContent}
+      onPasteContentChange={setPasteContent}
+      onParseAndAdd={parseAndAdd}
+      editPlayerName={editPlayerName}
+      editPlayerEmail={editPlayerEmail}
+      editWeeklyBanished={editWeeklyBanished}
+      editWeeklyMurdered={editWeeklyMurdered}
+      onEditPlayerNameChange={setEditPlayerName}
+      onEditPlayerEmailChange={setEditPlayerEmail}
+      onEditWeeklyBanishedChange={setEditWeeklyBanished}
+      onEditWeeklyMurderedChange={setEditWeeklyMurdered}
+      onSavePlayerEdits={savePlayerEdits}
+      onSaveWeeklyEdits={saveWeeklyEdits}
+      onOpenPlayerAvatarPrompt={() => {
+        if (!selectedPlayer) return;
+        void (async () => {
+          const url = await requestPrompt(
+            "Enter image URL for player avatar:",
+            selectedPlayer.portraitUrl || ""
+          );
+          if (url !== null) updatePlayerAvatar(selectedPlayer.id, url);
+        })();
+      }}
+      castStatus={gameState.castStatus}
+    />
+  );
+
+  const renderCastSection = () => (
+    <CastSection
+      castNames={CAST_NAMES}
+      castStatus={gameState.castStatus}
+      defaultStatus={defaultStatus}
+      onSetCastPortrait={(name) => {
+        void setCastPortrait(name);
+      }}
+      onUpdateCastMember={(name, field, value) => updateCastMember(name, field, value)}
+    />
+  );
+
+  const renderDatabaseSection = () => (
+    <DatabaseSection
+      saveStatus={saveStatus}
+      onSaveNow={onSaveNow}
+      onSignOut={onSignOut}
+      onDownloadGameState={downloadGameState}
+      onClearAllPortraits={() => {
+        void clearAllPortraits();
+      }}
+      isManagingTome={isManagingTome}
+      onToggleManagingTome={() => setIsManagingTome((prev) => !prev)}
+      gameStateJson={JSON.stringify(gameState, null, 2)}
+      onHandleTomeImport={handleTomeImport}
+    />
+  );
+
+  const renderActiveSection = () => {
+    switch (activeSection) {
+      case "operations":
+        return renderOperationsSection();
+      case "submissions":
+        return renderSubmissionsSection();
+      case "roster":
+        return renderRosterSection();
+      case "cast":
+        return renderCastSection();
+      case "database":
+        return renderDatabaseSection();
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="w-full space-y-5">
+      <AdminWorkspaceHeader
+        saveStatus={saveStatus}
+        playersCount={gameState.players.length}
+        activeCastCount={activeCastNames.length}
+        totalCastCount={CAST_NAMES.length}
+        pendingVotes={submissions.length}
+        sectionTabs={sectionTabs}
+        activeSection={activeSection}
+        onSectionChange={setActiveSection}
+      />
+
+      {msg.text && (
+        <div
+          className={`soft-card rounded-2xl p-3 text-sm ${
+            msg.type === "success"
+              ? "border-[color:var(--success)]/50 text-[color:var(--success)]"
+              : "border-[color:var(--danger)]/50 text-[color:var(--danger)]"
+          }`}
+        >
+          {msg.text}
         </div>
       )}
 
-      <div className="glass-panel py-6 px-12 rounded-2xl">
-        <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-5 uppercase tracking-[0.2em]">Weekly Results</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.2em]">⚖️ Next Banished</label>
-            <select
-              value={gameState.weeklyResults?.nextBanished ?? ""}
-              onChange={(e) =>
-                updateGameState((prevState) => ({
-                  ...prevState,
-                  weeklyResults: {
-                    ...(prevState.weeklyResults ?? {}),
-                    nextBanished: e.target.value,
-                  },
-                }))
-              }
-              className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-            >
-              <option value="">Select...</option>
-              {BANISHED_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.2em]">🗡️ Next Murdered</label>
-            <select
-              value={gameState.weeklyResults?.nextMurdered ?? ""}
-              onChange={(e) =>
-                updateGameState((prevState) => ({
-                  ...prevState,
-                  weeklyResults: {
-                    ...(prevState.weeklyResults ?? {}),
-                    nextMurdered: e.target.value,
-                  },
-                }))
-              }
-              className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-            >
-              <option value="">Select...</option>
-              {MURDER_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-        <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-4">Used to score {COUNCIL_LABELS.weekly.toLowerCase()} picks</p>
+      {renderActiveSection()}
 
-        <div className="mt-6 pt-6 border-t soft-divider">
-          <h4 className="text-sm gothic-font text-[color:var(--accent)] uppercase tracking-[0.24em] mb-4">
-            Bonus Game Results
-          </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-amber-300 font-semibold mb-2 uppercase tracking-[0.2em]">
-                🎲 Redemption Roulette (Revealed Traitor)
-              </label>
-              <select
-                value={bonusResults.redemptionRoulette ?? ""}
-                onChange={(e) => updateBonusResult("redemptionRoulette", e.target.value)}
-                className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-              >
-                <option value="">Select...</option>
-                {activeCastNames.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-                </select>
-            </div>
-            <div>
-              <label className="block text-xs text-sky-300 font-semibold mb-2 uppercase tracking-[0.2em]">
-                🛡️ Shield Gambit (Immunity Winner)
-              </label>
-              <select
-                value={bonusResults.shieldGambit ?? ""}
-                onChange={(e) => updateBonusResult("shieldGambit", e.target.value)}
-                className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-              >
-                <option value="">Select...</option>
-                {activeCastNames.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-                </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="glass-panel py-6 px-12 rounded-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Score Tracking</h3>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
-              Archive weekly totals to show progress in the leaderboard
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {scoreHistory.length > LIMITS.SCORE_HISTORY_DEFAULT_DISPLAY && (
-              <button
-                type="button"
-                onClick={() => setShowAllScoreHistory((prev) => !prev)}
-                className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
-              >
-                {showAllScoreHistory ? "Show Recent" : "Show All"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={archiveWeeklyScores}
-              className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black border border-[color:var(--accent)] hover:bg-[color:var(--accent-strong)] transition-all"
-            >
-              Archive Week
-            </button>
-          </div>
-        </div>
-
-        {scoreHistory.length === 0 ? (
-          <p className="text-xs text-zinc-500 mt-4">
-            No weekly snapshots yet. Archive after each episode to track progress.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {visibleScoreHistory.map((snapshot) => {
-              const topper = getScoreTopper(snapshot);
-              const weeklyResults = snapshot.weeklyResults;
-              return (
-                <div
-                  key={snapshot.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm text-white font-semibold">{snapshot.label}</p>
-                    <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
-                      Archived {new Date(snapshot.createdAt).toLocaleString()}
-                    </p>
-                    {(weeklyResults?.nextBanished || weeklyResults?.nextMurdered || weeklyResults?.bonusGames?.redemptionRoulette || weeklyResults?.bonusGames?.shieldGambit) && (
-                      <p className="text-[11px] text-zinc-400 mt-1">
-                        {weeklyResults?.nextBanished ? `Banished: ${weeklyResults.nextBanished}` : ""}
-                        {weeklyResults?.nextBanished && weeklyResults?.nextMurdered ? " • " : ""}
-                        {weeklyResults?.nextMurdered ? `Murdered: ${weeklyResults.nextMurdered}` : ""}
-                        {(weeklyResults?.nextBanished || weeklyResults?.nextMurdered) && (weeklyResults?.bonusGames?.redemptionRoulette || weeklyResults?.bonusGames?.shieldGambit) ? " • " : ""}
-                        {weeklyResults?.bonusGames?.redemptionRoulette ? `Roulette: ${weeklyResults.bonusGames.redemptionRoulette}` : ""}
-                        {weeklyResults?.bonusGames?.redemptionRoulette && weeklyResults?.bonusGames?.shieldGambit ? " • " : ""}
-                        {weeklyResults?.bonusGames?.shieldGambit ? `Shield: ${weeklyResults.bonusGames.shieldGambit}` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-xs text-zinc-400 uppercase tracking-[0.16em]">
-                    {topper ? `Top: ${topper.name} (${formatScore(topper.score)})` : "Top: —"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="glass-panel py-6 px-12 rounded-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Weekly Submissions</h3>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
-              New {COUNCIL_LABELS.weekly} votes · API: {pocketbaseUrl}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={refreshSubmissions}
-              className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
-            >
-              Refresh
-            </button>
-            <button
-              type="button"
-              onClick={mergeAllSubmissions}
-              disabled={submissions.length === 0}
-              className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
-                submissions.length === 0
-                  ? 'bg-zinc-900 text-zinc-600 border border-zinc-800'
-                  : 'bg-[color:var(--accent)] text-black border border-[color:var(--accent)] hover:bg-[color:var(--accent-strong)]'
-              }`}
-            >
-              Merge All
-            </button>
-          </div>
-        </div>
-
-        {isLoadingSubmissions && (
-          <p className="text-xs text-zinc-500 mt-4">Loading submissions...</p>
-        )}
-        {submissionsError && (
-          <p className="text-xs text-red-400 mt-4">{submissionsError}</p>
-        )}
-        {!isLoadingSubmissions && submissions.length === 0 && (
-          <p className="text-xs text-zinc-500 mt-4">No submissions yet.</p>
-        )}
-
-        <div className="mt-4 space-y-3">
-          {submissions.map((submission) => {
-            const league = getSubmissionLeague(submission);
-            const match = findPlayerMatch(gameState.players, submission, league);
-            const canMerge = Boolean(match) || league === "jr";
-            const createdLabel = submission.created
-              ? new Date(submission.created).toLocaleString()
-              : "";
-            return (
-              <div
-                key={submission.id}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
-              >
-                <div className="space-y-1">
-                  <p className="text-sm text-white font-semibold">
-                    {submission.name}
-                    {submission.email ? (
-                      <span className="text-xs text-zinc-500 ml-2">
-                        {submission.email}
-                      </span>
-                    ) : null}
-                    <span
-                      className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
-                        league === "jr"
-                          ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
-                          : "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
-                      }`}
-                    >
-                      {league === "jr" ? "JR" : "Main"}
-                    </span>
-                  </p>
-                  <p className="text-xs text-zinc-400">
-                    Banished:{" "}
-                    <span className="text-zinc-200">
-                      {submission.weeklyBanished || "None"}
-                    </span>{" "}
-                    · Murdered:{" "}
-                    <span className="text-zinc-200">
-                      {submission.weeklyMurdered || "None"}
-                    </span>
-                  </p>
-                  <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
-                    {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
-                    {match
-                      ? ` · Match by ${match.type}`
-                      : league === "jr"
-                      ? " · New Jr player"
-                      : " · No match"}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => mergeSubmissionRecord(submission)}
-                    disabled={!canMerge}
-                    className={`px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold transition-all ${
-                      canMerge
-                        ? 'bg-emerald-400 text-black hover:bg-emerald-300'
-                        : 'bg-zinc-900 text-zinc-600 border border-zinc-800'
-                    }`}
-                  >
-                    Merge
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => dismissSubmission(submission)}
-                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] text-red-400 border border-red-900/40 hover:bg-red-900/20"
-                  >
-                    Dismiss
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="glass-panel py-6 px-12 rounded-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h3 className="text-xl gothic-font text-[color:var(--accent)]">Merged History</h3>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-1">
-              {history.length} merged submissions
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {history.length > LIMITS.HISTORY_DEFAULT_DISPLAY && (
-              <button
-                type="button"
-                onClick={() => setShowAllHistory((prev) => !prev)}
-                className="px-4 py-2 rounded-full border border-zinc-800 text-xs uppercase tracking-[0.2em] text-zinc-400 hover:text-white hover:border-zinc-600 transition-all"
-              >
-                {showAllHistory ? "Show Recent" : "Show All"}
-              </button>
-            )}
-            {history.length > 0 && (
-              <button
-                type="button"
-                onClick={clearHistory}
-                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] text-red-400 border border-red-900/40 hover:bg-red-900/20"
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-
-        {history.length === 0 ? (
-          <p className="text-xs text-zinc-500 mt-4">
-            No merged submissions yet. New merges will appear here.
-          </p>
-        ) : (
-          <div className="mt-4 space-y-3">
-            {visibleHistory.map((entry) => {
-              const mergedLabel = entry.mergedAt
-                ? new Date(entry.mergedAt).toLocaleString()
-                : "";
-              const createdLabel = entry.created
-                ? new Date(entry.created).toLocaleString()
-                : "";
-              return (
-                <div
-                  key={entry.id}
-                  className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm text-white font-semibold">
-                      {entry.name}
-                      {entry.email ? (
-                        <span className="text-xs text-zinc-500 ml-2">
-                          {entry.email}
-                        </span>
-                      ) : null}
-                      {entry.league && (
-                        <span
-                          className={`ml-2 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${
-                            entry.league === "jr"
-                              ? "bg-purple-500/20 text-purple-200 border border-purple-500/30"
-                              : "bg-emerald-500/15 text-emerald-200 border border-emerald-500/30"
-                          }`}
-                        >
-                          {entry.league === "jr" ? "JR" : "Main"}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-zinc-400">
-                      Banished:{" "}
-                      <span className="text-zinc-200">
-                        {entry.weeklyBanished || "None"}
-                      </span>{" "}
-                      · Murdered:{" "}
-                      <span className="text-zinc-200">
-                        {entry.weeklyMurdered || "None"}
-                      </span>
-                    </p>
-                    <p className="text-[11px] text-zinc-500 uppercase tracking-[0.16em]">
-                      {createdLabel
-                        ? `Submitted ${createdLabel}`
-                        : "Submitted"}
-                      {mergedLabel ? ` · Merged ${mergedLabel}` : ""}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-10">
-        <div className="glass-panel py-6 px-12 rounded-2xl">
-          <h3 className="text-xl gothic-font text-[color:var(--accent)] mb-4">League Roster</h3>
-          <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
-            {gameState.players.map((player) => {
-              const edit = inlineEdits[player.id] ?? buildInlineEdit(player);
-              return (
-                <React.Fragment key={player.id}>
-                  <div
-                    className={`flex justify-between items-center p-3 rounded-2xl soft-card soft-card-subtle transition-all cursor-pointer ${selectedPlayer?.id === player.id ? 'bg-[#D4AF37]/10 border-[#D4AF37]' : 'border-zinc-700/60 hover:border-zinc-600'}`}
-                    onClick={() => setSelectedPlayer(player)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0 flex items-center justify-center">
-                        {player.portraitUrl ? (
-                          <img src={player.portraitUrl} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-zinc-600 font-bold uppercase text-sm">{player.name.charAt(0)}</span>
-                        )}
-                      </div>
-                      <div>
-                        <p className="text-gray-100 font-bold text-base">{player.name}</p>
-                        <p className="text-xs text-gray-500">{player.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          updateGameState({ ...gameState, players: gameState.players.filter(p => p.id !== player.id) });
-                          if (selectedPlayer?.id === player.id) setSelectedPlayer(null);
-                        }}
-                        className="text-red-500 hover:bg-red-900/20 p-2 rounded text-xs"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  <div
-                    className="mt-2 mb-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/50 p-3"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-                      <input
-                        type="text"
-                        value={edit.name}
-                        onChange={(e) => updateInlineEdit(player, { name: e.target.value })}
-                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
-                        placeholder="Name"
-                      />
-                      <input
-                        type="email"
-                        value={edit.email}
-                        onChange={(e) => updateInlineEdit(player, { email: e.target.value })}
-                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
-                        placeholder="Email"
-                      />
-                      <select
-                        value={edit.weeklyBanished}
-                        onChange={(e) => updateInlineEdit(player, { weeklyBanished: e.target.value })}
-                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
-                      >
-                        <option value="">Next Banished</option>
-                        {BANISHED_OPTIONS.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        value={edit.weeklyMurdered}
-                        onChange={(e) => updateInlineEdit(player, { weeklyMurdered: e.target.value })}
-                        className="w-full p-2 rounded-lg field-soft text-xs text-white"
-                      >
-                        <option value="">Next Murdered</option>
-                        {MURDER_OPTIONS.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          saveInlineEdit(player);
-                        }}
-                        className="px-3 py-1.5 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
-                      >
-                        Save Row
-                      </button>
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            })}
-            {gameState.players.length === 0 && <p className="text-gray-500 text-center py-4 text-xs">No entries yet.</p>}
-          </div>
-          
-          <div className="mt-6 pt-6 border-t border-zinc-800">
-            <h4 className="text-sm font-semibold text-[color:var(--accent)] mb-3 uppercase tracking-[0.25em]">Add Player</h4>
-            <textarea 
-              value={pasteContent}
-              onChange={(e) => setPasteContent(e.target.value)}
-              className="w-full h-28 field-soft p-4 rounded-2xl text-xs font-mono text-zinc-400 focus:border-[#D4AF37] outline-none"
-              placeholder="Paste submission text or spreadsheet rows here..."
-            />
-            <button onClick={parseAndAdd} className="w-full mt-2 py-2 bg-[color:var(--accent)] text-black text-xs font-bold rounded-full uppercase hover:bg-[color:var(--accent-strong)] transition-all">
-              Add Player
-            </button>
-            {msg.text && (
-              <div className={`mt-4 p-3 rounded-2xl text-center text-xs font-bold border ${msg.type === 'success' ? 'text-green-500 border-green-900/30 bg-green-900/10' : 'text-red-500 border-red-900/30 bg-red-900/10'}`}>
-                {msg.text}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="glass-panel py-6 px-12 rounded-2xl min-h-[400px]">
-          {selectedPlayer ? (
-            <div className="space-y-6">
-              <div className="border-b border-zinc-800 pb-4 flex justify-between items-start">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full border border-[#D4AF37] overflow-hidden bg-zinc-900 flex items-center justify-center">
-                      {selectedPlayer.portraitUrl ? (
-                        <img src={selectedPlayer.portraitUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-base text-zinc-700 font-bold uppercase">{selectedPlayer.name.charAt(0)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-3xl gothic-font text-[color:var(--accent)]">{selectedPlayer.name}</h3>
-                    <div className="flex gap-2 mt-2">
-                      <button 
-                        onClick={async () => {
-                          const url = await requestPrompt(
-                            "Enter image URL for player avatar:",
-                            selectedPlayer.portraitUrl || ""
-                          );
-                          if (url !== null) updatePlayerAvatar(selectedPlayer.id, url);
-                        }}
-                        className="text-xs uppercase font-semibold text-zinc-500 border border-zinc-800 px-3 py-1.5 rounded-full hover:text-white transition-all"
-                      >
-                        Set URL
-                      </button>
-                    </div>
-                  </div>
-                </div>
-                <button onClick={() => setSelectedPlayer(null)} className="text-zinc-600 hover:text-white text-xl">&times;</button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-red-900/10 border border-red-900/20 rounded">
-                  <p className="text-xs text-red-400 font-bold uppercase mb-1">💀 1st Out</p>
-                  <p className="text-base text-white">{selectedPlayer.predFirstOut || 'None'}</p>
-                </div>
-                <div className="p-3 bg-yellow-900/10 border border-yellow-900/20 rounded">
-                  <p className="text-xs text-yellow-400 font-bold uppercase mb-1">🏆 Winner</p>
-                  <p className="text-base text-white">{selectedPlayer.predWinner || 'None'}</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60">
-                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit Player</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-zinc-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                      Name
-                    </label>
-                    <input
-                      type="text"
-                      value={editPlayerName}
-                      onChange={(e) => setEditPlayerName(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-zinc-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={editPlayerEmail}
-                      onChange={(e) => setEditPlayerEmail(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
-                    />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={savePlayerEdits}
-                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
-                  >
-                    Save Player
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
-                  <p className="text-xs text-red-400 font-bold uppercase mb-1">⚖️ Next Banished</p>
-                  <p className="text-base text-white">{selectedPlayer.weeklyPredictions?.nextBanished || 'None'}</p>
-                </div>
-                <div className="p-3 bg-zinc-900/40 border border-zinc-800 rounded">
-                  <p className="text-xs text-fuchsia-300 font-bold uppercase mb-1">🗡️ Next Murdered</p>
-                  <p className="text-base text-white">{selectedPlayer.weeklyPredictions?.nextMurdered || 'None'}</p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl soft-card soft-card-subtle border-zinc-700/60">
-                <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mb-3">Edit {COUNCIL_LABELS.weekly}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-red-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                      ⚖️ Next Banished
-                    </label>
-                    <select
-                      value={editWeeklyBanished}
-                      onChange={(e) => setEditWeeklyBanished(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
-                    >
-                      <option value="">Select...</option>
-                      {activeCastNames.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-fuchsia-400 font-semibold mb-2 uppercase tracking-[0.18em]">
-                      🗡️ Next Murdered
-                    </label>
-                    <select
-                      value={editWeeklyMurdered}
-                      onChange={(e) => setEditWeeklyMurdered(e.target.value)}
-                      className="w-full p-3.5 rounded-xl field-soft text-sm text-white"
-                    >
-                      <option value="">Select...</option>
-                      {activeCastNames.map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={saveWeeklyEdits}
-                    className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] font-bold bg-[color:var(--accent)] text-black hover:bg-[color:var(--accent-strong)] transition-all"
-                  >
-                    Save Weekly Vote
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm text-zinc-500 font-bold mb-4 uppercase tracking-widest border-b border-zinc-800 pb-2">Draft Squad</p>
-                <div className="grid grid-cols-1 gap-2">
-                  {selectedPlayer.picks.map((pick, i) => (
-                    <div key={i} className="flex justify-between items-center text-sm p-3 bg-zinc-900/40 border border-zinc-800 rounded-2xl">
-                      <span className="text-zinc-500 font-bold w-6">#{i+1}</span>
-                      <div className="flex items-center gap-2 flex-1">
-                        <div className="w-6 h-6 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xs text-zinc-600 font-bold uppercase">
-                          {getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl) ? (
-                            <img src={getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            pick.member.charAt(0)
-                          )}
-                        </div>
-                        <span className="text-zinc-200">{pick.member}</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${pick.role === 'Traitor' ? 'bg-red-900/40 text-red-400' : 'bg-green-900/40 text-green-400'}`}>
-                        {pick.role}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center text-center opacity-30">
-               <div className="wax-seal mb-4">
-                  <span className="gothic-font text-2xl text-[#b04a4a] font-black">T</span>
-                </div>
-               <p className="text-xs gothic-font uppercase tracking-[0.3em] text-[color:var(--accent)]">Select a player</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="glass-panel py-6 px-12 rounded-2xl mt-12">
-        <h3 className="text-2xl gothic-font text-[color:var(--accent)] mb-8">Cast Status</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6 gap-4 md:gap-6 lg:gap-8">
-          {CAST_NAMES.map(name => {
-            const status = gameState.castStatus[name] ?? defaultStatus;
-            const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
-            const cardClass = status.isWinner
-              ? "bg-black/75 border-lime-300/70 shadow-[0_0_24px_rgba(163,230,53,0.45)]"
-              : status.isFirstOut
-              ? "bg-black/75 border-amber-300/70 shadow-[0_0_24px_rgba(251,191,36,0.45)]"
-              : status.isEliminated
-              ? "bg-black/80 border-red-600/70 shadow-[0_0_24px_rgba(239,68,68,0.45)]"
-              : status.isTraitor
-              ? "bg-black/80 border-fuchsia-400/70 shadow-[0_0_24px_rgba(232,121,249,0.45)]"
-              : "bg-black/70 border-zinc-800";
-            return (
-              <div key={name} className={`p-4 rounded-2xl soft-card space-y-3 shadow-[0_10px_30px_rgba(0,0,0,0.35)] ${cardClass}`}>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCastPortrait(name)}
-                    className="w-[22px] h-[22px] rounded-full overflow-hidden bg-zinc-900 border border-zinc-800 flex-shrink-0 relative group"
-                    title="Set cast portrait"
-                  >
-                    {portraitSrc ? (
-                      <img src={portraitSrc} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-zinc-700 font-bold uppercase">
-                        {name.charAt(0)}
-                      </div>
-                    )}
-                  </button>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-white truncate">{name}</p>
-                    <button
-                      type="button"
-                      onClick={() => setCastPortrait(name)}
-                      className="text-xs uppercase font-semibold text-zinc-500 hover:text-zinc-200 transition-all"
-                    >
-                      Set Portrait
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3 place-items-center">
-                  <button 
-                    onClick={() => updateCastMember(name, 'isTraitor', !status?.isTraitor)}
-                    className={`w-[150px] px-6 py-3 rounded-full text-sm font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
-                      status?.isTraitor
-                        ? 'bg-[#FF2D55] border-2 border-[#FF2D55] text-black shadow-[0_0_26px_rgba(255,45,85,0.85)] scale-[1.04]'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {status?.isTraitor && <span className="text-xs">✓</span>}
-                    Traitor
-                  </button>
-                  <button 
-                    onClick={() => updateCastMember(name, 'isEliminated', !status?.isEliminated)}
-                    className={`w-[150px] px-6 py-3 rounded-full text-sm font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
-                      status?.isEliminated
-                        ? 'bg-[#4CC9F0] border-2 border-[#4CC9F0] text-black shadow-[0_0_26px_rgba(76,201,240,0.85)] scale-[1.04]'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {status?.isEliminated && <span className="text-xs">✓</span>}
-                    Eliminated
-                  </button>
-                  <button 
-                    onClick={() => updateCastMember(name, 'isFirstOut', !status?.isFirstOut)}
-                    className={`w-[150px] px-6 py-3 rounded-full text-sm font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
-                      status?.isFirstOut
-                        ? 'bg-[#FF9F1C] border-2 border-[#FF9F1C] text-black shadow-[0_0_26px_rgba(255,159,28,0.85)] scale-[1.04]'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {status?.isFirstOut && <span className="text-xs">✓</span>}
-                    1st Out
-                  </button>
-                  <button 
-                    onClick={() => updateCastMember(name, 'isWinner', !status?.isWinner)}
-                    className={`w-[150px] px-6 py-3 rounded-full text-sm font-semibold uppercase border transition-all flex items-center justify-center gap-1 ${
-                      status?.isWinner
-                        ? 'bg-[#2ECC71] border-2 border-[#2ECC71] text-black shadow-[0_0_26px_rgba(46,204,113,0.85)] scale-[1.04]'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-zinc-300'
-                    }`}
-                  >
-                    {status?.isWinner && <span className="text-xs">✓</span>}
-                    Winner
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
       {confirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-            <p className="text-sm text-zinc-200 leading-relaxed">{confirmDialog.message}</p>
-            <div className="flex justify-end gap-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
+          <div className="soft-card w-full max-w-md rounded-2xl p-5 space-y-4">
+            <p className="text-sm text-[color:var(--text)] leading-relaxed">{confirmDialog.message}</p>
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] border border-zinc-700 text-zinc-300"
+                className="btn-secondary px-4 text-[11px]"
                 onClick={() => {
                   confirmDialog.resolve(false);
                   setConfirmDialog(null);
@@ -1703,7 +1092,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] bg-[color:var(--accent)] text-black font-bold"
+                className="btn-primary px-4 text-[11px]"
                 onClick={() => {
                   confirmDialog.resolve(true);
                   setConfirmDialog(null);
@@ -1715,21 +1104,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
+
       {promptDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
-            <label className="block text-sm text-zinc-200">{promptDialog.title}</label>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
+          <div className="soft-card w-full max-w-md rounded-2xl p-5 space-y-4">
+            <label className="block text-sm text-[color:var(--text)]">{promptDialog.title}</label>
             <input
               autoFocus
               type="text"
               value={promptValue}
               onChange={(e) => setPromptValue(e.target.value)}
-              className="w-full p-3 rounded-xl field-soft text-sm text-white"
+              className="field-soft w-full p-3 text-sm"
             />
-            <div className="flex justify-end gap-3">
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] border border-zinc-700 text-zinc-300"
+                className="btn-secondary px-4 text-[11px]"
                 onClick={() => {
                   promptDialog.resolve(null);
                   setPromptDialog(null);
@@ -1739,7 +1129,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="px-4 py-2 rounded-full text-xs uppercase tracking-[0.2em] bg-[color:var(--accent)] text-black font-bold"
+                className="btn-primary px-4 text-[11px]"
                 onClick={() => {
                   promptDialog.resolve(promptValue);
                   setPromptDialog(null);
@@ -1751,7 +1141,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
         </div>
       )}
-      </div>
     </div>
   );
 };

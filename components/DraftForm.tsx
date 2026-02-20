@@ -1,75 +1,69 @@
-
-import React, { useState } from 'react';
-import { CAST_NAMES, COUNCIL_LABELS, DraftPick, GameState, PlayerEntry } from '../types';
-import { submitDraftEntry } from '../services/pocketbase';
-import ConfirmationCard from './ConfirmationCard';
+import React, { useState } from "react";
+import { CAST_NAMES, COUNCIL_LABELS, DraftPick, GameState, PlayerEntry } from "../types";
+import { submitDraftEntry } from "../services/pocketbase";
+import ConfirmationCard from "./ConfirmationCard";
 import { getCastPortraitSrc } from "../src/castPortraits";
-import { useToast } from './Toast';
+import { useToast } from "./Toast";
 
 interface DraftFormProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
 }
 
-/**
- * Fisher-Yates shuffle algorithm for unbiased random shuffling.
- * Returns a new shuffled array without modifying the original.
- */
 function shuffleArray<T>(array: T[]): T[] {
   const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
+  for (let i = result.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [result[i], result[j]] = [result[j], result[i]];
   }
   return result;
 }
 
-const DRAFT_CLOSED = String(import.meta.env.VITE_DRAFT_CLOSED ?? 'true').toLowerCase() !== 'false';
+const DRAFT_CLOSED = String(import.meta.env.VITE_DRAFT_CLOSED ?? "true").toLowerCase() !== "false";
 const DRAFT_SIZE = 10;
-const createEmptyPick = (): DraftPick => ({ member: '', rank: 1, role: 'Faithful' });
+const createEmptyPick = (): DraftPick => ({ member: "", rank: 1, role: "Faithful" });
 const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);
 
 const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
-  const [playerName, setPlayerName] = useState('');
-  const [playerEmail, setPlayerEmail] = useState('');
+  const [playerName, setPlayerName] = useState("");
+  const [playerEmail, setPlayerEmail] = useState("");
   const [picks, setPicks] = useState<DraftPick[]>(createEmptyPicks());
   const [sealedPicks, setSealedPicks] = useState<boolean[]>(Array(DRAFT_SIZE).fill(false));
-  const [predFirstOut, setPredFirstOut] = useState('');
-  const [predWinner, setPredWinner] = useState('');
-  const [traitors, setTraitors] = useState(['', '', '']);
+  const [predFirstOut, setPredFirstOut] = useState("");
+  const [predWinner, setPredWinner] = useState("");
+  const [traitors, setTraitors] = useState(["", "", ""]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const activeCastNames = CAST_NAMES.filter(
-    (name) => !gameState.castStatus[name]?.isEliminated
-  );
 
-  // Validation: Check for duplicates in the squad
+  const activeCastNames = CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated);
+
   const getDuplicatePicks = () => {
-    const selected = picks.map(p => p.member).filter(m => m !== '');
+    const selected = picks.map((pick) => pick.member).filter((member) => member !== "");
     const duplicates = selected.filter((item, index) => selected.indexOf(item) !== index);
     return [...new Set(duplicates)];
   };
 
   const duplicateNames = getDuplicatePicks();
   const hasDuplicates = duplicateNames.length > 0;
-  const allPicksSealed = sealedPicks.every(s => s === true) && picks.every(p => p.member !== '');
+  const sealedCount = sealedPicks.filter(Boolean).length;
+  const allPicksSealed = sealedPicks.every(Boolean) && picks.every((pick) => pick.member !== "");
 
-  const updatePick = (idx: number, field: string, value: any) => {
-    if (sealedPicks[idx]) return; // Cannot edit sealed picks
-    const newPicks = [...picks];
-    newPicks[idx] = { ...newPicks[idx], [field]: value };
-    setPicks(newPicks);
+  const updatePick = <K extends keyof DraftPick>(idx: number, field: K, value: DraftPick[K]) => {
+    if (sealedPicks[idx]) return;
+    const nextPicks = [...picks];
+    nextPicks[idx] = { ...nextPicks[idx], [field]: value };
+    setPicks(nextPicks);
   };
 
   const toggleSeal = (idx: number) => {
     if (!picks[idx].member) {
-      showToast("A name must be spoken before the pick is sealed.", "warning");
+      showToast("Select a player before sealing this slot.", "warning");
       return;
     }
-    const newSeals = [...sealedPicks];
-    newSeals[idx] = !newSeals[idx];
-    setSealedPicks(newSeals);
+    const next = [...sealedPicks];
+    next[idx] = !next[idx];
+    setSealedPicks(next);
   };
 
   const autoGeneratePicks = () => {
@@ -77,41 +71,43 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
     const selected = shuffled.slice(0, DRAFT_SIZE);
     const ranks = shuffleArray(Array.from({ length: DRAFT_SIZE }, (_, index) => index + 1));
     const bonusPool = shuffled.slice(DRAFT_SIZE);
-    
-    const newPicks: DraftPick[] = selected.map((member, i) => ({
+
+    const nextPicks: DraftPick[] = selected.map((member, index) => ({
       member,
-      rank: ranks[i],
-      role: Math.random() > 0.75 ? 'Traitor' : 'Faithful'
+      rank: ranks[index],
+      role: Math.random() > 0.75 ? "Traitor" : "Faithful",
     }));
 
-    setPicks(newPicks);
+    setPicks(nextPicks);
     setSealedPicks(Array(DRAFT_SIZE).fill(true));
-    
-    if (!predFirstOut) setPredFirstOut(bonusPool[0] ?? '');
-    if (!predWinner) setPredWinner(bonusPool[1] ?? '');
-    if (traitors.every(t => t === '')) {
-       setTraitors([bonusPool[2] ?? '', bonusPool[3] ?? '', bonusPool[4] ?? '']);
+
+    if (!predFirstOut) setPredFirstOut(bonusPool[0] ?? "");
+    if (!predWinner) setPredWinner(bonusPool[1] ?? "");
+    if (traitors.every((entry) => entry === "")) {
+      setTraitors([bonusPool[2] ?? "", bonusPool[3] ?? "", bonusPool[4] ?? ""]);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (DRAFT_CLOSED) {
-      showToast(`Draft submissions are closed. Please use the ${COUNCIL_LABELS.weekly} tab.`, "warning");
+      showToast(`Draft submissions are closed. Use the ${COUNCIL_LABELS.weekly} tab for weekly picks.`, "warning");
       return;
     }
-    if (!playerName || !playerEmail) {
-      showToast("Please enter your name and email to proceed.", "warning");
+
+    if (!playerName.trim() || !playerEmail.trim()) {
+      showToast("Name and email are required.", "warning");
       return;
     }
 
     if (hasDuplicates) {
-      showToast("The Conclave forbids duplicates. Each pick must be unique.", "error");
+      showToast("Each draft slot must contain a unique player.", "error");
       return;
     }
 
     if (!allPicksSealed) {
-      showToast("All members of your squad must be sealed before the final submission.", "warning");
+      showToast("Seal all ten picks before submitting.", "warning");
       return;
     }
 
@@ -121,385 +117,335 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
       id: Date.now().toString(),
       name: playerName,
       email: playerEmail,
-      picks: picks.filter(p => p.member !== ''),
+      picks: picks.filter((pick) => pick.member !== ""),
       predFirstOut,
       predWinner,
-      predTraitors: traitors.filter(t => t !== ''),
+      predTraitors: traitors.filter((pick) => pick !== ""),
     };
 
     onAddEntry(newEntry);
 
     try {
       await submitDraftEntry(newEntry);
-      showToast("Your draft has been submitted successfully!", "success");
+      showToast("Draft submitted successfully.", "success");
     } catch (err) {
       console.warn("Draft submission failed:", err);
-      showToast("Draft submission failed. Your entry was saved locally.", "warning");
+      showToast("Submission to server failed. Your entry is still saved locally.", "warning");
     }
 
     setIsSubmitting(false);
     setIsSubmitted(true);
-
   };
 
   if (isSubmitted) {
     return (
-      <ConfirmationCard 
-        playerName={playerName} 
+      <ConfirmationCard
+        playerName={playerName}
         onReset={() => {
           setIsSubmitted(false);
-          setPlayerName('');
-          setPlayerEmail('');
+          setPlayerName("");
+          setPlayerEmail("");
           setPicks(createEmptyPicks());
           setSealedPicks(Array(DRAFT_SIZE).fill(false));
-          setPredFirstOut('');
-          setPredWinner('');
-          setTraitors(['', '', '']);
-        }} 
+          setPredFirstOut("");
+          setPredWinner("");
+          setTraitors(["", "", ""]);
+        }}
       />
     );
   }
 
   return (
-    <div className="pb-24">
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-12"
-      >
+    <div className="space-y-6 md:space-y-8 pb-10">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div>
+          <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Castle Draft Workflow</p>
+          <h2 className="headline text-3xl md:text-4xl font-semibold">Build your 10-player board</h2>
+        </div>
+        <div className="status-pill">{sealedCount}/10 sealed</div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6 md:space-y-7">
         {DRAFT_CLOSED && (
-          <div className="glass-panel p-6 rounded-3xl border border-red-500/40 bg-red-950/30 text-center">
-            <p className="text-xs uppercase tracking-[0.3em] text-red-300 mb-3">Draft Closed</p>
-            <p className="text-sm text-zinc-300">
-              Draft submissions are no longer accepted. Head to the {COUNCIL_LABELS.weekly} tab to submit weekly votes.
+          <div className="soft-card rounded-3xl p-4 md:p-5 border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10 text-center">
+            <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--danger)] font-semibold">Draft Closed</p>
+            <p className="mt-1 text-base text-[color:var(--text-muted)]">
+              Draft entries are disabled. Continue with weekly voting in {COUNCIL_LABELS.weekly}.
             </p>
           </div>
         )}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-10">
-          <div className="glass-panel p-8 rounded-3xl">
-            <h3 className="text-xl text-[color:var(--accent)] mb-5 gothic-font uppercase text-center tracking-[0.22em]">
-              Identify Yourself
-            </h3>
-            <div className="grid grid-cols-1 gap-4 max-w-sm mx-auto w-full">
-              <div>
-                <label htmlFor="player-name" className="sr-only">Your Name</label>
-                <input
-                  id="player-name"
-                  required
-                  type="text"
-                  placeholder="Name"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                  aria-required="true"
-                />
-              </div>
-              <div>
-                <label htmlFor="player-email" className="sr-only">Your Email</label>
-                <input
-                  id="player-email"
-                  required
-                  type="email"
-                  placeholder="Email"
-                  value={playerEmail}
-                  onChange={(e) => setPlayerEmail(e.target.value)}
-                  className="w-full p-4 rounded-xl field-soft text-[color:var(--text)] focus:border-[color:var(--accent)] outline-none text-base text-center transition-colors"
-                  aria-required="true"
-                />
-              </div>
+
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 1</p>
+            <h3 className="headline text-xl mt-2">Player Identity</h3>
+            <div className="grid grid-cols-1 gap-3 mt-4">
+              <input
+                id="player-name"
+                required
+                type="text"
+                placeholder="Name"
+                value={playerName}
+                onChange={(e) => setPlayerName(e.target.value)}
+                className="field-soft p-3.5"
+                autoComplete="name"
+              />
+              <input
+                id="player-email"
+                required
+                type="email"
+                placeholder="Email"
+                value={playerEmail}
+                onChange={(e) => setPlayerEmail(e.target.value)}
+                className="field-soft p-3.5"
+                autoComplete="email"
+              />
             </div>
           </div>
 
-          <div className="glass-panel p-8 rounded-3xl">
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.18em] mb-4 text-center">Season-long scoring</p>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
-                <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+10 PTS</span>
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Scoring Snapshot</p>
+            <h3 className="headline text-xl mt-2">Season scoring rules</h3>
+            <div className="grid grid-cols-2 gap-3 mt-4 text-base">
+              <div className="soft-card soft-card-subtle rounded-2xl p-3 text-center">
+                <p className="text-xl font-bold text-[color:var(--accent)]">+10</p>
                 Winner
               </div>
-              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
-                <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+5 PTS</span>
-                1st Out
+              <div className="soft-card soft-card-subtle rounded-2xl p-3 text-center">
+                <p className="text-xl font-bold text-[color:var(--accent)]">+5</p>
+                First Out
               </div>
-              <div className="p-4 soft-card soft-card-subtle text-center border-[color:var(--accent)]/30">
-                <span className="block text-[color:var(--accent)] font-semibold text-base md:text-lg">+3 PTS</span>
-                Traitor ID
+              <div className="soft-card soft-card-subtle rounded-2xl p-3 text-center">
+                <p className="text-xl font-bold text-[color:var(--accent)]">+3</p>
+                Traitor Call
               </div>
-              <div className="p-4 soft-card soft-card-subtle text-center border-red-600/40 bg-red-950/25">
-                <span className="block text-red-500 font-bold text-base md:text-lg">-2 PTS</span>
-                Penalty
+              <div className="soft-card soft-card-subtle rounded-2xl p-3 text-center border-[color:var(--danger)]/50 bg-[color:var(--danger)]/10">
+                <p className="text-xl font-bold text-[color:var(--danger)]">-2</p>
+                Reversal Penalty
               </div>
             </div>
           </div>
         </section>
 
-        <div className="space-y-10">
-          <section className="glass-panel rounded-3xl overflow-hidden">
-            <div className="p-6 border-b soft-divider bg-black/30 flex flex-wrap justify-between items-center gap-6">
-              <div className="flex flex-col">
-                <h3 className="text-2xl text-[color:var(--accent)] gothic-font">I. The Squad</h3>
-                {hasDuplicates ? (
-                  <span className="text-xs text-red-500 font-semibold uppercase tracking-[0.2em] animate-pulse">
-                    ⚠ Duplicate picks detected
-                  </span>
-                ) : (
-                  <span className="text-xs text-zinc-500 uppercase tracking-[0.2em]">
-                    {DRAFT_CLOSED ? "Draft submissions are closed" : "Seal each pick to finalize"}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-5">
-                <button
-                  type="button"
-                  onClick={autoGeneratePicks}
-                  className="text-sm font-semibold text-zinc-200 border border-[color:var(--accent)]/40 px-5 py-2.5 rounded-full hover:bg-[color:var(--accent)] hover:text-black transition-all uppercase tracking-[0.18em] active:scale-95"
-                  aria-label="Auto-generate random picks"
-                >
-                  Auto-pick
-                </button>
-                <div className="flex flex-col items-end">
-                  <span className="text-sm bg-red-900/60 px-4 py-2 rounded-full text-white font-semibold">Select 10</span>
-                  <span className="text-xs text-zinc-600 mt-1 uppercase font-semibold">
-                    {sealedPicks.filter(Boolean).length}/10 sealed
-                  </span>
-                </div>
-              </div>
+        <section className="soft-card rounded-3xl p-4 md:p-5 space-y-5">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <div>
+              <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 2</p>
+              <h3 className="headline text-xl">Draft Slots</h3>
             </div>
+            <div className="flex items-center justify-center gap-2">
+              {hasDuplicates && (
+                <span className="status-pill border-[color:var(--danger)]/60 text-[color:var(--danger)]">
+                  Duplicate picks found
+                </span>
+              )}
+              <button type="button" onClick={autoGeneratePicks} className="btn-secondary px-4 text-sm">
+                Auto Fill
+              </button>
+            </div>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-transparent p-6 md:p-8">
-              {picks.map((pick, i) => {
-                const isDuplicate = pick.member !== '' && duplicateNames.includes(pick.member);
-                const isSealed = sealedPicks[i];
-                const castPortrait = pick.member
-                  ? getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)
-                  : undefined;
-                return (
-                  <div
-                    key={i}
-                    className={`flex flex-col gap-4 p-6 rounded-3xl soft-card transition-all duration-500 overflow-hidden focus-within:bg-[rgba(217,221,227,0.12)] focus-within:border-[color:var(--accent-strong)] ${
-                      isSealed
-                        ? 'soft-card-subtle border-zinc-700/60 opacity-90'
-                        : isDuplicate
-                        ? 'soft-card-subtle border-red-500/60 bg-red-950/25'
-                        : pick.role === 'Traitor'
-                        ? 'soft-card-subtle border-red-600/50 bg-red-950/20 shadow-[inset_0_0_20px_rgba(138,28,28,0.18)]'
-                        : 'border-[color:var(--accent)]/30'
-                    }`}
-                  >
-                    <div className="flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-zinc-950 border border-zinc-800 flex items-center justify-center text-xs text-zinc-600 font-bold uppercase">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+            {picks.map((pick, index) => {
+              const isDuplicate = pick.member !== "" && duplicateNames.includes(pick.member);
+              const isSealed = sealedPicks[index];
+              const castPortrait = pick.member
+                ? getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)
+                : undefined;
+
+              return (
+                <article
+                  key={index}
+                  className={`soft-card soft-card-subtle rounded-3xl p-4 space-y-3 border ${
+                    isSealed
+                      ? "border-[color:var(--panel-border-strong)]"
+                      : isDuplicate
+                      ? "border-[color:var(--danger)]/70"
+                      : "border-[color:var(--panel-border)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex items-center justify-center">
                         {castPortrait ? (
-                          <img src={castPortrait} alt={`${pick.member} portrait`} className="w-full h-full object-cover" />
-                        ) : pick.member ? (
-                          <span aria-hidden="true">{pick.member.charAt(0)}</span>
+                          <img src={castPortrait} alt={pick.member} className="h-full w-full object-cover" />
                         ) : (
-                          <span aria-hidden="true">?</span>
+                          <span className="text-sm font-semibold text-[color:var(--text)]">
+                            {pick.member ? pick.member.charAt(0) : index + 1}
+                          </span>
                         )}
                       </div>
+                      <p className="text-base font-semibold text-[color:var(--text)]">Slot {index + 1}</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleSeal(index)}
+                      className={`btn-secondary px-3 text-sm ${
+                        isSealed
+                          ? "border-[color:var(--danger)]/55 text-[color:var(--danger)]"
+                          : ""
+                      }`}
+                    >
+                      {isSealed ? "Unseal" : "Seal"}
+                    </button>
+                  </div>
 
-                    <div className="flex justify-center">
-                      <div
-                        className={`w-full max-w-[220px] py-2.5 rounded-xl text-center text-sm font-semibold soft-card soft-card-subtle ${
-                          isSealed
-                            ? 'border-zinc-800/60 text-zinc-500'
-                            : isDuplicate
-                            ? 'border-red-500/70 text-red-400 bg-red-950/25'
-                            : pick.role === 'Traitor'
-                            ? 'border-red-500/70 text-red-400 bg-red-950/25'
-                            : 'border-[color:var(--accent)]/35 text-[color:var(--accent)]'
-                        }`}
-                      >
-                        #{i + 1}
-                      </div>
-                    </div>
+                  <select
+                    disabled={isSealed}
+                    value={pick.member}
+                    onChange={(e) => updatePick(index, "member", e.target.value)}
+                    className="field-soft p-3 text-base"
+                  >
+                    <option value="">Choose player...</option>
+                    {activeCastNames.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
 
-                    <div className="flex-1 flex justify-center">
-                      <select
-                        disabled={isSealed}
-                        value={pick.member}
-                        onChange={(e) => updatePick(i, 'member', e.target.value)}
-                        className={`w-full p-3.5 text-sm rounded-2xl field-soft text-white outline-none transition-colors font-semibold ${
-                          isSealed
-                            ? 'border-zinc-800/60 text-zinc-500'
-                            : isDuplicate
-                            ? 'border-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]'
-                            : 'border-[color:var(--input-border)] focus:border-[color:var(--accent-strong)] focus:bg-[rgba(217,221,227,0.12)]'
-                        }`}
-                      >
-                        <option value="">Choose Player...</option>
-                        {activeCastNames.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="relative w-full max-w-[220px]">
-                        <input
-                          disabled={isSealed}
-                          type="number"
-                          min="1"
-                          max="10"
-                          value={pick.rank}
-                          onChange={(e) => updatePick(i, 'rank', parseInt(e.target.value))}
-                          className={`w-full p-3.5 rounded-xl text-center text-sm field-soft outline-none ${
-                            isSealed ? 'text-zinc-600' : 'text-white'
-                          }`}
-                        />
-                      </div>
-                      <div className="flex soft-card soft-card-subtle border-zinc-700/60 p-2 rounded-xl w-full max-w-[220px] justify-between" role="group" aria-label="Role prediction">
-                        <button
-                          disabled={isSealed}
-                          type="button"
-                          onClick={() => updatePick(i, 'role', 'Faithful')}
-                          className={`flex-1 px-4 py-3 rounded-lg text-xs font-semibold transition-all ${
-                            pick.role === 'Faithful'
-                              ? 'bg-[color:var(--success)] text-black border-2 border-[color:var(--success)] shadow-[0_0_26px_rgba(0,229,168,0.85)] scale-[1.04]'
-                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                          }`}
-                          aria-label="Predict Faithful"
-                          aria-pressed={pick.role === 'Faithful'}
-                        >
-                          F
-                        </button>
-                        <button
-                          disabled={isSealed}
-                          type="button"
-                          onClick={() => updatePick(i, 'role', 'Traitor')}
-                          className={`flex-1 px-4 py-3 rounded-lg text-xs font-semibold transition-all ${
-                            pick.role === 'Traitor'
-                              ? 'bg-[color:var(--danger)] text-black border-2 border-[color:var(--danger)] shadow-[0_0_26px_rgba(255,45,85,0.85)] scale-[1.04]'
-                              : 'bg-zinc-900 text-zinc-500 border border-zinc-800'
-                          }`}
-                          aria-label="Predict Traitor"
-                          aria-pressed={pick.role === 'Traitor'}
-                        >
-                          T
-                        </button>
-                      </div>
-
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      disabled={isSealed}
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={pick.rank}
+                      onChange={(e) => {
+                        const next = Number.parseInt(e.target.value, 10);
+                        updatePick(index, "rank", Number.isFinite(next) ? next : 1);
+                      }}
+                      className="field-soft rank-input p-3 text-base text-center font-bold"
+                    />
+                    <div className="grid grid-cols-2 gap-1">
                       <button
                         type="button"
-                        onClick={() => toggleSeal(i)}
-                        className={`w-full max-w-[220px] px-6 py-3 rounded-xl text-xs font-semibold uppercase tracking-[0.2em] transition-all border ${
-                          isSealed
-                            ? 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:text-red-400'
-                            : 'bg-[color:var(--accent)]/10 border-[color:var(--accent)]/40 text-zinc-200 hover:bg-[color:var(--accent)] hover:text-black'
+                        disabled={isSealed}
+                        onClick={() => updatePick(index, "role", "Faithful")}
+                        className={`rounded-xl border px-2 py-1 text-sm font-semibold uppercase ${
+                          pick.role === "Faithful"
+                            ? "bg-[color:var(--success)] text-black border-[color:var(--success)]"
+                            : "border-[color:var(--panel-border)] text-[color:var(--text-muted)]"
                         }`}
                       >
-                        {isSealed ? 'Unseal' : 'Seal Pick'}
+                        Faithful
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSealed}
+                        onClick={() => updatePick(index, "role", "Traitor")}
+                        className={`rounded-xl border px-2 py-1 text-sm font-semibold uppercase ${
+                          pick.role === "Traitor"
+                            ? "bg-[color:var(--danger)] text-black border-[color:var(--danger)]"
+                            : "border-[color:var(--panel-border)] text-[color:var(--text-muted)]"
+                        }`}
+                      >
+                        Traitor
                       </button>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-panel p-7 rounded-3xl">
-              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b soft-divider pb-3">
-                II. Prophecies
-              </h3>
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-xs text-red-500 font-semibold mb-2 uppercase tracking-[0.18em]">
-                    💀 First Out
-                  </label>
-                  <select
-                    value={predFirstOut}
-                    onChange={(e) => setPredFirstOut(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-                  >
-                    <option value="">Select...</option>
-                    {activeCastNames.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-yellow-500 font-semibold mb-2 uppercase tracking-[0.18em]">
-                    🏆 Sole Winner
-                  </label>
-                  <select
-                    value={predWinner}
-                    onChange={(e) => setPredWinner(e.target.value)}
-                    className="w-full p-3.5 rounded-2xl field-soft text-sm text-white"
-                  >
-                    <option value="">Select...</option>
-                    {activeCastNames.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="glass-panel p-7 rounded-3xl">
-              <h3 className="text-xl text-[color:var(--accent)] gothic-font mb-5 border-b soft-divider pb-3">
-                III. The Traitors
-              </h3>
-              <div className="space-y-3">
-                {traitors.map((t, i) => (
-                  <select
-                    key={i}
-                    value={t}
-                    onChange={(e) => {
-                      const newT = [...traitors];
-                      newT[i] = e.target.value;
-                      setTraitors(newT);
-                    }}
-                    className="w-full p-3.5 rounded-2xl field-soft bg-red-900/5 border-red-900/30 text-sm text-white"
-                  >
-                    <option value="">Traitor Guess #{i + 1}</option>
-                    {activeCastNames.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <div className="pt-4 pb-6 flex flex-col items-center">
-            {!allPicksSealed && picks.some((p) => p.member !== '') && (
-              <p className="text-center text-xs text-red-500 font-semibold uppercase mb-3 tracking-[0.2em] animate-pulse">
-                Seal all 10 picks to submit.
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
-              className={`w-full max-w-3xl py-6 font-semibold rounded-2xl border-2 uppercase tracking-[0.28em] transition-all gothic-font text-base md:text-lg flex items-center justify-center gap-3 ${
-                DRAFT_CLOSED
-                  ? 'bg-red-900 border-red-600 text-white cursor-not-allowed opacity-90'
-                  : hasDuplicates || !allPicksSealed || isSubmitting
-                  ? 'bg-zinc-800 border-zinc-700 text-zinc-500 cursor-not-allowed opacity-50'
-                  : 'bg-gradient-to-b from-red-700 to-red-950 text-[color:var(--accent)] border-[color:var(--accent)] shadow-[0_0_20px_rgba(138,28,28,0.3)] hover:scale-[1.01] active:scale-95 cursor-pointer'
-              }`}
-              aria-busy={isSubmitting}
-            >
-              {isSubmitting && <span className="loading-spinner" aria-hidden="true" />}
-              {isSubmitting
-                ? 'Submitting...'
-                : DRAFT_CLOSED
-                ? 'Draft Closed'
-                : hasDuplicates
-                ? 'Resolve Duplicates'
-                : !allPicksSealed
-                ? 'Seal All Picks to Submit'
-                : 'Seal Final Fate'}
-            </button>
+                </article>
+              );
+            })}
           </div>
-        </div>
+        </section>
+
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 3</p>
+            <h3 className="headline text-xl mt-2">Round table predictions</h3>
+            <div className="space-y-3 mt-4">
+              <div>
+                <label className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">First Out</label>
+                <select
+                  value={predFirstOut}
+                  onChange={(e) => setPredFirstOut(e.target.value)}
+                  className="field-soft p-3 text-base mt-1"
+                >
+                  <option value="">Select...</option>
+                  {activeCastNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm uppercase tracking-[0.14em] text-[color:var(--text-muted)]">Winner</label>
+                <select
+                  value={predWinner}
+                  onChange={(e) => setPredWinner(e.target.value)}
+                  className="field-soft p-3 text-base mt-1"
+                >
+                  <option value="">Select...</option>
+                  {activeCastNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="soft-card rounded-3xl p-5 md:p-6 text-center">
+            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Step 4</p>
+            <h3 className="headline text-xl mt-2">Traitor shortlist</h3>
+            <div className="space-y-3 mt-4">
+              {traitors.map((value, index) => (
+                <select
+                  key={index}
+                  value={value}
+                  onChange={(e) => {
+                    const next = [...traitors];
+                    next[index] = e.target.value;
+                    setTraitors(next);
+                  }}
+                  className="field-soft p-3 text-base"
+                >
+                  <option value="">Traitor guess #{index + 1}</option>
+                  {activeCastNames.map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="soft-card rounded-3xl p-4 md:p-5">
+          {!allPicksSealed && picks.some((pick) => pick.member !== "") && (
+            <p className="mb-3 text-sm uppercase tracking-[0.16em] text-[color:var(--danger)] font-semibold text-center">
+              Seal every slot before final submission
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
+            className={`w-full py-4 md:py-5 rounded-2xl text-sm md:text-base font-extrabold uppercase tracking-[0.16em] transition-all ${
+              DRAFT_CLOSED
+                ? "bg-[color:var(--danger)]/70 text-white cursor-not-allowed"
+                : hasDuplicates || !allPicksSealed || isSubmitting
+                ? "bg-[color:var(--bg-soft)] text-[color:var(--text-muted)] border border-[color:var(--panel-border)] cursor-not-allowed"
+                : "btn-primary"
+            }`}
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
+            {isSubmitting
+              ? "Submitting..."
+              : DRAFT_CLOSED
+              ? "Draft Closed"
+              : hasDuplicates
+              ? "Fix Duplicate Picks"
+              : !allPicksSealed
+              ? "Seal All Picks"
+              : "Submit Draft"}
+          </button>
+        </section>
       </form>
     </div>
   );

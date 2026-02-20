@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
-import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, WeeklyScoreSnapshot } from '../types';
+import React, { useEffect, useMemo, useState } from "react";
+import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, WeeklyScoreSnapshot } from "../types";
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
-import { TIMING, LIMITS } from "../src/utils/scoringConstants";
+import { LIMITS, TIMING } from "../src/utils/scoringConstants";
 
 interface LeaderboardProps {
   gameState: GameState;
@@ -13,16 +12,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // Visual pulse when gameState changes from an external sync
   useEffect(() => {
     setIsSyncing(true);
     const timer = setTimeout(() => setIsSyncing(false), TIMING.SYNC_ANIMATION_MS);
     return () => clearTimeout(timer);
   }, [gameState]);
 
-  const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(
-    gameState.weeklyScoreHistory
-  )
+  const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(gameState.weeklyScoreHistory)
     ? gameState.weeklyScoreHistory
     : [];
 
@@ -47,14 +43,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     .sort((a, b) => {
       const aArchived = latestSnapshotTotals[a.id];
       const bArchived = latestSnapshotTotals[b.id];
-      const aTotal =
-        !hasActiveWeeklyResults && typeof aArchived === "number"
-          ? aArchived
-          : a.scoring.total;
-      const bTotal =
-        !hasActiveWeeklyResults && typeof bArchived === "number"
-          ? bArchived
-          : b.scoring.total;
+      const aTotal = !hasActiveWeeklyResults && typeof aArchived === "number" ? aArchived : a.scoring.total;
+      const bTotal = !hasActiveWeeklyResults && typeof bArchived === "number" ? bArchived : b.scoring.total;
       return bTotal - aTotal;
     });
 
@@ -63,16 +53,17 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     const last = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
     const prev = scoreHistory[scoreHistory.length - 2]?.totals ?? {};
     const delta: Record<string, number> = {};
+
     Object.keys(last).forEach((id) => {
       if (typeof last[id] !== "number" || typeof prev[id] !== "number") return;
       delta[id] = Number(last[id]) - Number(prev[id]);
     });
+
     return delta;
   }, [scoreHistory]);
 
   const getHistoryLabel = (snapshot: WeeklyScoreSnapshot) =>
-    snapshot.label?.trim() ||
-    new Date(snapshot.createdAt).toLocaleDateString();
+    snapshot.label?.trim() || new Date(snapshot.createdAt).toLocaleDateString();
 
   const getPlayerTimeline = (playerId: string) =>
     scoreHistory
@@ -82,10 +73,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       }))
       .filter((entry) => typeof entry.total === "number");
 
-  const toggleExpand = (id: string) => {
-    setExpandedPlayerId(expandedPlayerId === id ? null : id);
-  };
-
   const getPenaltyEntries = (player: PlayerEntry) => {
     const penalties: Array<{
       label: string;
@@ -94,6 +81,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       actual?: string;
       note?: string;
     }> = [];
+
     const weeklyResults = gameState.weeklyResults;
     const weeklyPredictions = player.weeklyPredictions;
     const weeklyMultiplier = weeklyPredictions?.bonusGames?.doubleOrNothing ? 2 : 1;
@@ -138,8 +126,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     if (
       weeklyResults?.bonusGames?.redemptionRoulette &&
       weeklyPredictions?.bonusGames?.redemptionRoulette &&
-      weeklyResults.bonusGames.redemptionRoulette !==
-        weeklyPredictions.bonusGames.redemptionRoulette
+      weeklyResults.bonusGames.redemptionRoulette !== weeklyPredictions.bonusGames.redemptionRoulette
     ) {
       penalties.push({
         label: "Bonus: Redemption Roulette",
@@ -152,212 +139,212 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
     return penalties;
   };
 
+  const topPlayer = scoredPlayers[0];
+  const topScore =
+    topPlayer && !hasActiveWeeklyResults && typeof latestSnapshotTotals[topPlayer.id] === "number"
+      ? latestSnapshotTotals[topPlayer.id]
+      : topPlayer?.scoring.total;
+
   return (
-    <div className="space-y-10">
-      <div className={`glass-panel p-6 md:p-8 rounded-3xl transition-all duration-1000 overflow-hidden ${isSyncing ? 'panel-sync' : ''}`}>
-        <div className="flex justify-between items-center mb-10 relative">
-          <div className="flex-1 text-center">
-            <h3 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)]">🏆 Official Standings</h3>
-            <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-2">Live updates as results land</p>
+    <div className="space-y-6 md:space-y-8">
+      <section className={`soft-card rounded-3xl p-5 md:p-6 ${isSyncing ? "panel-sync" : ""}`}>
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div>
+            <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Standings</p>
+            <h2 className="headline text-3xl md:text-4xl">Council leaderboard</h2>
           </div>
-          {isSyncing && (
-             <div className="absolute right-0 top-0 flex items-center gap-2 px-3 py-1.5 bg-green-900/20 rounded-full border border-green-900/30 animate-in fade-in zoom-in duration-300">
-               <div className="w-2 h-2 rounded-full bg-green-500 animate-ping" />
-               <span className="text-xs font-black text-green-500 uppercase tracking-widest">Live Sync</span>
-             </div>
+          {topPlayer ? (
+            <div className="leader-spotlight rounded-3xl px-5 py-5 md:px-7 md:py-6 w-full max-w-2xl text-center">
+              <p className="panel-title-strong">Current Leader</p>
+              <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">Castle front-runner</p>
+              <p className="leader-name headline text-4xl md:text-5xl mt-2 leading-none">{topPlayer.name}</p>
+              <p className="text-xl md:text-2xl font-black text-[color:var(--accent-strong)] mt-3">{formatScore(topScore)}</p>
+            </div>
+          ) : (
+            <div className="status-pill">No entries yet</div>
           )}
         </div>
+      </section>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-[56px_1fr_110px] md:grid-cols-[72px_1fr_140px] gap-4 px-2 text-xs uppercase tracking-[0.2em] text-zinc-500">
-            <span>Rank</span>
-            <span>Player</span>
-            <span className="text-right">Total</span>
-          </div>
-          <div className="space-y-3">
-            {scoredPlayers.map((p, idx) => {
-              const penalties = getPenaltyEntries(p);
-              const isExpanded = expandedPlayerId === p.id;
-              return (
-                <div
-                  key={p.id}
-                  className={`rounded-2xl border transition-all duration-300 ${
-                    isExpanded
-                      ? "border-[#D4AF37]/40 bg-[#D4AF37]/10"
-                      : "border-white/10 bg-black/30 hover:bg-black/50"
-                  }`}
+      <section className="soft-card rounded-3xl p-4 md:p-5">
+        <div className="grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 px-2 pb-2 text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
+          <span className="text-[color:var(--text)]">Rank</span>
+          <span>Player</span>
+          <span className="text-right">Total</span>
+        </div>
+
+        <div className="space-y-2">
+          {scoredPlayers.map((player, index) => {
+            const penalties = getPenaltyEntries(player);
+            const isExpanded = expandedPlayerId === player.id;
+            const total =
+              !hasActiveWeeklyResults && typeof latestSnapshotTotals[player.id] === "number"
+                ? latestSnapshotTotals[player.id]
+                : player.scoring.total;
+
+            return (
+              <article
+                key={player.id}
+                className={`rounded-2xl border transition-all ${
+                  isExpanded
+                    ? "border-[color:var(--accent)]/50 bg-[color:var(--accent-subtle)]"
+                    : "border-[color:var(--panel-border)] bg-black/20"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
+                  className="w-full bg-transparent border-0 appearance-none grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
+                  aria-expanded={isExpanded}
                 >
-                  <button
-                    type="button"
-                    onClick={() => toggleExpand(p.id)}
-                    className="w-full grid grid-cols-[56px_1fr_110px] md:grid-cols-[72px_1fr_140px] items-center gap-4 px-4 py-4 text-left"
-                    aria-expanded={isExpanded}
-                  >
-                    <div className="text-sm font-semibold text-zinc-200">
-                      {idx === 0 ? "👑" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full border border-[#D4AF37]/30 overflow-hidden bg-black flex-shrink-0">
-                        {p.portraitUrl ? (
-                          <img src={p.portraitUrl} alt={`${p.name}'s profile`} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-sm text-zinc-600 font-bold uppercase" aria-hidden="true">
-                            {p.name.charAt(0)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="font-bold text-gray-100 text-base md:text-lg">{p.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-zinc-500 uppercase tracking-tighter">Tap for breakdown</span>
-                          {p.league === "jr" && (
-                            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] bg-purple-500/20 text-purple-200 border border-purple-500/30">
-                              {COUNCIL_LABELS.jr}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl md:text-3xl font-black text-[#D4AF37]">
-                        {formatScore(!hasActiveWeeklyResults && typeof latestSnapshotTotals[p.id] === "number" ? latestSnapshotTotals[p.id] : p.scoring.total)}
-                      </div>
-                      {weeklyDeltaById[p.id] !== undefined && (
-                        <div
-                          className={`text-xs font-bold uppercase tracking-[0.2em] ${
-                            weeklyDeltaById[p.id] >= 0
-                              ? "text-emerald-400"
-                              : "text-red-400"
-                          }`}
-                        >
-                          {weeklyDeltaById[p.id] >= 0 ? "+" : ""}
-                          {formatScore(weeklyDeltaById[p.id])} wk
+                  <div className="rank-pill inline-flex min-w-[2.15rem] h-9 items-center justify-center rounded-xl px-2 text-base font-black">
+                    {index === 0 ? "#1" : index === 1 ? "#2" : index === 2 ? "#3" : `#${index + 1}`}
+                  </div>
+
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
+                      {player.portraitUrl ? (
+                        <img src={player.portraitUrl} alt={player.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-sm font-bold text-[color:var(--text-muted)]">
+                          {player.name.charAt(0)}
                         </div>
                       )}
                     </div>
-                  </button>
-
-                  {isExpanded && (
-                    <div className="px-4 pb-6 animate-in slide-in-from-top-2 duration-300">
-                      <div className="rounded-3xl soft-card soft-card-subtle border-[color:var(--accent)]/35 bg-black/65 shadow-[0_24px_60px_rgba(0,0,0,0.55)] p-6 md:p-8 space-y-8 relative overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 w-1 bg-[color:var(--accent)]/60" />
-                        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,_rgba(214,179,106,0.2),_transparent_70%)] blur-2xl" />
-                        <div className="grid gap-8 lg:grid-cols-2">
-                          <div>
-                            <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
-                              The Hall of Victory
-                            </h4>
-                            {p.scoring.achievements.length > 0 ? (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-                                {p.scoring.achievements.map((ach, i) => {
-                                  const castPortrait = getCastPortraitSrc(
-                                    ach.member,
-                                    gameState.castStatus[ach.member]?.portraitUrl
-                                  );
-                                  return (
-                                    <div key={i} className="bg-zinc-900 border border-[#D4AF37]/30 p-3 rounded-2xl relative group hover:border-[#D4AF37] transition-all">
-                                      <div className="w-10 h-10 rounded-full overflow-hidden bg-black mb-3">
-                                        {castPortrait ? (
-                                          <img src={castPortrait} alt={ach.member} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                        ) : (
-                                          <div className="w-full h-full flex items-center justify-center text-zinc-700 font-bold text-xs">{ach.member.charAt(0)}</div>
-                                        )}
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-xs font-bold text-white truncate">{ach.member}</p>
-                                        <p className={`text-xs uppercase font-black tracking-tight ${ach.type.includes('Traitor') ? 'text-red-500' : 'text-green-500'}`}>
-                                          {ach.icon} {ach.type}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <p className="text-zinc-600 italic text-sm">No triumphs yet revealed.</p>
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-bold text-red-300 uppercase tracking-[0.2em] mb-5 border-b border-red-500/20 pb-3">Costly Misses</h4>
-                            {penalties.length > 0 ? (
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {penalties.map((penalty, i) => (
-                                  <div
-                                    key={`${p.id}-penalty-${i}`}
-                                    className="bg-red-950/40 border border-red-500/30 rounded-2xl p-4"
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-200">{penalty.label}</p>
-                                      <span className="text-sm font-black text-red-300">{formatScore(penalty.points)}</span>
-                                    </div>
-                                    <div className="mt-3 space-y-1">
-                                      {penalty.pick && (
-                                        <p className="text-sm text-zinc-200">
-                                          Your pick: <span className="font-semibold text-white">{penalty.pick}</span>
-                                        </p>
-                                      )}
-                                      {penalty.actual && (
-                                        <p className="text-xs text-zinc-400">
-                                          Result: <span className="text-zinc-200">{penalty.actual}</span>
-                                        </p>
-                                      )}
-                                      {penalty.note && (
-                                        <p className="text-xs text-zinc-400">{penalty.note}</p>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="text-zinc-600 italic text-sm">No penalties yet. Clean sheet.</p>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-[#D4AF37] uppercase tracking-[0.2em] mb-5 border-b border-[#D4AF37]/20 pb-3">
-                            Weekly Progress
-                          </h4>
-                          {scoreHistory.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                              {getPlayerTimeline(p.id).slice(-LIMITS.PLAYER_TIMELINE_DISPLAY).map((entry, i) => (
-                                <div
-                                  key={`${p.id}-history-${i}`}
-                                  className="soft-card soft-card-subtle border-zinc-700/60 rounded-2xl p-3"
-                                >
-                                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500 mb-1">
-                                    {entry.label}
-                                  </p>
-                                  <p className="text-lg font-black text-zinc-100">
-                                    {formatScore(entry.total as number)}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-zinc-600 italic text-sm">
-                              Weekly totals will appear once the Admin archives each week.
-                            </p>
-                          )}
-                        </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-base md:text-lg truncate text-[color:var(--text)]">{player.name}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-sm text-[color:var(--text-muted)] uppercase tracking-[0.1em]">Tap for detail</p>
+                        {player.league === "jr" && <span className="status-pill">{COUNCIL_LABELS.jr}</span>}
                       </div>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+                  </div>
 
-      <div className="glass-panel p-6 md:p-8 rounded-3xl">
-        <div className="text-center mb-8">
-          <h3 className="text-3xl md:text-4xl gothic-font text-[color:var(--accent)]">Cast Status</h3>
-          <p className="text-xs text-zinc-500 uppercase tracking-[0.2em] mt-2">Live status of every player</p>
+                  <div className="text-right">
+                    <p className="text-xl md:text-2xl font-black text-[color:var(--accent)]">{formatScore(total)}</p>
+                    {weeklyDeltaById[player.id] !== undefined && (
+                      <p
+                        className={`text-sm uppercase tracking-[0.12em] font-semibold ${
+                          weeklyDeltaById[player.id] >= 0 ? "text-[color:var(--success)]" : "text-[color:var(--danger)]"
+                        }`}
+                      >
+                        {weeklyDeltaById[player.id] >= 0 ? "+" : ""}
+                        {formatScore(weeklyDeltaById[player.id])}
+                      </p>
+                    )}
+                  </div>
+                </button>
+
+                {isExpanded && (
+                  <div className="px-3 pb-4 md:px-4 md:pb-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div className="soft-card soft-card-subtle rounded-2xl p-4">
+                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Achievements</p>
+                        {player.scoring.achievements.length > 0 ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {player.scoring.achievements.map((achievement, idx) => {
+                              const castPortrait = getCastPortraitSrc(
+                                achievement.member,
+                                gameState.castStatus[achievement.member]?.portraitUrl
+                              );
+                              return (
+                                <div
+                                  key={`${player.id}-ach-${idx}`}
+                                  className="soft-card soft-card-subtle rounded-xl p-2.5 flex items-center gap-2"
+                                >
+                                  <div className="h-8 w-8 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30">
+                                    {castPortrait ? (
+                                      <img src={castPortrait} alt={achievement.member} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <div className="h-full w-full flex items-center justify-center text-sm text-[color:var(--text-muted)]">
+                                        {achievement.member.charAt(0)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-[color:var(--text)] truncate">{achievement.member}</p>
+                                    <p className="text-sm uppercase tracking-[0.1em] text-[color:var(--text-muted)] truncate">
+                                      {achievement.icon} {achievement.type}
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-[color:var(--text-muted)]">No achievements recorded yet.</p>
+                        )}
+                      </div>
+
+                      <div className="soft-card soft-card-subtle rounded-2xl p-4">
+                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Penalties</p>
+                        {penalties.length > 0 ? (
+                          <div className="space-y-2">
+                            {penalties.map((penalty, idx) => (
+                              <div key={`${player.id}-penalty-${idx}`} className="rounded-xl border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/10 p-3">
+                                <div className="flex items-center justify-between gap-3">
+                                  <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[color:var(--text)]">{penalty.label}</p>
+                                  <p className="text-sm font-black text-[color:var(--danger)]">{formatScore(penalty.points)}</p>
+                                </div>
+                                {penalty.pick && (
+                                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
+                                    Pick: <span className="text-[color:var(--text)]">{penalty.pick}</span>
+                                  </p>
+                                )}
+                                {penalty.actual && (
+                                  <p className="text-sm text-[color:var(--text-muted)]">
+                                    Result: <span className="text-[color:var(--text)]">{penalty.actual}</span>
+                                  </p>
+                                )}
+                                {penalty.note && <p className="text-sm text-[color:var(--text-muted)]">{penalty.note}</p>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-[color:var(--text-muted)]">No penalties recorded.</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="soft-card soft-card-subtle rounded-2xl p-4 mt-3">
+                      <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Weekly timeline</p>
+                      {scoreHistory.length > 0 ? (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                          {getPlayerTimeline(player.id)
+                            .slice(-LIMITS.PLAYER_TIMELINE_DISPLAY)
+                            .map((entry, idx) => (
+                              <div key={`${player.id}-timeline-${idx}`} className="soft-card soft-card-subtle rounded-xl p-2.5">
+                                <p className="text-sm uppercase tracking-[0.12em] text-[color:var(--text-muted)]">{entry.label}</p>
+                                <p className="text-base font-bold text-[color:var(--text)] mt-1">{formatScore(entry.total as number)}</p>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-[color:var(--text-muted)]">Timeline appears after first weekly archive.</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </article>
+            );
+          })}
         </div>
-        <div className="grid grid-cols-2 gap-4">
+      </section>
+
+      <section className="soft-card rounded-3xl p-4 md:p-5">
+        <div className="flex flex-col items-center gap-2 mb-4 text-center">
+          <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Cast Status</p>
+          <h3 className="headline text-2xl">Castle status board</h3>
+          <p className="text-base text-[color:var(--text-muted)]">
+            Live reveal board for Traitor, Eliminated, First Out, and Winner statuses.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-3.5">
           {CAST_NAMES.map((name) => {
             const status = gameState.castStatus[name];
             const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
+
             const tag = status?.isWinner
               ? "Winner"
               : status?.isFirstOut
@@ -367,62 +354,49 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
               : status?.isTraitor
               ? "Traitor"
               : "Still In";
+
             const tagClass = status?.isWinner
-              ? "bg-emerald-500/25 text-emerald-200 border-emerald-400/60"
+              ? "text-[color:var(--success)] border-[color:var(--success)]/55 bg-[color:var(--success)]/16"
               : status?.isFirstOut
-              ? "bg-amber-400/25 text-amber-200 border-amber-400/60"
+              ? "text-[color:var(--warning)] border-[color:var(--warning)]/55 bg-[color:var(--warning)]/16"
               : status?.isEliminated
-              ? "bg-red-500/30 text-red-100 border-red-400/70"
+              ? "text-[color:var(--danger)] border-[color:var(--danger)]/55 bg-[color:var(--danger)]/16"
               : status?.isTraitor
-              ? "bg-fuchsia-400/25 text-fuchsia-200 border-fuchsia-400/60"
-              : "bg-zinc-800/70 text-zinc-200 border-zinc-600";
+              ? "text-[color:var(--traitor-crimson-strong)] border-[color:var(--traitor-crimson)]/55 bg-[color:var(--traitor-crimson)]/16"
+              : "text-[color:var(--text)] border-[color:var(--panel-border-strong)] bg-black/20";
+
             const cardClass = status?.isWinner
-              ? "border-emerald-400/70 bg-emerald-500/10"
+              ? "border-[color:var(--success)]/48 bg-[color:var(--success)]/8"
               : status?.isFirstOut
-              ? "border-amber-400/70 bg-amber-500/10"
+              ? "border-[color:var(--warning)]/48 bg-[color:var(--warning)]/8"
               : status?.isEliminated
-              ? "border-red-500/80 bg-red-950/40"
+              ? "border-[color:var(--danger)]/48 bg-[color:var(--danger)]/10"
               : status?.isTraitor
-              ? "border-fuchsia-400/70 bg-fuchsia-500/10"
-              : "border-zinc-700 bg-black/40";
+              ? "border-[color:var(--traitor-crimson)]/58 bg-[color:var(--traitor-crimson)]/11"
+              : "border-[color:var(--panel-border)]";
+
             return (
-              <div
-                key={name}
-                className={`aspect-square grid grid-rows-[auto_1fr_auto] items-center justify-items-center gap-3 rounded-2xl border p-4 text-center relative overflow-hidden ${cardClass}`}
-              >
-                {status?.isEliminated && (
-                  <div className="absolute inset-0 pointer-events-none z-0">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle,_rgba(127,29,29,0.45),_transparent_70%)]" />
-                    <div className="absolute left-1/2 top-1/2 h-[140%] w-1.5 bg-red-600/85 rotate-45 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_18px_rgba(239,68,68,0.7)]" />
-                    <div className="absolute left-1/2 top-1/2 h-[140%] w-1.5 bg-red-600/85 -rotate-45 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-[0_0_18px_rgba(239,68,68,0.7)]" />
-                  </div>
-                )}
-                <div className="w-full px-3 z-10">
-                  <span className={`flex items-center justify-center px-3 py-2 rounded-full text-sm md:text-base uppercase tracking-[0.26em] font-semibold border ${tagClass}`}>
-                    {tag}
-                  </span>
-                </div>
-                <div className="flex items-center justify-center z-10 w-full px-4">
-                  <p className="text-sm md:text-base font-semibold text-zinc-100 leading-snug">
-                    {name}
-                  </p>
-                </div>
-                <div className="z-10">
-                  <div className="w-4 h-4 rounded-full overflow-hidden border border-[color:var(--accent)]/15 bg-black opacity-50">
+              <article key={name} className={`soft-card soft-card-subtle rounded-2xl p-4 flex flex-col justify-between gap-4 min-h-[168px] ${cardClass}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm md:text-base leading-snug font-semibold text-[color:var(--text)]">{name}</p>
+                  <div className="h-10 w-10 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
                     {portraitSrc ? (
-                      <img src={portraitSrc} alt={name} className="w-full h-full object-cover" />
+                      <img src={portraitSrc} alt={name} className="h-full w-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-500">
+                      <div className="h-full w-full flex items-center justify-center text-sm font-bold text-[color:var(--text-muted)]">
                         {name.charAt(0)}
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
+                <span className={`inline-flex w-fit rounded-full border px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.1em] font-semibold ${tagClass}`}>
+                  {tag}
+                </span>
+              </article>
             );
           })}
         </div>
-      </div>
+      </section>
     </div>
   );
 };
