@@ -133,6 +133,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       traitorTrio: [],
     },
   });
+  const hasWeeklyPredictionContent = (
+    weeklyPredictions?: PlayerEntry["weeklyPredictions"] | null
+  ) => {
+    if (!weeklyPredictions) return false;
+    if (
+      typeof weeklyPredictions.nextBanished === "string" &&
+      weeklyPredictions.nextBanished.trim()
+    ) {
+      return true;
+    }
+    if (
+      typeof weeklyPredictions.nextMurdered === "string" &&
+      weeklyPredictions.nextMurdered.trim()
+    ) {
+      return true;
+    }
+    const bonus = weeklyPredictions.bonusGames;
+    if (!bonus) return false;
+    if (typeof bonus.redemptionRoulette === "string" && bonus.redemptionRoulette.trim()) {
+      return true;
+    }
+    if (typeof bonus.shieldGambit === "string" && bonus.shieldGambit.trim()) {
+      return true;
+    }
+    if (
+      Array.isArray(bonus.traitorTrio) &&
+      bonus.traitorTrio.some((pick) => typeof pick === "string" && pick.trim())
+    ) {
+      return true;
+    }
+    return Boolean(bonus.doubleOrNothing);
+  };
   const getSubmissionWeekId = (submission: SubmissionRecord) => {
     const payload = submission.payload as
       | {
@@ -985,12 +1017,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const labelInput = await requestPrompt("Label this week:", defaultLabel);
     if (labelInput === null) return;
     const label = labelInput.trim() || defaultLabel;
-    const totals: Record<string, number> = {};
-    currentState.players.forEach((player) => {
-      totals[player.id] = calculatePlayerScore(currentState, player).total;
-    });
     const snapshotWeekId =
       normalizeWeekId(currentState.weeklyResults?.weekId) ?? getActiveWeekId();
+    const archivedPlayers = currentState.players.map((player) => {
+      const weeklyPredictions = player.weeklyPredictions;
+      if (!hasWeeklyPredictionContent(weeklyPredictions)) return player;
+      if (normalizeWeekId(weeklyPredictions?.weekId)) return player;
+      return {
+        ...player,
+        weeklyPredictions: {
+          ...weeklyPredictions,
+          weekId: snapshotWeekId,
+        },
+      };
+    });
+    const archivedState = {
+      ...currentState,
+      players: archivedPlayers,
+    };
+    const totals: Record<string, number> = {};
+    archivedPlayers.forEach((player) => {
+      totals[player.id] = calculatePlayerScore(archivedState, player).total;
+    });
     const snapshotResults = currentState.weeklyResults
       ? JSON.parse(JSON.stringify(currentState.weeklyResults))
       : createEmptyWeeklyResults(snapshotWeekId);
@@ -1005,7 +1053,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
     const nextActiveWeekId = `week-${nextHistory.length + 1}`;
     const nextState = {
-      ...currentState,
+      ...archivedState,
       activeWeekId: nextActiveWeekId,
       weeklyResults: createEmptyWeeklyResults(nextActiveWeekId),
       weeklyScoreHistory: nextHistory,

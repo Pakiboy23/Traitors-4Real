@@ -10,7 +10,11 @@ import {
   WeeklyScoreSnapshot,
 } from "../types";
 import { getCastPortraitSrc } from "../src/castPortraits";
-import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
+import {
+  calculatePlayerScore,
+  formatScore,
+  resolveEffectiveWeeklyPredictionWeekId,
+} from "../src/utils/scoring";
 import { LIMITS, TIMING } from "../src/utils/scoringConstants";
 import {
   pageRevealVariants,
@@ -114,7 +118,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
       normalizeWeekId(weeklyResults?.weekId);
     const weeklyResultWeekId =
       normalizeWeekId(weeklyResults?.weekId) ?? currentWeekId;
-    const weeklyPredictionWeekId = normalizeWeekId(weeklyPredictions?.weekId);
+    const weeklyPredictionWeekId = resolveEffectiveWeeklyPredictionWeekId(
+      gameState,
+      player,
+      weeklyResultWeekId
+    );
     const hasMatchingWeeklyWeek = Boolean(
       weeklyPredictionWeekId &&
         weeklyResultWeekId &&

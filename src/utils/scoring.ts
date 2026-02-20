@@ -28,6 +28,64 @@ export interface PlayerScore {
 export const formatScore = (value: number) =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
 
+const hasWeeklyPredictionContent = (
+  weeklyPredictions?: PlayerEntry["weeklyPredictions"] | null
+) => {
+  if (!weeklyPredictions) return false;
+  if (
+    typeof weeklyPredictions.nextBanished === "string" &&
+    weeklyPredictions.nextBanished.trim()
+  ) {
+    return true;
+  }
+  if (
+    typeof weeklyPredictions.nextMurdered === "string" &&
+    weeklyPredictions.nextMurdered.trim()
+  ) {
+    return true;
+  }
+  const bonus = weeklyPredictions.bonusGames;
+  if (!bonus) return false;
+  if (typeof bonus.redemptionRoulette === "string" && bonus.redemptionRoulette.trim()) {
+    return true;
+  }
+  if (typeof bonus.shieldGambit === "string" && bonus.shieldGambit.trim()) {
+    return true;
+  }
+  if (
+    Array.isArray(bonus.traitorTrio) &&
+    bonus.traitorTrio.some((pick) => typeof pick === "string" && pick.trim())
+  ) {
+    return true;
+  }
+  return Boolean(bonus.doubleOrNothing);
+};
+
+const hasAnyScopedWeeklyPredictions = (gameState: GameState) =>
+  gameState.players.some((entry) =>
+    Boolean(normalizeWeekId(entry.weeklyPredictions?.weekId))
+  );
+
+export const resolveEffectiveWeeklyPredictionWeekId = (
+  gameState: GameState,
+  player: PlayerEntry,
+  weeklyResultWeekId?: string | null
+) => {
+  const explicitWeekId = normalizeWeekId(player.weeklyPredictions?.weekId);
+  if (explicitWeekId) return explicitWeekId;
+  if (!hasWeeklyPredictionContent(player.weeklyPredictions)) return null;
+
+  // Backward-compatibility: if no player has scoped week IDs yet,
+  // treat populated legacy predictions as current-week picks.
+  if (!hasAnyScopedWeeklyPredictions(gameState)) {
+    return (
+      normalizeWeekId(weeklyResultWeekId) ??
+      normalizeWeekId(gameState.activeWeekId)
+    );
+  }
+  return null;
+};
+
 export const calculatePlayerScore = (
   gameState: GameState,
   player: PlayerEntry
@@ -110,7 +168,11 @@ export const calculatePlayerScore = (
     normalizeWeekId(weeklyResults?.weekId);
   const weeklyResultWeekId =
     normalizeWeekId(weeklyResults?.weekId) ?? currentWeekId;
-  const weeklyPredictionWeekId = normalizeWeekId(weeklyPredictions?.weekId);
+  const weeklyPredictionWeekId = resolveEffectiveWeeklyPredictionWeekId(
+    gameState,
+    player,
+    weeklyResultWeekId
+  );
   const hasMatchingWeeklyWeek = Boolean(
     weeklyPredictionWeekId &&
       weeklyResultWeekId &&
