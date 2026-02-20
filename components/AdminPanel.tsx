@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   GameState,
   CAST_NAMES,
@@ -203,7 +203,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         try {
           const response = await fetch(
             `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created&filter=${encodeURIComponent(
-              '(kind="weekly")'
+  const refreshSubmissions = useCallback(async () => {
             )}`
           );
           if (response.ok) {
@@ -221,8 +221,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }
       }
       setSubmissions(records);
-      if (records.length > 0) {
-        await mergeSubmissionList(records, { announce: false });
+  }, []);
+    const pollInterval = window.setInterval(() => {
+      refreshSubmissions();
+    }, 30000);
+      // Re-fetch to avoid missing records when real-time delivery is delayed/dropped.
+      refreshSubmissions();
+      window.clearInterval(pollInterval);
+  }, [refreshSubmissions]);
       }
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
