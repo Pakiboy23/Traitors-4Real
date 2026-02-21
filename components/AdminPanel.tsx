@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BonusGamePredictions,
   BonusPointBreakdownEntry,
@@ -168,6 +168,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return payload?.playerId ?? null;
   };
 
+  const isWeeklySubmissionRecord = (submission: SubmissionRecord) => {
+    const kind = String(submission.kind ?? "").trim().toLowerCase();
+    if (kind === "weekly") return true;
+    if (submission.weeklyBanished?.trim()) return true;
+    if (submission.weeklyMurdered?.trim()) return true;
+    return Boolean(getSubmissionBonusGames(submission));
+  };
   const mergeHistoryEntries = (
     existing: WeeklySubmissionHistoryEntry[],
     additions: WeeklySubmissionHistoryEntry[]
@@ -301,18 +308,33 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     };
   };
 
-  const refreshSubmissions = async () => {
+  const refreshSubmissions = useCallback(async () => {
     setIsLoadingSubmissions(true);
     setSubmissionsError(null);
     try {
-      const records = await fetchWeeklySubmissions();
+      let records = await fetchWeeklySubmissions();
+      if (records.length === 0) {
+        try {
+          const response = await fetch(
+            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created`
+          );
+          if (response.ok) {
+            const data = (await response.json()) as { items?: SubmissionRecord[] };
+            if (Array.isArray(data.items)) {
+              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
+            }
+          }
+        } catch (fallbackError) {
+          console.warn("Fallback submissions fetch failed:", fallbackError);
+        }
+      }
       setSubmissions(records);
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
       setIsLoadingSubmissions(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refreshSubmissions();
@@ -326,7 +348,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return () => {
       unsubscribe?.();
     };
-  }, []);
+  }, [refreshSubmissions]);
+
+  useEffect(() => {
+    const pollInterval = window.setInterval(() => {
+      refreshSubmissions();
+    }, 30000);
+    return () => {
+      window.clearInterval(pollInterval);
+    };
+  }, [refreshSubmissions]);
 
   useEffect(() => {
     if (!selectedPlayer) {
