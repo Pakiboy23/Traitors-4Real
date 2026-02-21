@@ -1,0 +1,32 @@
+{
+  "create": {
+    "completed_at": null,
+    "created_at": 1771703433,
+    "error": null,
+    "expires_at": null,
+    "id": "video_699a0c8938608190b13eb96e19f16b4a09c10ccaf8ce6d4f",
+    "model": "sora-2",
+    "object": "video",
+    "progress": 0,
+    "prompt": "Use case: investor/influencer promo clip for Traitors Fantasy Draft\nPrimary request: Create a 12-second high-energy trailer with seven fast beats: problem hook with messy chats and spreadsheets, product hero reveal, draft flow interactions, weekly prediction flow, transparent leaderboard trust moment, admin merge operations, and a CTA end card\nScene/background: premium UI montage, dynamic overlays, social-first framing\nSubject: app interface panels and abstract UI elements only, no real people\nAction: fast progression from problem to product to proof to CTA\nCamera: alternating push-ins, smooth pans, quick cuts on beat\nLighting/mood: confident, polished, energetic\nColor palette: charcoal, steel blue, electric cyan, white, signal red accents\nStyle/format: modern SaaS promo, crisp typography overlays, 16:9\nTiming/beats: seven beats across 12 seconds, final 1.5 seconds hold on CTA\nAudio: driving cinematic electronic pulse, no lyrics\nText (verbatim): \"Partner with Traitors Fantasy Draft\"\nConstraints: no real people, no copyrighted characters, no external logos\nAvoid: face generation, celebrity likenesses, jitter, flicker, illegible text",
+    "remixed_from_video_id": null,
+    "seconds": "12",
+    "size": "1280x720",
+    "status": "queued"
+  },
+  "final": {
+    "completed_at": 1771703604,
+    "created_at": 1771703433,
+    "error": null,
+    "expires_at": 1771707204,
+    "id": "video_699a0c8938608190b13eb96e19f16b4a09c10ccaf8ce6d4f",
+    "model": "sora-2",
+    "object": "video",
+    "progress": 100,
+    "prompt": "Use case: investor/influencer promo clip for Traitors Fantasy Draft\nPrimary request: Create a 12-second high-energy trailer with seven fast beats: problem hook with messy chats and spreadsheets, product hero reveal, draft flow interactions, weekly prediction flow, transparent leaderboard trust moment, admin merge operations, and a CTA end card\nScene/background: premium UI montage, dynamic overlays, social-first framing\nSubject: app interface panels and abstract UI elements only, no real people\nAction: fast progression from problem to product to proof to CTA\nCamera: alternating push-ins, smooth pans, quick cuts on beat\nLighting/mood: confident, polished, energetic\nColor palette: charcoal, steel blue, electric cyan, white, signal red accents\nStyle/format: modern SaaS promo, crisp typography overlays, 16:9\nTiming/beats: seven beats across 12 seconds, final 1.5 seconds hold on CTA\nAudio: driving cinematic electronic pulse, no lyrics\nText (verbatim): \"Partner with Traitors Fantasy Draft\"\nConstraints: no real people, no copyrighted characters, no external logos\nAvoid: face generation, celebrity likenesses, jitter, flicker, illegible text",
+    "remixed_from_video_id": null,
+    "seconds": "12",
+    "size": "1280x720",
+    "status": "completed"
+  }
+}
