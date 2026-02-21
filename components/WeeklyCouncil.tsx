@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry } from "../types";
-import { submitWeeklyCouncilVote } from "../services/pocketbase";
+import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/pocketbase";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
 
@@ -249,6 +249,42 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     }
   };
 
+
+  const handleShareInvite = async (league: "main" | "jr", name: string, email: string) => {
+    const params = new URLSearchParams({
+      tab: "weekly",
+      league,
+      ref: name || "league-member",
+    });
+    const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+    const shareText = `${name || "A league member"} just submitted picks in Traitors Fantasy. Lock yours in now.`;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Traitors Fantasy: Weekly Picks",
+          text: shareText,
+          url: shareUrl,
+        });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
+      } else {
+        throw new Error("Clipboard unavailable");
+      }
+
+      showToast("Invite link ready to share.", "success");
+      await submitGrowthEvent({
+        event: "invite_share_clicked",
+        name,
+        email,
+        payload: { league, ref: name || "league-member" },
+      });
+    } catch (error) {
+      console.warn("Invite share failed:", error);
+      showToast("Unable to share link on this device.", "warning");
+    }
+  };
+
   const mainPlayerMatch = findExistingPlayer("main");
   const mainScoreTotal = mainPlayerMatch ? calculatePlayerScore(gameState, mainPlayerMatch).total : null;
   const hasMainDouble = mainScoreTotal !== null && mainScoreTotal < 0;
@@ -420,6 +456,16 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               {isMainSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
               {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
             </button>
+
+            {mainSubmitted && (
+              <button
+                type="button"
+                onClick={() => handleShareInvite("main", playerName, playerEmail)}
+                className="w-full btn-secondary py-3.5 text-sm md:text-base"
+              >
+                Invite a rival to play
+              </button>
+            )}
           </article>
 
           <article className="soft-card league-panel-jr rounded-3xl p-5 md:p-6 space-y-4">
@@ -552,6 +598,16 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
               {isJrSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
               {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
             </button>
+
+            {jrSubmitted && (
+              <button
+                type="button"
+                onClick={() => handleShareInvite("jr", jrName, jrEmail)}
+                className="w-full btn-secondary py-3.5 text-sm md:text-base"
+              >
+                Invite a rival to play
+              </button>
+            )}
           </article>
         </div>
       </section>

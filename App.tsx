@@ -25,6 +25,7 @@ import {
   saveGameState,
   signInAdmin,
   signOutAdmin,
+  submitGrowthEvent,
   subscribeToGameState,
 } from "./services/pocketbase";
 
@@ -155,6 +156,34 @@ const App: React.FC = () => {
 
     return normalizeGameState({ players: [] });
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    const ref = params.get("ref");
+    const league = params.get("league");
+
+    if (tab && ["home", "weekly", "leaderboard", "draft", "admin"].includes(tab)) {
+      setActiveTab(tab);
+    }
+
+    if (!ref) return;
+
+    const visitKey = `invite-opened:${ref}:${league || "unknown"}`;
+    if (sessionStorage.getItem(visitKey)) return;
+    sessionStorage.setItem(visitKey, "1");
+
+    submitGrowthEvent({
+      event: "invite_link_opened",
+      payload: {
+        ref,
+        league: league || "unknown",
+        tab: tab || "home",
+      },
+    }).catch((error) => {
+      console.warn("Failed to log invite open event:", error);
+    });
+  }, []);
 
   const updateGameState = useCallback((
     nextState: GameState | ((prevState: GameState) => GameState)
