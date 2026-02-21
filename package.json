@@ -14,7 +14,7 @@
   "dependencies": {
     "pocketbase": "^0.25.2",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "react-dom": "^19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
