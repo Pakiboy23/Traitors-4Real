@@ -340,3 +340,21 @@ export const submitDraftEntry = async (entry: {
     payload: entry,
   });
 };
+
+export const submitGrowthEvent = async (input: {
+  event: "invite_share_clicked" | "invite_link_opened";
+  name?: string;
+  email?: string;
+  payload?: Record<string, unknown>;
+}) => {
+  const normalizedEmail = normalizeEmail(input.email || "");
+  return pb.collection(SUBMISSIONS_COLLECTION).create({
+    name: input.name?.trim() || "growth",
+    email: normalizedEmail || "growth@local",
+    kind: "growth",
+    payload: {
+      event: input.event,
+      ...input.payload,
+    },
+  });
+};
