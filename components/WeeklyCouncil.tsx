@@ -216,6 +216,41 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       return;
     }
 
+    const jrWeeklyPrediction = {
+      nextBanished: jrWeeklyBanished,
+      nextMurdered: jrWeeklyMurdered,
+    };
+    const jrBonusPrediction = {
+      redemptionRoulette: jrBonusRedemption,
+      doubleOrNothing: jrBonusDoubleOrNothing,
+      shieldGambit: jrBonusShield,
+      traitorTrio: jrBonusTrio.filter(Boolean),
+    };
+
+    const existingJrPlayer = findExistingJrPlayer();
+    const fallbackId =
+      normalize(jrEmail) ||
+      normalize(jrName).replace(/\s+/g, "-") ||
+      `jr-player-${Date.now()}`;
+    const updatedJrEntry: PlayerEntry = {
+      ...(existingJrPlayer ?? {
+        id: fallbackId,
+        picks: [],
+        predFirstOut: "",
+        predWinner: "",
+        predTraitors: [],
+      }),
+      name: jrName,
+      email: jrEmail,
+      league: "jr",
+      weeklyPredictions: {
+        ...jrWeeklyPrediction,
+        bonusGames: jrBonusPrediction,
+      },
+    };
+
+    onAddEntry(updatedJrEntry);
+
     setJrSubmitted(false);
     setIsJrSubmitting(true);
 
@@ -223,16 +258,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
       await submitWeeklyCouncilVote({
         name: jrName,
         email: jrEmail,
-        weeklyPredictions: {
-          nextBanished: jrWeeklyBanished,
-          nextMurdered: jrWeeklyMurdered,
-        },
-        bonusGames: {
-          redemptionRoulette: jrBonusRedemption,
-          doubleOrNothing: jrBonusDoubleOrNothing,
-          shieldGambit: jrBonusShield,
-          traitorTrio: jrBonusTrio.filter(Boolean),
-        },
+        weeklyPredictions: jrWeeklyPrediction,
+        bonusGames: jrBonusPrediction,
         league: "jr",
       });
       showToast(`${JR_LABEL} vote submitted.`, "success");
