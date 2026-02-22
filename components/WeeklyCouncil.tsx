@@ -1,12 +1,27 @@
-import React, { useState } from "react";
-import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry } from "../types";
-import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/pocketbase";
+import React, { useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, UiVariant } from "../types";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
+import {
+  pageRevealVariants,
+  sectionStaggerVariants,
+} from "../src/ui/motion";
+import {
+  PremiumButton,
+  PremiumCard,
+  PremiumField,
+  PremiumPanelHeader,
+  PremiumSelect,
+  PremiumStatusBadge,
+  PremiumToggle,
+} from "../src/ui/premium";
+import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/pocketbase";
 
 interface WeeklyCouncilProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
+  uiVariant: UiVariant;
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
@@ -14,9 +29,14 @@ const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
 const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
 const JR_LABEL = COUNCIL_LABELS.jr;
 
-const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) => {
+const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, uiVariant }) => {
   const { showToast } = useToast();
-  const activeCastNames = CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated);
+  const reduceMotion = useReducedMotion();
+  const isPremiumUi = uiVariant === "premium";
+  const activeCastNames = useMemo(
+    () => CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated),
+    [gameState.castStatus]
+  );
   const banishedOptions = activeCastNames;
   const murderOptions = ["No Murder", ...activeCastNames];
 
@@ -49,7 +69,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     traitorTrio?: string[];
   }) =>
     Boolean(
-      bonus.redemptionRoulette || bonus.doubleOrNothing || bonus.shieldGambit || bonus.traitorTrio?.some(Boolean)
+      bonus.redemptionRoulette ||
+        bonus.doubleOrNothing ||
+        bonus.shieldGambit ||
+        bonus.traitorTrio?.some(Boolean)
     );
 
   const updateTrioPick = (
@@ -109,7 +132,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     }
 
     if (normalizedName) {
-      return gameState.players.find((player) => player.league === "jr" && normalize(player.name) === normalizedName);
+      return gameState.players.find(
+        (player) => player.league === "jr" && normalize(player.name) === normalizedName
+      );
     }
 
     return undefined;
@@ -276,15 +301,19 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
     }
   };
 
-
   const handleShareInvite = async (league: "main" | "jr", name: string, email: string) => {
     const params = new URLSearchParams({
       tab: "weekly",
       league,
       ref: name || "league-member",
     });
+
+    if (isPremiumUi) {
+      params.set("ui", "premium");
+    }
+
     const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-    const shareText = `${name || "A league member"} just submitted picks in Traitors Fantasy. Lock yours in now.`;
+    const shareText = `${name || "A league member"} submitted picks in Traitors Fantasy. Lock yours in now.`;
 
     try {
       if (navigator.share) {
@@ -321,74 +350,50 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
   const hasJrDouble = jrScoreTotal !== null && jrScoreTotal < 0;
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      <header className="flex flex-col items-center gap-3 text-center">
-        <div>
-          <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Round Table Operations</p>
-          <h2 className="headline text-3xl md:text-4xl">Submit episode predictions</h2>
-        </div>
-        <div className="status-pill">Main + Jr workflows</div>
-      </header>
+    <motion.div
+      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-weekly" : ""}`}
+      initial={reduceMotion ? undefined : "hidden"}
+      animate={reduceMotion ? undefined : "show"}
+      variants={pageRevealVariants}
+    >
+      <motion.section variants={sectionStaggerVariants}>
+        <PremiumCard className="premium-panel-pad">
+          <PremiumPanelHeader
+            kicker="Weekly"
+            title="Decision Desk"
+            description="Main and Jr league workflows in one coherent intake surface."
+            rightSlot={<PremiumStatusBadge tone="accent">Main + Jr</PremiumStatusBadge>}
+          />
+        </PremiumCard>
+      </motion.section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-[0.72fr_1.28fr] gap-4 md:gap-5">
-        <aside className="soft-card rounded-3xl p-5 md:p-6 space-y-4 h-fit text-center">
-          <div>
-            <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Mechanics</p>
-            <h3 className="headline text-2xl mt-2">How bonus scoring works</h3>
-          </div>
-          <div className="space-y-3 text-base text-[color:var(--text-muted)] leading-relaxed">
-            <article className="soft-card soft-card-subtle rounded-2xl p-3">
-              <p className="font-semibold text-[color:var(--text)]">Redemption Roulette</p>
-              <p className="mt-1">Pick the next revealed traitor. Correct picks score +8 and misses score -1.</p>
-            </article>
-            <article className="soft-card soft-card-subtle rounded-2xl p-3">
-              <p className="font-semibold text-[color:var(--text)]">Double or Nothing</p>
-              <p className="mt-1">Applies a 2x multiplier to weekly banished/murdered calls.</p>
-            </article>
-            <article className="soft-card soft-card-subtle rounded-2xl p-3">
-              <p className="font-semibold text-[color:var(--text)]">Shield Gambit + Trio</p>
-              <p className="mt-1">Predict the shield winner and keep a three-person traitor shortlist.</p>
-            </article>
-          </div>
-        </aside>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
-          <article className="soft-card league-panel-main rounded-3xl p-5 md:p-6 space-y-4">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div>
-                <div className="inline-flex items-center justify-center gap-2">
-                  <span className="league-glyph league-glyph-main" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-                      <path d="M12 2 19 5v6c0 5-3.5 9.4-7 11-3.5-1.6-7-6-7-11V5l7-3Zm0 4.2-4 1.7V11c0 3.5 2.2 6.5 4 7.7 1.8-1.2 4-4.2 4-7.7V7.9l-4-1.7Z" />
-                    </svg>
-                  </span>
-                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--accent-strong)]">Main League</p>
-                </div>
-                <h3 className="headline text-2xl mt-1">{WEEKLY_LABEL}</h3>
-              </div>
-              {mainSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
+      <motion.section className="premium-weekly-workspace" variants={sectionStaggerVariants}>
+        <PremiumCard className="premium-panel-pad premium-decision-board">
+          <section className="premium-decision-league">
+            <div className="premium-section-topline">
+              <h3 className="premium-section-title">{WEEKLY_LABEL}</h3>
+              <PremiumStatusBadge tone={mainSubmitted ? "positive" : "neutral"}>
+                {mainSubmitted ? "Submitted" : "Open"}
+              </PremiumStatusBadge>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              <input
+            <div className="premium-inline-grid mt-3">
+              <PremiumField
                 type="text"
                 placeholder="Name"
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                className="field-soft p-3.5"
               />
-              <input
+              <PremiumField
                 type="email"
                 placeholder="Email"
                 value={playerEmail}
                 onChange={(e) => setPlayerEmail(e.target.value)}
-                className="field-soft p-3.5"
               />
-              <select
+              <PremiumSelect
                 value={weeklyBanished}
                 onChange={(e) => setWeeklyBanished(e.target.value)}
-                aria-label="Main league next banished"
-                className="field-soft p-3.5 text-base"
+                aria-label="Main next banished"
               >
                 <option value="">Next Banished</option>
                 {banishedOptions.map((name) => (
@@ -396,12 +401,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     {name}
                   </option>
                 ))}
-              </select>
-              <select
+              </PremiumSelect>
+              <PremiumSelect
                 value={weeklyMurdered}
                 onChange={(e) => setWeeklyMurdered(e.target.value)}
-                aria-label="Main league next murdered"
-                className="field-soft p-3.5 text-base"
+                aria-label="Main next murdered"
               >
                 <option value="">Next Murdered</option>
                 {murderOptions.map((name) => (
@@ -409,59 +413,38 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     {name}
                   </option>
                 ))}
-              </select>
+              </PremiumSelect>
             </div>
 
-            <div className="soft-card soft-card-subtle league-subpanel-main rounded-2xl p-4 space-y-3">
-              <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
-                <span className={`status-pill ${hasMainDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
-                  {hasMainDouble ? "2x Boost Active" : "2x Boost Locked"}
-                </span>
-              </div>
-              <select
-                value={bonusRedemption}
-                onChange={(e) => setBonusRedemption(e.target.value)}
-                aria-label="Main league redemption roulette"
-                className="field-soft p-3 text-base"
-              >
+            <div className="premium-inline-grid mt-3">
+              <PremiumSelect value={bonusRedemption} onChange={(e) => setBonusRedemption(e.target.value)}>
                 <option value="">Redemption Roulette</option>
                 {activeCastNames.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
                 ))}
-              </select>
-              <select
-                value={bonusShield}
-                onChange={(e) => setBonusShield(e.target.value)}
-                aria-label="Main league shield gambit"
-                className="field-soft p-3 text-base"
-              >
+              </PremiumSelect>
+              <PremiumSelect value={bonusShield} onChange={(e) => setBonusShield(e.target.value)}>
                 <option value="">Shield Gambit</option>
                 {activeCastNames.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
                 ))}
-              </select>
-              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
-                Double or Nothing
-                <input
-                  type="checkbox"
-                  checked={bonusDoubleOrNothing}
-                  onChange={(e) => setBonusDoubleOrNothing(e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              </PremiumSelect>
+              <PremiumToggle
+                label="Double or Nothing"
+                checked={bonusDoubleOrNothing}
+                onChange={setBonusDoubleOrNothing}
+              />
+              <div className="grid grid-cols-3 gap-2">
                 {bonusTrio.map((pick, index) => (
-                  <select
+                  <PremiumSelect
                     key={`main-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(bonusTrio, setBonusTrio, index, e.target.value)}
-                    aria-label={`Main league traitor trio pick ${index + 1}`}
-                    className="field-soft p-2.5 text-sm"
+                    aria-label={`Main traitor trio pick ${index + 1}`}
                   >
                     <option value="">Trio {index + 1}</option>
                     {activeCastNames.map((name) => (
@@ -469,68 +452,62 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         {name}
                       </option>
                     ))}
-                  </select>
+                  </PremiumSelect>
                 ))}
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleWeeklySubmit}
-              disabled={isMainSubmitting}
-              className="w-full btn-primary py-3.5 text-sm md:text-base"
-            >
-              {isMainSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
-              {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
-            </button>
-
-            {mainSubmitted && (
-              <button
-                type="button"
-                onClick={() => handleShareInvite("main", playerName, playerEmail)}
-                className="w-full btn-secondary py-3.5 text-sm md:text-base"
-              >
-                Invite a rival to play
-              </button>
-            )}
-          </article>
-
-          <article className="soft-card league-panel-jr rounded-3xl p-5 md:p-6 space-y-4">
-            <div className="flex flex-col items-center gap-2 text-center">
-              <div>
-                <div className="inline-flex items-center justify-center gap-2">
-                  <span className="league-glyph league-glyph-jr" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor">
-                      <path d="M20.7 3.3a1 1 0 0 0-1.4 0l-2.8 2.8-1.8-.6-.6-1.8-2.8 2.8a1 1 0 0 0-.2 1l.7 2.2-5.5 5.5-1.7-.3-1.5 1.5 1.8 1.8-1.9 1.9 2.8 2.8 1.9-1.9 1.8 1.8 1.5-1.5-.3-1.7 5.5-5.5 2.2.7a1 1 0 0 0 1-.2l2.8-2.8-1.8-.6-.6-1.8 2.8-2.8a1 1 0 0 0 0-1.4l-1.6-1.6Z" />
-                    </svg>
-                  </span>
-                  <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--traitor-crimson-strong)]">Jr League</p>
-                </div>
-                <h3 className="headline text-2xl mt-1">{JR_LABEL}</h3>
+            <div className="premium-action-row mt-3">
+              <PremiumStatusBadge tone={hasMainDouble ? "positive" : "warning"}>
+                {hasMainDouble ? "2x Active" : "2x Locked"}
+              </PremiumStatusBadge>
+              <div className="flex items-center gap-2">
+                {mainSubmitted && (
+                  <PremiumButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => handleShareInvite("main", playerName, playerEmail)}
+                  >
+                    Invite Rival
+                  </PremiumButton>
+                )}
+                <PremiumButton
+                  type="button"
+                  variant="primary"
+                  onClick={handleWeeklySubmit}
+                  disabled={isMainSubmitting}
+                >
+                  {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
+                </PremiumButton>
               </div>
-              {jrSubmitted && <span className="status-pill border-[color:var(--success)]/60 text-[color:var(--success)]">Submitted</span>}
+            </div>
+          </section>
+
+          <section className="premium-decision-league premium-decision-league-divider">
+            <div className="premium-section-topline">
+              <h3 className="premium-section-title">{JR_LABEL}</h3>
+              <PremiumStatusBadge tone={jrSubmitted ? "positive" : "neutral"}>
+                {jrSubmitted ? "Submitted" : "Open"}
+              </PremiumStatusBadge>
             </div>
 
-            <div className="grid grid-cols-1 gap-3">
-              <input
+            <div className="premium-inline-grid mt-3">
+              <PremiumField
                 type="text"
                 placeholder="Name"
                 value={jrName}
                 onChange={(e) => setJrName(e.target.value)}
-                className="field-soft p-3.5"
               />
-              <input
+              <PremiumField
                 type="email"
                 placeholder="Email"
                 value={jrEmail}
                 onChange={(e) => setJrEmail(e.target.value)}
-                className="field-soft p-3.5"
               />
-              <select
+              <PremiumSelect
                 value={jrWeeklyBanished}
                 onChange={(e) => setJrWeeklyBanished(e.target.value)}
-                aria-label="Jr league next banished"
-                className="field-soft p-3.5 text-base"
+                aria-label="Jr next banished"
               >
                 <option value="">Next Banished</option>
                 {banishedOptions.map((name) => (
@@ -538,12 +515,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     {name}
                   </option>
                 ))}
-              </select>
-              <select
+              </PremiumSelect>
+              <PremiumSelect
                 value={jrWeeklyMurdered}
                 onChange={(e) => setJrWeeklyMurdered(e.target.value)}
-                aria-label="Jr league next murdered"
-                className="field-soft p-3.5 text-base"
+                aria-label="Jr next murdered"
               >
                 <option value="">Next Murdered</option>
                 {murderOptions.map((name) => (
@@ -551,59 +527,38 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                     {name}
                   </option>
                 ))}
-              </select>
+              </PremiumSelect>
             </div>
 
-            <div className="soft-card soft-card-subtle league-subpanel-jr rounded-2xl p-4 space-y-3">
-              <div className="flex flex-col items-center gap-2 text-center">
-                <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Bonus Inputs</p>
-                <span className={`status-pill ${hasJrDouble ? "border-[color:var(--success)]/60 text-[color:var(--success)]" : ""}`}>
-                  {hasJrDouble ? "2x Boost Active" : "2x Boost Locked"}
-                </span>
-              </div>
-              <select
-                value={jrBonusRedemption}
-                onChange={(e) => setJrBonusRedemption(e.target.value)}
-                aria-label="Jr league redemption roulette"
-                className="field-soft p-3 text-base"
-              >
+            <div className="premium-inline-grid mt-3">
+              <PremiumSelect value={jrBonusRedemption} onChange={(e) => setJrBonusRedemption(e.target.value)}>
                 <option value="">Redemption Roulette</option>
                 {activeCastNames.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
                 ))}
-              </select>
-              <select
-                value={jrBonusShield}
-                onChange={(e) => setJrBonusShield(e.target.value)}
-                aria-label="Jr league shield gambit"
-                className="field-soft p-3 text-base"
-              >
+              </PremiumSelect>
+              <PremiumSelect value={jrBonusShield} onChange={(e) => setJrBonusShield(e.target.value)}>
                 <option value="">Shield Gambit</option>
                 {activeCastNames.map((name) => (
                   <option key={name} value={name}>
                     {name}
                   </option>
                 ))}
-              </select>
-              <label className="soft-card soft-card-subtle rounded-xl px-3 py-2.5 flex items-center justify-between text-sm uppercase tracking-[0.12em]">
-                Double or Nothing
-                <input
-                  type="checkbox"
-                  checked={jrBonusDoubleOrNothing}
-                  onChange={(e) => setJrBonusDoubleOrNothing(e.target.checked)}
-                  className="h-4 w-4"
-                />
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              </PremiumSelect>
+              <PremiumToggle
+                label="Double or Nothing"
+                checked={jrBonusDoubleOrNothing}
+                onChange={setJrBonusDoubleOrNothing}
+              />
+              <div className="grid grid-cols-3 gap-2">
                 {jrBonusTrio.map((pick, index) => (
-                  <select
+                  <PremiumSelect
                     key={`jr-trio-${index}`}
                     value={pick}
                     onChange={(e) => updateTrioPick(jrBonusTrio, setJrBonusTrio, index, e.target.value)}
-                    aria-label={`Jr league traitor trio pick ${index + 1}`}
-                    className="field-soft p-2.5 text-sm"
+                    aria-label={`Jr traitor trio pick ${index + 1}`}
                   >
                     <option value="">Trio {index + 1}</option>
                     {activeCastNames.map((name) => (
@@ -611,34 +566,103 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry }) 
                         {name}
                       </option>
                     ))}
-                  </select>
+                  </PremiumSelect>
                 ))}
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={handleJrWeeklySubmit}
-              disabled={isJrSubmitting}
-              className="w-full btn-primary py-3.5 text-sm md:text-base"
-            >
-              {isJrSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
-              {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
-            </button>
+            <div className="premium-action-row mt-3">
+              <PremiumStatusBadge tone={hasJrDouble ? "positive" : "warning"}>
+                {hasJrDouble ? "2x Active" : "2x Locked"}
+              </PremiumStatusBadge>
+              <div className="flex items-center gap-2">
+                {jrSubmitted && (
+                  <PremiumButton
+                    type="button"
+                    variant="secondary"
+                    onClick={() => handleShareInvite("jr", jrName, jrEmail)}
+                  >
+                    Invite Rival
+                  </PremiumButton>
+                )}
+                <PremiumButton
+                  type="button"
+                  variant="primary"
+                  onClick={handleJrWeeklySubmit}
+                  disabled={isJrSubmitting}
+                >
+                  {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
+                </PremiumButton>
+              </div>
+            </div>
+          </section>
+        </PremiumCard>
 
-            {jrSubmitted && (
-              <button
-                type="button"
-                onClick={() => handleShareInvite("jr", jrName, jrEmail)}
-                className="w-full btn-secondary py-3.5 text-sm md:text-base"
-              >
-                Invite a rival to play
-              </button>
-            )}
-          </article>
-        </div>
-      </section>
-    </div>
+        <aside>
+          <PremiumCard className="premium-panel-pad premium-stack-md">
+            <section>
+              <div className="premium-section-topline">
+                <h3 className="premium-section-title">Shared Bonus Logic</h3>
+                <PremiumStatusBadge tone="accent">Rules</PremiumStatusBadge>
+              </div>
+              <div className="premium-divider-list mt-3">
+                <article className="premium-row-item premium-row-item-plain">
+                  <div>
+                    <p className="premium-row-title">Redemption Roulette</p>
+                    <p className="premium-meta-line">Correct +8, incorrect -1.</p>
+                  </div>
+                </article>
+                <article className="premium-row-item premium-row-item-plain">
+                  <div>
+                    <p className="premium-row-title">Double or Nothing</p>
+                    <p className="premium-meta-line">2x multiplier on weekly banished and murdered calls.</p>
+                  </div>
+                </article>
+                <article className="premium-row-item premium-row-item-plain">
+                  <div>
+                    <p className="premium-row-title">Shield + Traitor Trio</p>
+                    <p className="premium-meta-line">Shield pick plus three-person traitor shortlist.</p>
+                  </div>
+                </article>
+              </div>
+            </section>
+
+            <section className="premium-subpanel">
+              <div className="premium-section-topline">
+                <h3 className="premium-section-title">Submission State</h3>
+                <PremiumStatusBadge>
+                  {mainSubmitted || jrSubmitted ? "In cycle" : "No submissions"}
+                </PremiumStatusBadge>
+              </div>
+              <div className="premium-divider-list mt-3">
+                <article className="premium-row-item premium-row-item-plain">
+                  <div>
+                    <p className="premium-row-title">Main League</p>
+                    <p className="premium-meta-line">
+                      {mainSubmitted ? "Submitted and share-ready." : "Pending submission."}
+                    </p>
+                  </div>
+                  <PremiumStatusBadge tone={mainSubmitted ? "positive" : "warning"}>
+                    {mainSubmitted ? "Submitted" : "Pending"}
+                  </PremiumStatusBadge>
+                </article>
+                <article className="premium-row-item premium-row-item-plain">
+                  <div>
+                    <p className="premium-row-title">Jr League</p>
+                    <p className="premium-meta-line">
+                      {jrSubmitted ? "Submitted and share-ready." : "Pending submission."}
+                    </p>
+                  </div>
+                  <PremiumStatusBadge tone={jrSubmitted ? "positive" : "warning"}>
+                    {jrSubmitted ? "Submitted" : "Pending"}
+                  </PremiumStatusBadge>
+                </article>
+              </div>
+            </section>
+          </PremiumCard>
+        </aside>
+      </motion.section>
+    </motion.div>
   );
 };
 

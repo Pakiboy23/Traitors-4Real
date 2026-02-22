@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
-import Welcome from "./components/Welcome";
+import Welcome, { type LeaguePulseOverview, type TopMoverEntry } from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
@@ -12,6 +12,7 @@ import {
   CAST_NAMES,
   GameState,
   PlayerEntry,
+  UiVariant,
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
 } from "./types";
@@ -27,6 +28,7 @@ import {
   signOutAdmin,
   submitGrowthEvent,
   subscribeToGameState,
+  fetchWeeklySubmissions,
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
@@ -137,7 +139,9 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [uiVariant, setUiVariant] = useState<UiVariant>("premium");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [pendingSubmissions, setPendingSubmissions] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
   const lastRemoteStateRef = useRef<string | null>(null);
@@ -159,9 +163,18 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const ui = params.get("ui");
     const tab = params.get("tab");
     const ref = params.get("ref");
     const league = params.get("league");
+
+    if (ui === "classic") {
+      setUiVariant("classic");
+    } else if (ui === "premium" || ui === "sora") {
+      setUiVariant("premium");
+    } else {
+      setUiVariant("premium");
+    }
 
     if (tab && ["home", "weekly", "leaderboard", "draft", "admin"].includes(tab)) {
       setActiveTab(tab);
@@ -238,6 +251,30 @@ const App: React.FC = () => {
       unsubscribe?.();
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadPendingSubmissions = async () => {
+      try {
+        const records = await fetchWeeklySubmissions();
+        if (cancelled) return;
+        setPendingSubmissions(records.length);
+      } catch (error) {
+        if (cancelled) return;
+        console.warn("Failed to load pending submissions:", error);
+        setPendingSubmissions(null);
+      }
+    };
+
+    loadPendingSubmissions();
+    const intervalId = window.setInterval(loadPendingSubmissions, 45000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
     let isMounted = true;
@@ -419,6 +456,61 @@ const App: React.FC = () => {
       delta: best.delta,
     };
   }, [gameState, scoreHistory]);
+
+  const topMovers = useMemo<TopMoverEntry[]>(() => {
+    if (scoreHistory.length < 2) return [];
+
+    const last = scoreHistory[scoreHistory.length - 1];
+    const prev = scoreHistory[scoreHistory.length - 2];
+
+    return gameState.players
+      .map((player) => {
+        const lastScore = last.totals?.[player.id];
+        const prevScore = prev.totals?.[player.id];
+        if (typeof lastScore !== "number" || typeof prevScore !== "number") return null;
+        return {
+          name: player.name,
+          delta: Number(lastScore) - Number(prevScore),
+          league: player.league === "jr" ? "jr" : "main",
+        } satisfies TopMoverEntry;
+      })
+      .filter((entry): entry is TopMoverEntry => Boolean(entry))
+      .sort((a, b) => b.delta - a.delta)
+      .slice(0, 3);
+  }, [gameState.players, scoreHistory]);
+
+  const leaguePulse = useMemo<LeaguePulseOverview>(() => {
+    const latestArchive = scoreHistory[scoreHistory.length - 1];
+    return {
+      entries: gameState.players.length,
+      activeCastCount: CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated).length,
+      latestArchiveLabel: latestArchive?.label || "No archives yet",
+      pendingSubmissions,
+    };
+  }, [gameState.castStatus, gameState.players.length, pendingSubmissions, scoreHistory]);
+
+  const actionQueue = useMemo(() => {
+    const queue: string[] = [];
+    if (gameState.players.length === 0) {
+      queue.push("Be the first friend to lock a draft board and set the early pace.");
+    }
+    if (typeof pendingSubmissions === "number" && pendingSubmissions > 0) {
+      queue.push(
+        `${pendingSubmissions} friend${pendingSubmissions === 1 ? "" : "s"} already submitted this week. Counter before lock.`
+      );
+    }
+    if (!gameState.weeklyResults?.nextBanished && !gameState.weeklyResults?.nextMurdered) {
+      queue.push("Results are not posted yet, so this is your window to make a bold weekly call.");
+    }
+    if (scoreHistory.length === 0) {
+      queue.push("First leaderboard swing lands after the initial weekly archive.");
+    }
+    if (queue.length === 0) {
+      queue.push("You are set. Watch rival movement and prep your next Round Table picks.");
+    }
+    return queue.slice(0, 4);
+  }, [gameState.players.length, gameState.weeklyResults, pendingSubmissions, scoreHistory.length]);
+
   const content = useMemo(() => {
     switch (activeTab) {
       case "home":
@@ -427,21 +519,30 @@ const App: React.FC = () => {
             onStart={() => setActiveTab("weekly")}
             mvp={overallMvp}
             weeklyMvp={weeklyMvp}
+            leaguePulse={leaguePulse}
+            topMovers={topMovers}
+            actionQueue={actionQueue}
+            uiVariant={uiVariant}
           />
         );
       case "draft":
-        // If DraftForm doesn't take these props, the build will tell us.
-        return <DraftForm gameState={gameState} onAddEntry={handleAddEntry} />;
+        return (
+          <DraftForm
+            gameState={gameState}
+            onAddEntry={handleAddEntry}
+            uiVariant={uiVariant}
+          />
+        );
       case "weekly":
         return (
           <WeeklyCouncil
             gameState={gameState}
             onAddEntry={handleAddEntry}
+            uiVariant={uiVariant}
           />
         );
       case "leaderboard":
-        // This is the key fix: stop Leaderboard from reading players off undefined.
-        return <Leaderboard gameState={gameState} />;
+        return <Leaderboard gameState={gameState} uiVariant={uiVariant} />;
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel
@@ -451,16 +552,32 @@ const App: React.FC = () => {
             lastSavedAt={lastSavedAt}
             lastWriteError={lastWriteError}
             onSaveNow={saveNow}
+            uiVariant={uiVariant}
           />
         ) : (
-          // This prop name might differ. If the build errors, we’ll change it to match AdminAuth.tsx.
-          <AdminAuth onAuthenticate={authenticateAdmin} />
+          <AdminAuth
+            onAuthenticate={authenticateAdmin}
+            uiVariant={uiVariant}
+          />
         );
       default:
-        return <Welcome onStart={() => setActiveTab("weekly")} />;
+        return (
+          <Welcome
+            onStart={() => setActiveTab("weekly")}
+            mvp={overallMvp}
+            weeklyMvp={weeklyMvp}
+            leaguePulse={leaguePulse}
+            topMovers={topMovers}
+            actionQueue={actionQueue}
+            uiVariant={uiVariant}
+          />
+        );
     }
   }, [
     activeTab,
+    actionQueue,
+    leaguePulse,
+    uiVariant,
     gameState,
     handleAddEntry,
     authenticateAdmin,
@@ -470,6 +587,7 @@ const App: React.FC = () => {
     lastWriteError,
     overallMvp,
     saveNow,
+    topMovers,
     updateGameState,
     weeklyMvp,
   ]);
@@ -480,6 +598,7 @@ const App: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         lastSync={lastSavedAt ?? undefined}
+        uiVariant={uiVariant}
       >
         {content}
       </Layout>

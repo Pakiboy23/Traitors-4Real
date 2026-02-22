@@ -6,6 +6,7 @@ import {
   CAST_NAMES,
   COUNCIL_LABELS,
   PlayerEntry,
+  UiVariant,
   DraftPick,
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
@@ -16,11 +17,17 @@ import { LIMITS } from "../src/utils/scoringConstants";
 import {
   deleteSubmission,
   fetchWeeklySubmissions,
+  normalizeEmail,
   savePlayerPortrait,
   SubmissionRecord,
   subscribeToWeeklySubmissions,
-} from '../services/pocketbase';
-import AdminWorkspaceHeader from './admin/AdminWorkspaceHeader';
+} from "../services/pocketbase";
+import {
+  PremiumCard,
+  PremiumPanelHeader,
+  PremiumStatusBadge,
+  PremiumTabs,
+} from "../src/ui/premium";
 import OperationsSection from './admin/OperationsSection';
 import SubmissionsSection from './admin/SubmissionsSection';
 import RosterSection from './admin/RosterSection';
@@ -37,6 +44,7 @@ interface AdminPanelProps {
   lastSavedAt?: number | null;
   lastWriteError?: string | null;
   onSaveNow?: () => void;
+  uiVariant: UiVariant;
 }
 
 type ConfirmDialogState = {
@@ -57,7 +65,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastSavedAt,
   lastWriteError,
   onSaveNow,
+  uiVariant,
 }) => {
+  const isPremiumUi = uiVariant === "premium";
   const activeCastNames = CAST_NAMES.filter(
     (name) => !gameState.castStatus[name]?.isEliminated
   );
@@ -1141,40 +1151,111 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="w-full space-y-5">
-      <AdminWorkspaceHeader
-        saveStatus={saveStatus}
-        playersCount={gameState.players.length}
-        activeCastCount={activeCastNames.length}
-        totalCastCount={CAST_NAMES.length}
-        pendingVotes={submissions.length}
-        sectionTabs={sectionTabs}
-        activeSection={activeSection}
-        onSectionChange={setActiveSection}
-      />
-
-      {msg.text && (
-        <div
-          className={`soft-card rounded-2xl p-3 text-sm ${
-            msg.type === "success"
-              ? "border-[color:var(--success)]/50 text-[color:var(--success)]"
-              : "border-[color:var(--danger)]/50 text-[color:var(--danger)]"
-          }`}
-        >
-          {msg.text}
+    <div className={`w-full space-y-4 ${isPremiumUi ? "premium-page premium-admin-shell" : ""}`}>
+      <PremiumCard className="premium-panel-pad premium-stack-sm">
+        <PremiumPanelHeader
+          kicker="Admin"
+          title="Operations Console"
+          description="Manage weekly outcomes, intake queue, roster quality, cast status, and persistence."
+          rightSlot={<PremiumStatusBadge tone={lastWriteError ? "negative" : "accent"}>{saveStatus}</PremiumStatusBadge>}
+        />
+        <div className="lg:hidden">
+          <PremiumTabs
+            items={sectionTabs.map((tab) => ({ id: tab.id, label: tab.label }))}
+            activeId={activeSection}
+            onChange={(id) => setActiveSection(id as AdminSection)}
+          />
         </div>
-      )}
+      </PremiumCard>
 
-      {renderActiveSection()}
+      <div className="admin-console-shell">
+        <aside className="admin-console-left hidden lg:block">
+          <PremiumCard className="premium-panel-pad-compact">
+            <p className="premium-kicker mb-2">Sections</p>
+            <nav className="space-y-1">
+              {sectionTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveSection(tab.id)}
+                  className={`admin-console-nav-item ${
+                    activeSection === tab.id ? "admin-console-nav-item-active" : ""
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className="admin-console-nav-summary">{tab.summary}</span>
+                </button>
+              ))}
+            </nav>
+          </PremiumCard>
+        </aside>
+
+        <section className="admin-console-main">
+          {msg.text && (
+            <div
+              className={`premium-inline-alert rounded-2xl p-3 text-sm ${
+                msg.type === "success"
+                  ? "bg-emerald-500/10 text-[color:var(--success)]"
+                  : "bg-rose-500/10 text-[color:var(--danger)]"
+              }`}
+            >
+              {msg.text}
+            </div>
+          )}
+
+          {renderActiveSection()}
+        </section>
+
+        <aside className="admin-console-right">
+          <PremiumCard className="premium-panel-pad-compact premium-stack-sm">
+            <p className="premium-kicker">Workspace Status</p>
+            <div className="space-y-2">
+              <div className="premium-row-item">
+                <p className="premium-row-title">Players</p>
+                <p className="premium-row-value">{gameState.players.length}</p>
+              </div>
+              <div className="premium-row-item">
+                <p className="premium-row-title">Active Cast</p>
+                <p className="premium-row-value">
+                  {activeCastNames.length}/{CAST_NAMES.length}
+                </p>
+              </div>
+              <div className="premium-row-item">
+                <p className="premium-row-title">Pending Votes</p>
+                <p className="premium-row-value">{submissions.length}</p>
+              </div>
+            </div>
+          </PremiumCard>
+
+          <PremiumCard className="premium-panel-pad-compact premium-stack-sm">
+            <p className="premium-kicker">Quick Actions</p>
+            <div className="grid grid-cols-1 gap-2">
+              {onSaveNow && (
+                <button type="button" className="premium-btn premium-btn-primary" onClick={onSaveNow}>
+                  Save Now
+                </button>
+              )}
+              <button type="button" className="premium-btn premium-btn-secondary" onClick={refreshSubmissions}>
+                Refresh Intake
+              </button>
+              {onSignOut && (
+                <button type="button" className="premium-btn premium-btn-ghost" onClick={onSignOut}>
+                  Sign Out
+                </button>
+              )}
+            </div>
+          </PremiumCard>
+        </aside>
+      </div>
 
       {confirmDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
-          <div className="soft-card w-full max-w-md rounded-2xl p-5 space-y-4">
+          <div className="premium-card premium-panel-pad w-full max-w-md rounded-2xl space-y-4">
             <p className="text-sm text-[color:var(--text)] leading-relaxed">{confirmDialog.message}</p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="btn-secondary px-4 text-[11px]"
+                className="premium-btn premium-btn-secondary px-4 text-[11px]"
                 onClick={() => {
                   confirmDialog.resolve(false);
                   setConfirmDialog(null);
@@ -1184,7 +1265,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="btn-primary px-4 text-[11px]"
+                className="premium-btn premium-btn-primary px-4 text-[11px]"
                 onClick={() => {
                   confirmDialog.resolve(true);
                   setConfirmDialog(null);
@@ -1199,19 +1280,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {promptDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 px-4">
-          <div className="soft-card w-full max-w-md rounded-2xl p-5 space-y-4">
+          <div className="premium-card premium-panel-pad w-full max-w-md rounded-2xl space-y-4">
             <label className="block text-sm text-[color:var(--text)]">{promptDialog.title}</label>
             <input
               autoFocus
               type="text"
               value={promptValue}
               onChange={(e) => setPromptValue(e.target.value)}
-              className="field-soft w-full p-3 text-sm"
+              className="premium-field premium-input-compact w-full"
             />
             <div className="flex justify-end gap-2">
               <button
                 type="button"
-                className="btn-secondary px-4 text-[11px]"
+                className="premium-btn premium-btn-secondary px-4 text-[11px]"
                 onClick={() => {
                   promptDialog.resolve(null);
                   setPromptDialog(null);
@@ -1221,7 +1302,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </button>
               <button
                 type="button"
-                className="btn-primary px-4 text-[11px]"
+                className="premium-btn premium-btn-primary px-4 text-[11px]"
                 onClick={() => {
                   promptDialog.resolve(promptValue);
                   setPromptDialog(null);
