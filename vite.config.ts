@@ -18,6 +18,12 @@ export default defineConfig(() => {
         ],
       },
       plugins: [react()],
+      optimizeDeps: {
+        // The repo contains a local PocketBase binary named `pocketbase`.
+        // Excluding the npm `pocketbase` package from esbuild prebundle avoids
+        // a name-collision resolution bug during `vite dev`.
+        exclude: ['pocketbase'],
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

@@ -1,14 +1,31 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, WeeklyScoreSnapshot } from "../types";
+import { motion, useReducedMotion } from "framer-motion";
+import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, UiVariant, WeeklyScoreSnapshot } from "../types";
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { calculatePlayerScore, formatScore } from "../src/utils/scoring";
 import { LIMITS, TIMING } from "../src/utils/scoringConstants";
+import {
+  pageRevealVariants,
+  sectionStaggerVariants,
+} from "../src/ui/motion";
+import {
+  PremiumCard,
+  type PremiumKpiItem,
+  PremiumKpiRow,
+  PremiumPanelHeader,
+  PremiumRankRow,
+  PremiumRankTable,
+  PremiumStatusBadge,
+} from "../src/ui/premium";
 
 interface LeaderboardProps {
   gameState: GameState;
+  uiVariant: UiVariant;
 }
 
-const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
+const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
+  const reduceMotion = useReducedMotion();
+  const isPremiumUi = uiVariant === "premium";
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -145,259 +162,249 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState }) => {
       ? latestSnapshotTotals[topPlayer.id]
       : topPlayer?.scoring.total;
 
+  const averageScore = scoredPlayers.length
+    ? scoredPlayers.reduce((sum, player) => sum + player.scoring.total, 0) / scoredPlayers.length
+    : 0;
+
+  const latestArchive = scoreHistory.length > 0 ? getHistoryLabel(scoreHistory[scoreHistory.length - 1]) : "None";
+
+  const kpiItems: PremiumKpiItem[] = [
+    { label: "Players", value: String(scoredPlayers.length), hint: "Across all leagues" },
+    { label: "Avg Score", value: formatScore(averageScore), hint: "Current total" },
+    { label: "Latest Archive", value: latestArchive, hint: "Most recent snapshot" },
+    {
+      label: "Active Cast",
+      value: String(CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated).length),
+      hint: "Available status board",
+    },
+  ];
+
   return (
-    <div className="space-y-6 md:space-y-8">
-      <section className={`soft-card rounded-3xl p-5 md:p-6 ${isSyncing ? "panel-sync" : ""}`}>
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-[color:var(--text-muted)]">Standings</p>
-            <h2 className="headline text-3xl md:text-4xl">Council leaderboard</h2>
-          </div>
+    <motion.div
+      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-leaderboard" : ""}`}
+      initial={reduceMotion ? undefined : "hidden"}
+      animate={reduceMotion ? undefined : "show"}
+      variants={pageRevealVariants}
+    >
+      <motion.section variants={sectionStaggerVariants}>
+        <PremiumCard className={`premium-panel-pad premium-stack-md premium-leader-summary ${isSyncing ? "panel-sync" : ""}`}>
+          <PremiumPanelHeader
+            kicker="Leaderboard"
+            title="Rank Table"
+            description="Transparent totals, penalties, and movement across archived rounds."
+            rightSlot={<PremiumStatusBadge tone="accent">Live Sync</PremiumStatusBadge>}
+          />
+          <PremiumKpiRow items={kpiItems} />
           {topPlayer ? (
-            <div className="leader-spotlight rounded-3xl px-5 py-5 md:px-7 md:py-6 w-full max-w-2xl text-center">
-              <p className="panel-title-strong">Current Leader</p>
-              <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[color:var(--accent-strong)]">Castle front-runner</p>
-              <p className="leader-name headline text-4xl md:text-5xl mt-2 leading-none">{topPlayer.name}</p>
-              <p className="text-xl md:text-2xl font-black text-[color:var(--accent-strong)] mt-3">{formatScore(topScore)}</p>
+            <div className="premium-top-leader-strip">
+              <div>
+                <p className="premium-kicker">Current Leader</p>
+                <p className="premium-top-leader-name">{topPlayer.name}</p>
+              </div>
+              <p className="premium-top-leader-score">{formatScore(topScore as number)}</p>
             </div>
           ) : (
-            <div className="status-pill">No entries yet</div>
+            <PremiumStatusBadge>No entries yet</PremiumStatusBadge>
           )}
-        </div>
-      </section>
+        </PremiumCard>
+      </motion.section>
 
-      <section className="soft-card rounded-3xl p-4 md:p-5">
-        <div className="grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 px-2 pb-2 text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--text-muted)]">
-          <span className="text-[color:var(--text)]">Rank</span>
-          <span>Player</span>
-          <span className="text-right">Total</span>
-        </div>
+      <motion.section variants={sectionStaggerVariants}>
+        <PremiumCard className="premium-panel-pad-compact premium-rank-surface">
+          <PremiumRankTable
+            headers={[
+              { id: "rank", label: "Rank" },
+              { id: "player", label: "Player" },
+              { id: "score", label: "Total", align: "right" },
+            ]}
+          >
+            {scoredPlayers.map((player, index) => {
+              const penalties = getPenaltyEntries(player);
+              const isExpanded = expandedPlayerId === player.id;
+              const total =
+                !hasActiveWeeklyResults && typeof latestSnapshotTotals[player.id] === "number"
+                  ? latestSnapshotTotals[player.id]
+                  : player.scoring.total;
 
-        <div className="space-y-2">
-          {scoredPlayers.map((player, index) => {
-            const penalties = getPenaltyEntries(player);
-            const isExpanded = expandedPlayerId === player.id;
-            const total =
-              !hasActiveWeeklyResults && typeof latestSnapshotTotals[player.id] === "number"
-                ? latestSnapshotTotals[player.id]
-                : player.scoring.total;
-
-            return (
-              <article
-                key={player.id}
-                className={`rounded-2xl border transition-all ${
-                  isExpanded
-                    ? "border-[color:var(--accent)]/50 bg-[color:var(--accent-subtle)]"
-                    : "border-[color:var(--panel-border)] bg-black/20"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
-                  className="w-full bg-transparent border-0 appearance-none grid grid-cols-[54px_1fr_100px] md:grid-cols-[70px_1fr_130px] gap-3 items-center px-3 py-3 text-left"
-                  aria-expanded={isExpanded}
-                >
-                  <div className="rank-pill inline-flex min-w-[2.15rem] h-9 items-center justify-center rounded-xl px-2 text-base font-black">
-                    {index === 0 ? "#1" : index === 1 ? "#2" : index === 2 ? "#3" : `#${index + 1}`}
-                  </div>
-
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="h-10 w-10 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
-                      {player.portraitUrl ? (
-                        <img src={player.portraitUrl} alt={player.name} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-sm font-bold text-[color:var(--text-muted)]">
-                          {player.name.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-base md:text-lg truncate text-[color:var(--text)]">{player.name}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <p className="text-sm text-[color:var(--text-muted)] uppercase tracking-[0.1em]">Tap for detail</p>
-                        {player.league === "jr" && <span className="status-pill">{COUNCIL_LABELS.jr}</span>}
+              return (
+                <PremiumRankRow key={player.id} expanded={isExpanded} className="premium-rank-row-shell">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
+                    className="premium-rank-row-button"
+                    aria-expanded={isExpanded}
+                  >
+                    <div className="premium-rank-cell premium-rank-cell-rank">#{index + 1}</div>
+                    <div className="premium-rank-cell premium-rank-cell-player">
+                      <div className="avatar-ring premium-avatar-xs rounded-full overflow-hidden bg-black/30 flex-shrink-0">
+                        {player.portraitUrl ? (
+                          <img src={player.portraitUrl} alt={player.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-xs font-bold text-[color:var(--text-muted)]">
+                            {player.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="premium-row-title truncate">{player.name}</p>
+                        <p className="premium-meta-line uppercase">{player.league === "jr" ? COUNCIL_LABELS.jr : "Main League"}</p>
                       </div>
                     </div>
-                  </div>
+                    <div className="premium-rank-cell premium-rank-cell-score">
+                      <p className="premium-rank-total">{formatScore(total)}</p>
+                      {weeklyDeltaById[player.id] !== undefined && (
+                        <p className={weeklyDeltaById[player.id] >= 0 ? "premium-value-positive" : "premium-value-negative"}>
+                          {weeklyDeltaById[player.id] >= 0 ? "+" : ""}
+                          {formatScore(weeklyDeltaById[player.id])}
+                        </p>
+                      )}
+                    </div>
+                  </button>
 
-                  <div className="text-right">
-                    <p className="text-xl md:text-2xl font-black text-[color:var(--accent)]">{formatScore(total)}</p>
-                    {weeklyDeltaById[player.id] !== undefined && (
-                      <p
-                        className={`text-sm uppercase tracking-[0.12em] font-semibold ${
-                          weeklyDeltaById[player.id] >= 0 ? "text-[color:var(--success)]" : "text-[color:var(--danger)]"
-                        }`}
-                      >
-                        {weeklyDeltaById[player.id] >= 0 ? "+" : ""}
-                        {formatScore(weeklyDeltaById[player.id])}
-                      </p>
-                    )}
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="px-3 pb-4 md:px-4 md:pb-5">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                      <div className="soft-card soft-card-subtle rounded-2xl p-4">
-                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Achievements</p>
-                        {player.scoring.achievements.length > 0 ? (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {player.scoring.achievements.map((achievement, idx) => {
-                              const castPortrait = getCastPortraitSrc(
-                                achievement.member,
-                                gameState.castStatus[achievement.member]?.portraitUrl
-                              );
-                              return (
-                                <div
-                                  key={`${player.id}-ach-${idx}`}
-                                  className="soft-card soft-card-subtle rounded-xl p-2.5 flex items-center gap-2"
-                                >
-                                  <div className="h-8 w-8 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30">
-                                    {castPortrait ? (
-                                      <img src={castPortrait} alt={achievement.member} className="h-full w-full object-cover" />
-                                    ) : (
-                                      <div className="h-full w-full flex items-center justify-center text-sm text-[color:var(--text-muted)]">
-                                        {achievement.member.charAt(0)}
+                  {isExpanded && (
+                    <div className="premium-rank-expanded">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <div className="premium-subpanel">
+                          <p className="premium-kicker mb-2">Achievements</p>
+                          {player.scoring.achievements.length > 0 ? (
+                            <div className="space-y-2">
+                              {player.scoring.achievements.map((achievement, idx) => {
+                                const castPortrait = getCastPortraitSrc(
+                                  achievement.member,
+                                  gameState.castStatus[achievement.member]?.portraitUrl
+                                );
+                                return (
+                                  <div key={`${player.id}-ach-${idx}`} className="premium-row-item premium-row-item-plain">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="avatar-ring h-7 w-7 rounded-full overflow-hidden bg-black/30 flex-shrink-0">
+                                        {castPortrait ? (
+                                          <img src={castPortrait} alt={achievement.member} className="h-full w-full object-cover" />
+                                        ) : (
+                                          <div className="h-full w-full flex items-center justify-center text-xs text-[color:var(--text-muted)]">
+                                            {achievement.member.charAt(0)}
+                                          </div>
+                                        )}
                                       </div>
-                                    )}
+                                      <p className="premium-row-title truncate">
+                                        {achievement.icon} {achievement.member}
+                                      </p>
+                                    </div>
+                                    <p className="premium-meta-line">{achievement.type}</p>
                                   </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-[color:var(--text)] truncate">{achievement.member}</p>
-                                    <p className="text-sm uppercase tracking-[0.1em] text-[color:var(--text-muted)] truncate">
-                                      {achievement.icon} {achievement.type}
-                                    </p>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-[color:var(--text-muted)]">No achievements recorded yet.</p>
-                        )}
-                      </div>
-
-                      <div className="soft-card soft-card-subtle rounded-2xl p-4">
-                        <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Penalties</p>
-                        {penalties.length > 0 ? (
-                          <div className="space-y-2">
-                            {penalties.map((penalty, idx) => (
-                              <div key={`${player.id}-penalty-${idx}`} className="rounded-xl border border-[color:var(--danger)]/40 bg-[color:var(--danger)]/10 p-3">
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[color:var(--text)]">{penalty.label}</p>
-                                  <p className="text-sm font-black text-[color:var(--danger)]">{formatScore(penalty.points)}</p>
-                                </div>
-                                {penalty.pick && (
-                                  <p className="mt-2 text-sm text-[color:var(--text-muted)]">
-                                    Pick: <span className="text-[color:var(--text)]">{penalty.pick}</span>
-                                  </p>
-                                )}
-                                {penalty.actual && (
-                                  <p className="text-sm text-[color:var(--text-muted)]">
-                                    Result: <span className="text-[color:var(--text)]">{penalty.actual}</span>
-                                  </p>
-                                )}
-                                {penalty.note && <p className="text-sm text-[color:var(--text-muted)]">{penalty.note}</p>}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-[color:var(--text-muted)]">No penalties recorded.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="soft-card soft-card-subtle rounded-2xl p-4 mt-3">
-                      <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Weekly timeline</p>
-                      {scoreHistory.length > 0 ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                          {getPlayerTimeline(player.id)
-                            .slice(-LIMITS.PLAYER_TIMELINE_DISPLAY)
-                            .map((entry, idx) => (
-                              <div key={`${player.id}-timeline-${idx}`} className="soft-card soft-card-subtle rounded-xl p-2.5">
-                                <p className="text-sm uppercase tracking-[0.12em] text-[color:var(--text-muted)]">{entry.label}</p>
-                                <p className="text-base font-bold text-[color:var(--text)] mt-1">{formatScore(entry.total as number)}</p>
-                              </div>
-                            ))}
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="premium-meta-line">No achievements recorded yet.</p>
+                          )}
                         </div>
-                      ) : (
-                        <p className="text-sm text-[color:var(--text-muted)]">Timeline appears after first weekly archive.</p>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
 
-      <section className="soft-card rounded-3xl p-4 md:p-5">
-        <div className="flex flex-col items-center gap-2 mb-4 text-center">
-          <p className="text-sm uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Cast Status</p>
-          <h3 className="headline text-2xl">Castle status board</h3>
-          <p className="text-base text-[color:var(--text-muted)]">
-            Live reveal board for Traitor, Eliminated, First Out, and Winner statuses.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-3.5">
-          {CAST_NAMES.map((name) => {
-            const status = gameState.castStatus[name];
-            const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
-
-            const tag = status?.isWinner
-              ? "Winner"
-              : status?.isFirstOut
-              ? "First Out"
-              : status?.isEliminated
-              ? "Eliminated"
-              : status?.isTraitor
-              ? "Traitor"
-              : "Still In";
-
-            const tagClass = status?.isWinner
-              ? "text-[color:var(--success)] border-[color:var(--success)]/55 bg-[color:var(--success)]/16"
-              : status?.isFirstOut
-              ? "text-[color:var(--warning)] border-[color:var(--warning)]/55 bg-[color:var(--warning)]/16"
-              : status?.isEliminated
-              ? "text-[color:var(--danger)] border-[color:var(--danger)]/55 bg-[color:var(--danger)]/16"
-              : status?.isTraitor
-              ? "text-[color:var(--traitor-crimson-strong)] border-[color:var(--traitor-crimson)]/55 bg-[color:var(--traitor-crimson)]/16"
-              : "text-[color:var(--text)] border-[color:var(--panel-border-strong)] bg-black/20";
-
-            const cardClass = status?.isWinner
-              ? "border-[color:var(--success)]/48 bg-[color:var(--success)]/8"
-              : status?.isFirstOut
-              ? "border-[color:var(--warning)]/48 bg-[color:var(--warning)]/8"
-              : status?.isEliminated
-              ? "border-[color:var(--danger)]/48 bg-[color:var(--danger)]/10"
-              : status?.isTraitor
-              ? "border-[color:var(--traitor-crimson)]/58 bg-[color:var(--traitor-crimson)]/11"
-              : "border-[color:var(--panel-border)]";
-
-            return (
-              <article key={name} className={`soft-card soft-card-subtle rounded-2xl p-4 flex flex-col justify-between gap-4 min-h-[168px] ${cardClass}`}>
-                <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm md:text-base leading-snug font-semibold text-[color:var(--text)]">{name}</p>
-                  <div className="h-10 w-10 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
-                    {portraitSrc ? (
-                      <img src={portraitSrc} alt={name} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center text-sm font-bold text-[color:var(--text-muted)]">
-                        {name.charAt(0)}
+                        <div className="premium-subpanel">
+                          <p className="premium-kicker mb-2">Penalties</p>
+                          {penalties.length > 0 ? (
+                            <div className="space-y-2">
+                              {penalties.map((penalty, idx) => (
+                              <div key={`${player.id}-penalty-${idx}`} className="premium-row-item premium-row-item-danger premium-row-item-plain">
+                                  <div>
+                                    <p className="premium-row-title">{penalty.label}</p>
+                                    {penalty.pick && <p className="premium-meta-line">Pick: {penalty.pick}</p>}
+                                    {penalty.actual && <p className="premium-meta-line">Result: {penalty.actual}</p>}
+                                    {penalty.note && <p className="premium-meta-line">{penalty.note}</p>}
+                                  </div>
+                                  <p className="premium-value-negative">{formatScore(penalty.points)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="premium-meta-line">No penalties recorded.</p>
+                          )}
+                        </div>
                       </div>
-                    )}
+
+                      <div className="premium-subpanel mt-3">
+                        <p className="premium-kicker mb-2">Weekly Timeline</p>
+                        {scoreHistory.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            {getPlayerTimeline(player.id)
+                              .slice(-LIMITS.PLAYER_TIMELINE_DISPLAY)
+                              .map((entry, idx) => (
+                                <div key={`${player.id}-timeline-${idx}`} className="premium-row-item premium-row-item-plain">
+                                  <div>
+                                    <p className="premium-meta-line uppercase">{entry.label}</p>
+                                    <p className="premium-row-title">{formatScore(entry.total as number)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        ) : (
+                          <p className="premium-meta-line">Timeline appears after first weekly archive.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </PremiumRankRow>
+              );
+            })}
+          </PremiumRankTable>
+        </PremiumCard>
+      </motion.section>
+
+      <motion.section variants={sectionStaggerVariants}>
+        <PremiumCard className="premium-panel-pad-compact premium-stack-sm">
+          <div className="premium-section-topline mb-3">
+            <h3 className="premium-section-title">Cast Status Board</h3>
+            <PremiumStatusBadge>{CAST_NAMES.length} cast members</PremiumStatusBadge>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
+            {CAST_NAMES.map((name) => {
+              const status = gameState.castStatus[name];
+              const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
+
+              const tag = status?.isWinner
+                ? "Winner"
+                : status?.isFirstOut
+                ? "1st Out"
+                : status?.isEliminated
+                ? "Out"
+                : status?.isTraitor
+                ? "Traitor"
+                : "In";
+
+              const tone = status?.isWinner
+                ? "premium-status premium-status-positive"
+                : status?.isFirstOut
+                ? "premium-status premium-status-warning"
+                : status?.isEliminated
+                ? "premium-status premium-status-negative"
+                : status?.isTraitor
+                ? "premium-status premium-status-accent"
+                : "premium-status";
+
+              return (
+                <article key={name} className="premium-cast-card premium-cast-card-compact">
+                  <div className="premium-cast-row">
+                    <div className="premium-cast-main">
+                      <div className="h-6 w-6 rounded-full overflow-hidden bg-black/35 flex-shrink-0">
+                        {portraitSrc ? (
+                          <img src={portraitSrc} alt={name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-[9px] font-bold text-[color:var(--text-muted)]">
+                            {name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
+                      <p className="premium-cast-name">{name}</p>
+                    </div>
+                    <span className={`${tone} premium-cast-status`}>{tag}</span>
                   </div>
-                </div>
-                <span className={`inline-flex w-fit rounded-full border px-3 py-1.5 text-sm md:text-base uppercase tracking-[0.1em] font-semibold ${tagClass}`}>
-                  {tag}
-                </span>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    </div>
+                </article>
+              );
+            })}
+          </div>
+        </PremiumCard>
+      </motion.section>
+    </motion.div>
   );
 };
 

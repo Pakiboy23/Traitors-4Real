@@ -53,6 +53,7 @@ export interface WeeklyScoreSnapshot {
 }
 
 export type League = "main" | "jr";
+export type UiVariant = "classic" | "premium";
 
 export const COUNCIL_LABELS = {
   weekly: "Weekly Council",

@@ -1,10 +1,14 @@
 import React, { useState } from "react";
+import { UiVariant } from "../types";
+import { PremiumButton, PremiumCard, PremiumField, PremiumPanelHeader } from "../src/ui/premium";
 
 interface AdminAuthProps {
   onAuthenticate: (email: string, password: string) => Promise<boolean>;
+  uiVariant: UiVariant;
 }
 
-const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
+const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, uiVariant }) => {
+  const isPremiumUi = uiVariant === "premium";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
@@ -24,37 +28,37 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
   };
 
   return (
-    <div className="max-w-lg mx-auto mt-8 md:mt-12">
-      <div className="soft-card rounded-3xl p-6 md:p-8">
-        <div className="space-y-2 text-center mb-6">
-          <p className="text-xs uppercase tracking-[0.2em] text-[color:var(--text-muted)]">Restricted Area</p>
-          <h2 className="headline text-3xl">Admin access</h2>
-          <p className="text-sm text-[color:var(--text-muted)]">Sign in to manage scoring, cast status, and submissions.</p>
-        </div>
+    <div className={`max-w-lg mx-auto mt-8 md:mt-12 ${isPremiumUi ? "premium-page premium-admin-auth" : ""}`}>
+      <PremiumCard className="premium-panel-pad premium-stack-md">
+        <PremiumPanelHeader
+          kicker="Restricted"
+          title="Admin Access"
+          description="Authenticate to manage submissions, cast status, and persistence controls."
+        />
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <input
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          <PremiumField
             id="admin-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Admin email"
-            className={`field-soft p-3.5 ${error ? "border-[color:var(--danger)] animate-shake" : ""}`}
             autoComplete="email"
             required
             aria-invalid={error}
+            className="premium-input-compact"
           />
-          <input
+          <PremiumField
             id="admin-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className={`field-soft p-3.5 ${error ? "border-[color:var(--danger)] animate-shake" : ""}`}
             autoComplete="current-password"
             required
             aria-invalid={error}
             aria-describedby={error ? "login-error" : undefined}
+            className="premium-input-compact"
           />
 
           {error && (
@@ -63,12 +67,11 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate }) => {
             </p>
           )}
 
-          <button type="submit" disabled={isSubmitting} className="w-full btn-primary py-3.5 text-xs md:text-sm" aria-busy={isSubmitting}>
-            {isSubmitting && <span className="loading-spinner mr-2" aria-hidden="true" />}
+          <PremiumButton type="submit" variant="primary" disabled={isSubmitting} className="w-full" aria-busy={isSubmitting}>
             {isSubmitting ? "Verifying..." : "Sign In"}
-          </button>
+          </PremiumButton>
         </form>
-      </div>
+      </PremiumCard>
     </div>
   );
 };

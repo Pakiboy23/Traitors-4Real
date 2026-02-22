@@ -1,11 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { COUNCIL_LABELS } from "../types";
+import { motion, useReducedMotion } from "framer-motion";
+import { COUNCIL_LABELS, UiVariant } from "../types";
+import {
+  cardRevealVariants,
+  pageRevealVariants,
+  sectionStaggerVariants,
+} from "../src/ui/motion";
+import {
+  PremiumButton,
+  PremiumStatusBadge,
+  PremiumTabs,
+} from "../src/ui/premium";
 
 interface LayoutProps {
   children: React.ReactNode;
   activeTab: string;
   onTabChange: (tab: string) => void;
   lastSync?: number;
+  uiVariant: UiVariant;
 }
 
 const NAV_ITEMS: Array<{ id: string; label: string }> = [
@@ -21,91 +33,101 @@ const Layout: React.FC<LayoutProps> = ({
   activeTab,
   onTabChange,
   lastSync,
+  uiVariant,
 }) => {
+  const reduceMotion = useReducedMotion();
+  const isPremiumUi = uiVariant === "premium";
   const [isLightMode, setIsLightMode] = useState(
     () => localStorage.getItem("traitors_theme") === "light"
   );
 
   useEffect(() => {
+    document.body.classList.toggle("premium-ui", isPremiumUi);
+
+    if (isPremiumUi) {
+      document.body.classList.remove("light-mode");
+      localStorage.setItem("traitors_theme", "dark");
+      return;
+    }
+
     if (isLightMode) {
       document.body.classList.add("light-mode");
       localStorage.setItem("traitors_theme", "light");
       return;
     }
+
     document.body.classList.remove("light-mode");
     localStorage.setItem("traitors_theme", "dark");
-  }, [isLightMode]);
+  }, [isLightMode, isPremiumUi]);
 
   const syncLabel = useMemo(() => {
-    if (!lastSync) return "Not synchronized yet";
+    if (!lastSync) return "No sync yet";
     return `Synced ${new Date(lastSync).toLocaleTimeString()}`;
   }, [lastSync]);
 
+  const envLabel = import.meta.env.DEV ? "Development" : "Production";
+
   return (
-    <div className="min-h-screen">
-      <div className="app-shell space-y-5 md:space-y-6">
-        <header className="glass-panel p-4 md:p-6">
-          <div className="flex flex-col items-center gap-4 text-center">
-            <div className="space-y-2 max-w-3xl">
-              <p className="text-sm md:text-base font-semibold tracking-[0.2em] uppercase text-[color:var(--text-muted)]">
-                Round Table Command Center
-              </p>
-              <h1 className="headline text-2xl sm:text-3xl md:text-4xl font-semibold">
-                The Traitors Draft League
-              </h1>
-              <p className="text-base md:text-lg text-[color:var(--text-muted)]">
-                Season 4 strategy hub for castle picks, weekly calls, and standings.
-              </p>
-              <p className="text-sm md:text-base uppercase tracking-[0.12em] text-[color:var(--traitor-crimson-strong)] font-semibold">
-                Trust no one. Audit every move.
-              </p>
+    <motion.div
+      className={`min-h-screen ${isPremiumUi ? "premium-shell" : ""}`}
+      initial={reduceMotion ? undefined : "hidden"}
+      animate={reduceMotion ? undefined : "show"}
+      variants={pageRevealVariants}
+    >
+      <div className="app-shell space-y-4 md:space-y-5">
+        <motion.header className="premium-shell-header" variants={sectionStaggerVariants}>
+          <motion.div className="premium-utility-bar" variants={cardRevealVariants}>
+            <div className="premium-utility-left">
+              <PremiumStatusBadge tone="accent">{envLabel}</PremiumStatusBadge>
+              <PremiumStatusBadge>{syncLabel}</PremiumStatusBadge>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <div className="status-pill inline-flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[color:var(--success)] animate-pulse" />
-                Live Sync
-              </div>
-              <div className="status-pill">{syncLabel}</div>
+            <div className="premium-utility-right">
+              {!isPremiumUi && (
+                <PremiumButton
+                  onClick={() => setIsLightMode((prev) => !prev)}
+                  variant="ghost"
+                  className="px-4 text-xs md:text-sm"
+                  aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
+                  aria-pressed={isLightMode}
+                  title={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
+                >
+                  {isLightMode ? "Dark" : "Light"}
+                </PremiumButton>
+              )}
               <button
                 type="button"
-                onClick={() => setIsLightMode((prev) => !prev)}
-                className="btn-secondary px-4 text-sm"
-                aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
-                aria-pressed={isLightMode}
-                title={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
+                onClick={() => onTabChange("weekly")}
+                className="premium-btn premium-btn-primary px-5 text-xs md:text-sm"
               >
-                {isLightMode ? "Dark" : "Light"}
+                Submit Weekly Picks
               </button>
             </div>
-          </div>
+          </motion.div>
 
-          <nav className="mt-5 flex items-center justify-center gap-2 overflow-x-auto pb-1">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onTabChange(item.id)}
-                className={`pill-nav whitespace-nowrap ${
-                  activeTab === item.id ? "pill-nav-active" : ""
-                }`}
-                aria-current={activeTab === item.id ? "page" : undefined}
-              >
-                {item.label}
-              </button>
-            ))}
-          </nav>
-        </header>
+          <motion.div className="premium-header-title-row" variants={cardRevealVariants}>
+            <div>
+              <p className="premium-kicker">Traitors Fantasy Draft</p>
+              <h1 className="premium-app-title">Round Table Command Desk</h1>
+            </div>
+            <p className="premium-subtitle premium-shell-summary">
+              Track standings, lock weekly calls, and chase the season lead in one compact,
+              consistent workspace.
+            </p>
+          </motion.div>
 
-        <main className="glass-panel p-4 sm:p-6 md:p-8 lg:p-10 min-h-[62vh] animate-page-in">
+          <motion.div className="premium-nav-row" variants={cardRevealVariants}>
+            <PremiumTabs items={NAV_ITEMS} activeId={activeTab} onChange={onTabChange} />
+          </motion.div>
+        </motion.header>
+
+        <motion.main className="premium-main-shell animate-page-in" variants={sectionStaggerVariants}>
           <div className="page-shell">{children}</div>
-        </main>
+        </motion.main>
 
-        <footer className="px-2 pb-4 text-center text-sm text-[color:var(--text-muted)] tracking-[0.1em] uppercase">
-          Premium fantasy tracking experience for the league
-        </footer>
+        <footer className="premium-footer">Traitors Fantasy Draft. Friends league workspace.</footer>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
