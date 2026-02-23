@@ -144,7 +144,7 @@ const Welcome: React.FC<WelcomeProps> = ({
     },
     {
       title: "Leaderboard Flips",
-      detail: "One clean call can jump you past multiple friends in a single week.",
+      detail: "One clean call can jump you past multiple rivals in a single week.",
     },
   ];
 
@@ -161,9 +161,9 @@ const Welcome: React.FC<WelcomeProps> = ({
             <PremiumCard className="premium-panel-pad premium-stack-md premium-overview-hero">
               <div className="premium-overview-hero-inner">
                 <div className="premium-overview-hero-copy space-y-4">
-                  <p className="premium-kicker">The Traitors: Friends Draft League</p>
+                  <p className="premium-kicker">Traitors Fantasy Draft: Titanic Swim Team Edition</p>
                   <h2 className="premium-overview-title">
-                    Outdraft your friends. Own the Round Table.
+                    Outdraft the field. Own the Round Table.
                   </h2>
                   <p className="premium-overview-copy">
                     Pick who survives, call each weekly vote, and chase the top spot before the
