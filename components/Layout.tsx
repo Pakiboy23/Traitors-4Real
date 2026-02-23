@@ -125,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="page-shell">{children}</div>
         </motion.main>
 
-        <footer className="premium-footer">Traitors Fantasy Draft. Friends league workspace.</footer>
+        <footer className="premium-footer">Traitors Fantasy Draft: Titanic Swim Team Edition workspace.</footer>
       </div>
     </motion.div>
   );
