@@ -92,14 +92,17 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ targetDate }) => {
   ];
 
   return (
-    <div className="inline-flex flex-nowrap items-center gap-2 text-[13px] leading-none text-current sm:text-sm">
-      {cells.map((cell) => (
-        <span key={cell.label} className="inline-flex items-baseline gap-1 whitespace-nowrap">
-          <span className="font-semibold tabular-nums">{formatValue(cell.value)}</span>
-          <span className="text-[10px] lowercase tracking-[0.08em] opacity-85 sm:text-[11px]">
-            {cell.label}
+    <div className="flex items-center space-x-2 font-mono text-[13px] leading-none text-current sm:text-sm">
+      {cells.map((cell, index) => (
+        <React.Fragment key={cell.label}>
+          <span className="inline-flex items-baseline gap-1 whitespace-nowrap">
+            <span className="font-semibold tabular-nums">{formatValue(cell.value)}</span>
+            <span className="text-[10px] lowercase tracking-[0.08em] opacity-85 sm:text-[11px]">
+              {cell.label}
+            </span>
           </span>
-        </span>
+          {index < cells.length - 1 && <span className="opacity-50">:</span>}
+        </React.Fragment>
       ))}
     </div>
   );

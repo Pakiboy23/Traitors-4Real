@@ -100,7 +100,7 @@ const Layout: React.FC<LayoutProps> = ({
                 onClick={() => onTabChange("weekly")}
                 className="premium-btn premium-btn-primary px-5 text-xs md:text-sm"
               >
-                Submit Weekly Picks
+                Lock Weekly Picks
               </button>
             </div>
           </motion.div>

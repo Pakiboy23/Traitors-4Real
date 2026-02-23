@@ -49,6 +49,16 @@ const formatDelta = (value: number) => {
   return value > 0 ? `+${formatted}` : formatted;
 };
 
+const getMomentumDisplay = (value: number) => {
+  if (value > 0) {
+    return { icon: "⬆", className: "text-green-500" };
+  }
+  if (value < 0) {
+    return { icon: "⬇", className: "text-red-500" };
+  }
+  return { icon: "", className: "text-[color:var(--text)]" };
+};
+
 const LeaderMiniCard: React.FC<{
   title: string;
   player?: MvpHighlight | null;
@@ -89,7 +99,11 @@ const Welcome: React.FC<WelcomeProps> = ({
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
 
-  const summaryCards = [
+  const summaryCards: Array<{
+    label: string;
+    value: string;
+    hint: React.ReactNode;
+  }> = [
     {
       label: "Friends Playing",
       value: String(leaguePulse.entries),
@@ -111,12 +125,22 @@ const Welcome: React.FC<WelcomeProps> = ({
         leaguePulse.pendingSubmissions === null
           ? "Private"
           : String(leaguePulse.pendingSubmissions),
-      hint: "Fresh submissions",
+      hint:
+        leaguePulse.pendingSubmissions === null ? (
+          "Private activity"
+        ) : (
+          <>
+            submissions. The Round Table is quiet...{" "}
+            <span className="text-white font-semibold">for now.</span>
+          </>
+        ),
     },
   ];
 
   const overallLeaderScore = mvp ? formatScore(mvp.score) : "No score yet";
-  const weeklyLeaderScore = weeklyMvp ? formatDelta(weeklyMvp.score) : "No score yet";
+  const weeklySurgeMomentum = weeklyMvp
+    ? getMomentumDisplay(weeklyMvp.score)
+    : null;
 
   const gameLoop = [
     {
@@ -177,21 +201,35 @@ const Welcome: React.FC<WelcomeProps> = ({
                   </div>
                 </div>
 
-                <article className="premium-overview-rival-card premium-overview-rival-card-inline">
-                  <div className="premium-section-topline">
+                <article className="premium-overview-rival-card premium-overview-rival-card-inline relative pt-11">
+                  <div className="premium-section-topline absolute -top-3 left-4 z-20 rounded-full bg-black/70 px-3 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.35)] backdrop-blur-sm">
                     <p className="premium-kicker">Live Rivalry Pulse</p>
                     <PremiumStatusBadge tone="accent">Game Night</PremiumStatusBadge>
                   </div>
-                  <div className="premium-overview-rival-grid">
+                  <div className="premium-overview-rival-grid mt-1">
                     <div className="premium-overview-rival-slot">
-                      <p className="premium-overview-rival-label">Season Leader</p>
-                      <p className="premium-overview-rival-name">{mvp?.name || "Open race"}</p>
-                      <p className="premium-overview-rival-score">{overallLeaderScore}</p>
+                      <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
+                        <p className="premium-overview-rival-label">Season Leader</p>
+                      </div>
+                      <p className="premium-overview-rival-name mt-1">{mvp?.name || "Open race"}</p>
+                      <p className="premium-overview-rival-score mt-1">{overallLeaderScore}</p>
                     </div>
                     <div className="premium-overview-rival-slot premium-overview-rival-slot-accent">
-                      <p className="premium-overview-rival-label">Weekly Surge</p>
-                      <p className="premium-overview-rival-name">{weeklyMvp?.name || "No weekly jump yet"}</p>
-                      <p className="premium-overview-rival-score">{weeklyLeaderScore}</p>
+                      <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
+                        <p className="premium-overview-rival-label">Weekly Surge</p>
+                      </div>
+                      <p className="premium-overview-rival-name mt-1">{weeklyMvp?.name || "No weekly jump yet"}</p>
+                      <p
+                        className={`premium-overview-rival-score mt-1 ${
+                          weeklySurgeMomentum ? weeklySurgeMomentum.className : ""
+                        }`}
+                      >
+                        {weeklyMvp
+                          ? `${weeklySurgeMomentum?.icon ? `${weeklySurgeMomentum.icon} ` : ""}${formatDelta(
+                              weeklyMvp.score
+                            )}`
+                          : "No score yet"}
+                      </p>
                     </div>
                   </div>
                 </article>
@@ -206,7 +244,13 @@ const Welcome: React.FC<WelcomeProps> = ({
                     >
                       <p className="premium-overview-chip-label">{item.label}</p>
                       <p className="premium-overview-chip-value">{item.value}</p>
-                      <p className="premium-overview-chip-hint">{item.hint}</p>
+                      <p
+                        className={`premium-overview-chip-hint !text-gray-400 ${
+                          item.label === "Weekly Activity" ? "italic" : ""
+                        }`}
+                      >
+                        {item.hint}
+                      </p>
                     </motion.article>
                   ))}
                 </div>
@@ -253,28 +297,28 @@ const Welcome: React.FC<WelcomeProps> = ({
                   </p>
                 ) : (
                   <div className="premium-divider-list mt-3">
-                    {topMovers.map((mover, index) => (
-                      <motion.article
-                        key={`${mover.name}-${index}`}
-                        className="premium-row-item premium-row-item-plain"
-                        variants={cardRevealVariants}
-                        whileHover={cardHover}
-                      >
-                        <div>
-                          <p className="premium-row-title">{mover.name}</p>
-                          <p className="premium-meta-line">
-                            {mover.league === "jr" ? "Jr League" : "Main League"}
-                          </p>
-                        </div>
-                        <p
-                          className={`premium-row-value ${
-                            mover.delta >= 0 ? "premium-value-positive" : "premium-value-negative"
-                          }`}
+                    {topMovers.map((mover, index) => {
+                      const moverMomentum = getMomentumDisplay(mover.delta);
+                      return (
+                        <motion.article
+                          key={`${mover.name}-${index}`}
+                          className="premium-row-item premium-row-item-plain"
+                          variants={cardRevealVariants}
+                          whileHover={cardHover}
                         >
-                          {formatDelta(mover.delta)}
-                        </p>
-                      </motion.article>
-                    ))}
+                          <div>
+                            <p className="premium-row-title">{mover.name}</p>
+                            <p className="premium-meta-line">
+                              {mover.league === "jr" ? "Jr League" : "Main League"}
+                            </p>
+                          </div>
+                          <p className={`premium-row-value ${moverMomentum.className}`}>
+                            {moverMomentum.icon ? `${moverMomentum.icon} ` : ""}
+                            {formatDelta(mover.delta)}
+                          </p>
+                        </motion.article>
+                      );
+                    })}
                   </div>
                 )}
               </section>
