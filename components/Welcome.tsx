@@ -45,7 +45,7 @@ interface WelcomeProps {
   uiVariant: UiVariant;
 }
 
-const FINALE_OVERVIEW_CONFETTI_COUNT = 26;
+const FINALE_OVERVIEW_CONFETTI_COUNT = 20;
 
 const formatDelta = (value: number) => {
   const formatted = formatScore(value);
@@ -287,8 +287,8 @@ const Welcome: React.FC<WelcomeProps> = ({
                         style={
                           {
                             "--overview-piece-left": `${3 + ((idx * 83) % 92)}%`,
-                            "--overview-piece-delay": `${(idx % 8) * 0.16}s`,
-                            "--overview-piece-duration": `${2.9 + (idx % 6) * 0.24}s`,
+                            "--overview-piece-delay": `${(idx % 8) * 0.18}s`,
+                            "--overview-piece-duration": `${3.3 + (idx % 6) * 0.26}s`,
                             "--overview-piece-hue": `${(idx * 41) % 360}`,
                           } as React.CSSProperties
                         }

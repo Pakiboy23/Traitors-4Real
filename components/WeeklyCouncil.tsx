@@ -35,8 +35,8 @@ const normalize = (value: string) => value.trim().toLowerCase();
 const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
 const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
 const JR_LABEL = COUNCIL_LABELS.jr;
-const FINALE_CONFETTI_COUNT = 22;
-const FINALE_VIEWPORT_CONFETTI_COUNT = 42;
+const FINALE_CONFETTI_COUNT = 16;
+const FINALE_VIEWPORT_CONFETTI_COUNT = 30;
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, uiVariant }) => {
   const { showToast } = useToast();
@@ -474,8 +474,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                 style={
                   {
                     "--viewport-left": `${2 + ((idx * 73) % 96)}%`,
-                    "--viewport-delay": `${(idx % 12) * 0.14}s`,
-                    "--viewport-duration": `${3.4 + (idx % 7) * 0.36}s`,
+                    "--viewport-delay": `${(idx % 12) * 0.16}s`,
+                    "--viewport-duration": `${3.9 + (idx % 7) * 0.38}s`,
                     "--viewport-hue": `${(idx * 29) % 360}`,
                   } as React.CSSProperties
                 }
@@ -552,8 +552,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                     style={
                       {
                         "--piece-left": `${3 + ((idx * 97) % 90)}%`,
-                        "--piece-delay": `${(idx % 6) * 0.2}s`,
-                        "--piece-duration": `${3 + (idx % 5) * 0.32}s`,
+                        "--piece-delay": `${(idx % 6) * 0.22}s`,
+                        "--piece-duration": `${3.5 + (idx % 5) * 0.34}s`,
                         "--piece-hue": `${(idx * 37) % 360}`,
                       } as React.CSSProperties
                     }
