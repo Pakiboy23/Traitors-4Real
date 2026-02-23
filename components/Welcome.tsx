@@ -51,10 +51,10 @@ const formatDelta = (value: number) => {
 
 const getMomentumDisplay = (value: number) => {
   if (value > 0) {
-    return { icon: "⬆", className: "text-green-500" };
+    return { icon: "⬆", className: "premium-value-positive !text-green-500" };
   }
   if (value < 0) {
-    return { icon: "⬇", className: "text-red-500" };
+    return { icon: "⬇", className: "premium-value-negative !text-red-500" };
   }
   return { icon: "", className: "text-[color:var(--text)]" };
 };
