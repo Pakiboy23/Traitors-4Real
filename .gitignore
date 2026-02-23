@@ -37,3 +37,4 @@ bin/pocketbase.exe
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
+backups/
