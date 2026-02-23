@@ -162,7 +162,11 @@ const Welcome: React.FC<WelcomeProps> = ({
                     next betrayal flips the leaderboard.
                   </p>
 
-                  <div className="premium-overview-hero-actions">
+                  <div className="premium-overview-hero-actions flex-col gap-2">
+                    <div className="premium-btn premium-overview-lockbar" role="status" aria-live="polite">
+                      <span className="premium-overview-lockbar-label">Picks Lock In</span>
+                      <CountdownTimer targetDate="2026-02-26T21:00:00-05:00" />
+                    </div>
                     <PremiumButton
                       variant="primary"
                       onClick={onStart}
@@ -170,12 +174,6 @@ const Welcome: React.FC<WelcomeProps> = ({
                     >
                       Lock Weekly Picks
                     </PremiumButton>
-                    <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-900 rounded-md border border-slate-300 dark:border-slate-800 shadow-inner">
-                      <p className="text-sm text-center mb-2 uppercase tracking-widest text-slate-500">
-                        Picks lock in:
-                      </p>
-                      <CountdownTimer targetDate="2026-02-26T21:00:00-05:00" />
-                    </div>
                   </div>
                 </div>
 

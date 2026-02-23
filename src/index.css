@@ -1525,6 +1525,38 @@ body.premium-ui .premium-overview-hero-actions {
   flex-wrap: wrap;
 }
 
+body.premium-ui .premium-overview-lockbar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.58rem;
+  min-height: 34px;
+  padding: 0.48rem 0.92rem;
+  border-radius: var(--radius-sm);
+  color: #f5fff8;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--success) 84%, white 16%),
+    color-mix(in srgb, var(--success) 72%, #0b1217 28%)
+  );
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--success) 34%, transparent);
+  cursor: default;
+  white-space: nowrap;
+}
+
+body.premium-ui .premium-overview-lockbar:hover,
+body.premium-ui .premium-overview-lockbar:focus-visible {
+  transform: none;
+  filter: none;
+}
+
+body.premium-ui .premium-overview-lockbar-label {
+  font-size: 0.64rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(248, 255, 251, 0.9);
+}
+
 body.premium-ui .premium-overview-live-wrap {
   display: inline-flex;
   align-items: center;

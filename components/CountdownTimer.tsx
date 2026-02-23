@@ -70,38 +70,36 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ targetDate }) => {
 
   if (Number.isNaN(targetMs)) {
     return (
-      <p className="text-sm text-center text-slate-600 dark:text-slate-300">
+      <span className="text-xs text-current/80">
         Countdown unavailable.
-      </p>
+      </span>
     );
   }
 
   if (parts.expired) {
     return (
-      <p className="text-center font-semibold text-slate-700 dark:text-slate-200">
+      <span className="text-xs font-semibold text-current">
         Picks are locked.
-      </p>
+      </span>
     );
   }
 
   const cells: Array<{ label: string; value: number }> = [
-    { label: "Days", value: parts.days },
-    { label: "Hours", value: parts.hours },
-    { label: "Minutes", value: parts.minutes },
-    { label: "Seconds", value: parts.seconds },
+    { label: "days", value: parts.days },
+    { label: "hrs", value: parts.hours },
+    { label: "min", value: parts.minutes },
+    { label: "sec", value: parts.seconds },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+    <div className="inline-flex flex-nowrap items-center gap-2 text-[13px] leading-none text-current sm:text-sm">
       {cells.map((cell) => (
-        <div key={cell.label} className="rounded-md bg-white/60 dark:bg-slate-800/70 px-2 py-3">
-          <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            {formatValue(cell.value)}
-          </p>
-          <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <span key={cell.label} className="inline-flex items-baseline gap-1 whitespace-nowrap">
+          <span className="font-semibold tabular-nums">{formatValue(cell.value)}</span>
+          <span className="text-[10px] lowercase tracking-[0.08em] opacity-85 sm:text-[11px]">
             {cell.label}
-          </p>
-        </div>
+          </span>
+        </span>
       ))}
     </div>
   );
