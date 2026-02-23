@@ -18,7 +18,7 @@ import {
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
 } from "./types";
-import { calculatePlayerScore } from "./src/utils/scoring";
+import { calculatePlayerScore, getFinaleTieBreakDistance } from "./src/utils/scoring";
 import { TIMING } from "./src/utils/scoringConstants";
 import {
   fetchGameState,
@@ -493,14 +493,57 @@ const App: React.FC = () => {
     ? gameState.weeklyScoreHistory
     : [];
 
+  const hasActiveWeeklyResults = useMemo(() => {
+    const weekly = gameState.weeklyResults;
+    return Boolean(
+      weekly?.nextBanished ||
+        weekly?.nextMurdered ||
+        weekly?.bonusGames?.redemptionRoulette ||
+        weekly?.bonusGames?.shieldGambit ||
+        weekly?.bonusGames?.traitorTrio?.length ||
+        weekly?.finaleResults?.finalWinner ||
+        weekly?.finaleResults?.lastFaithfulStanding ||
+        weekly?.finaleResults?.lastTraitorStanding ||
+        typeof weekly?.finaleResults?.finalPotValue === "number"
+    );
+  }, [gameState.weeklyResults]);
+
   const overallMvp = useMemo(() => {
     if (gameState.players.length === 0) return null;
+
+    const latestSnapshotTotals = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
+    const finalePotValue = gameState.weeklyResults?.finaleResults?.finalPotValue;
+    const isFinaleTieBreakActive =
+      Boolean(gameState.finaleConfig?.enabled) &&
+      typeof finalePotValue === "number" &&
+      Number.isFinite(finalePotValue);
+
     const scored = gameState.players
-      .map((player) => ({
-        player,
-        score: calculatePlayerScore(gameState, player).total,
-      }))
-      .sort((a, b) => b.score - a.score);
+      .map((player) => {
+        const archived = latestSnapshotTotals[player.id];
+        const calculated = calculatePlayerScore(gameState, player).total;
+        const score =
+          !hasActiveWeeklyResults && typeof archived === "number"
+            ? archived
+            : calculated;
+        return { player, score };
+      })
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+
+        if (isFinaleTieBreakActive) {
+          const aDistance = getFinaleTieBreakDistance(a.player, finalePotValue);
+          const bDistance = getFinaleTieBreakDistance(b.player, finalePotValue);
+          if (aDistance === null && bDistance !== null) return 1;
+          if (aDistance !== null && bDistance === null) return -1;
+          if (typeof aDistance === "number" && typeof bDistance === "number" && aDistance !== bDistance) {
+            return aDistance - bDistance;
+          }
+        }
+
+        return a.player.name.localeCompare(b.player.name);
+      });
+
     const top = scored[0];
     return top
       ? {
@@ -510,7 +553,7 @@ const App: React.FC = () => {
           label: "Season MVP",
         }
       : null;
-  }, [gameState]);
+  }, [gameState, hasActiveWeeklyResults, scoreHistory]);
 
   const weeklyMvp = useMemo(() => {
     if (scoreHistory.length === 0) return null;
