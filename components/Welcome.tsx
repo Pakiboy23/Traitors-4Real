@@ -45,6 +45,8 @@ interface WelcomeProps {
   uiVariant: UiVariant;
 }
 
+const FINALE_OVERVIEW_CONFETTI_COUNT = 26;
+
 const formatDelta = (value: number) => {
   const formatted = formatScore(value);
   return value > 0 ? `+${formatted}` : formatted;
@@ -198,28 +200,67 @@ const Welcome: React.FC<WelcomeProps> = ({
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-welcome" : ""}`}
+      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-welcome" : ""} ${
+        isFinaleMode ? "premium-welcome-finale" : ""
+      }`}
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "show"}
       variants={pageRevealVariants}
     >
+      {isFinaleMode && (
+        <motion.section className="premium-overview-finale-alert" variants={cardRevealVariants}>
+          <div className="premium-overview-finale-alert-inner">
+            <p className="premium-overview-finale-alert-kicker">Season 4 Finale</p>
+            <h2 className="premium-overview-finale-alert-title">{lockLabel} Is Live</h2>
+            <p className="premium-overview-finale-alert-sub">
+              Weighted scoring activated. Tie-break in effect. One episode decides everything.
+            </p>
+          </div>
+          <div className="premium-overview-finale-ticker" aria-hidden="true">
+            <span>Finale Gauntlet Live • Lock Picks • Claim The Crown •</span>
+            <span>Finale Gauntlet Live • Lock Picks • Claim The Crown •</span>
+          </div>
+        </motion.section>
+      )}
+
       <motion.section className="premium-overview-grid" variants={sectionStaggerVariants}>
         <motion.div className="space-y-3" variants={cardRevealVariants}>
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
-            <PremiumCard className="premium-panel-pad premium-stack-md premium-overview-hero">
+            <PremiumCard
+              className={`premium-panel-pad premium-stack-md premium-overview-hero ${
+                isFinaleMode ? "premium-overview-hero-finale" : ""
+              }`}
+            >
               <div className="premium-overview-hero-inner">
                 <div className="premium-overview-hero-copy space-y-4">
                   <p className="premium-kicker">Traitors Fantasy Draft: Titanic Swim Team Edition</p>
-                  <h2 className="premium-overview-title">
-                    Outdraft the field. Own the Round Table.
+                  <h2
+                    className={`premium-overview-title ${
+                      isFinaleMode ? "premium-overview-title-finale" : ""
+                    }`}
+                  >
+                    {isFinaleMode
+                      ? "FINALE GAUNTLET IS LIVE"
+                      : "Outdraft the field. Own the Round Table."}
                   </h2>
-                  <p className="premium-overview-copy">
-                    Pick who survives, call each weekly vote, and chase the top spot before the
-                    next betrayal flips the leaderboard.
+                  <p
+                    className={`premium-overview-copy ${
+                      isFinaleMode ? "premium-overview-copy-finale" : ""
+                    }`}
+                  >
+                    {isFinaleMode
+                      ? "This is the last stand. Submit your finale predictions now and chase the championship before lock."
+                      : "Pick who survives, call each weekly vote, and chase the top spot before the next betrayal flips the leaderboard."}
                   </p>
 
                   <div className="premium-overview-hero-actions flex-col gap-2">
-                    <div className="premium-btn premium-overview-lockbar" role="status" aria-live="polite">
+                    <div
+                      className={`premium-btn premium-overview-lockbar ${
+                        isFinaleMode ? "premium-overview-lockbar-finale" : ""
+                      }`}
+                      role="status"
+                      aria-live="polite"
+                    >
                       <span className="premium-overview-lockbar-label">
                         {isFinaleMode ? lockLabel : "Picks Lock In"}
                       </span>
@@ -228,12 +269,33 @@ const Welcome: React.FC<WelcomeProps> = ({
                     <PremiumButton
                       variant="primary"
                       onClick={onStart}
-                      className="px-5 text-xs md:text-sm premium-overview-cta"
+                      className={`px-5 text-xs md:text-sm premium-overview-cta ${
+                        isFinaleMode ? "premium-overview-cta-finale" : ""
+                      }`}
                     >
                       Lock Weekly Picks
                     </PremiumButton>
                   </div>
                 </div>
+
+                {isFinaleMode && !reduceMotion && (
+                  <div className="premium-overview-finale-confetti" aria-hidden="true">
+                    {Array.from({ length: FINALE_OVERVIEW_CONFETTI_COUNT }).map((_, idx) => (
+                      <span
+                        key={`overview-finale-confetti-${idx}`}
+                        className="premium-overview-finale-confetti-piece"
+                        style={
+                          {
+                            "--overview-piece-left": `${3 + ((idx * 83) % 92)}%`,
+                            "--overview-piece-delay": `${(idx % 8) * 0.16}s`,
+                            "--overview-piece-duration": `${2.9 + (idx % 6) * 0.24}s`,
+                            "--overview-piece-hue": `${(idx * 41) % 360}`,
+                          } as React.CSSProperties
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <article className="premium-overview-rival-card premium-overview-rival-card-inline relative pt-11">
                   <div className="premium-section-topline absolute -top-3 left-4 z-20 rounded-full bg-black/70 px-3 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.35)] backdrop-blur-sm">
