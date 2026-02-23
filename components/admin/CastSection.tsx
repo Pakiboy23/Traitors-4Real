@@ -43,10 +43,30 @@ const CastSection: React.FC<CastSectionProps> = ({
             : status.isFirstOut
             ? "border-[color:var(--warning)]/55"
             : status.isEliminated
-            ? "border-[color:var(--danger)]/55"
+            ? "border-sky-300/70 shadow-[0_0_0_1px_rgba(125,211,252,0.45),0_0_24px_rgba(56,189,248,0.35)]"
             : status.isTraitor
             ? "border-fuchsia-400/55"
             : "border-[color:var(--panel-border)]";
+
+          const statusLabel = status.isWinner
+            ? "Winner"
+            : status.isFirstOut
+            ? "First out"
+            : status.isEliminated
+            ? "Eliminated"
+            : status.isTraitor
+            ? "Traitor"
+            : "Active";
+
+          const statusLabelClass = status.isWinner
+            ? "text-[color:var(--success)]"
+            : status.isFirstOut
+            ? "text-[color:var(--warning)]"
+            : status.isEliminated
+            ? "text-sky-300"
+            : status.isTraitor
+            ? "text-fuchsia-300"
+            : "text-emerald-300";
 
           return (
             <article key={name} className={`soft-card soft-card-subtle rounded-2xl p-4 space-y-4 border ${cardClass}`}>
@@ -71,6 +91,11 @@ const CastSection: React.FC<CastSectionProps> = ({
                     Update portrait
                   </button>
                 </div>
+                <span
+                  className={`ml-auto rounded-full border border-current/40 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${statusLabelClass}`}
+                >
+                  {statusLabel}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -90,7 +115,7 @@ const CastSection: React.FC<CastSectionProps> = ({
                   onClick={() => onUpdateCastMember(name, "isEliminated", !status?.isEliminated)}
                   className={`rounded-xl border px-2 py-2 text-[11px] uppercase tracking-[0.12em] ${
                     status?.isEliminated
-                      ? "bg-sky-400 text-black border-sky-400"
+                      ? "bg-sky-300 text-black border-sky-200 shadow-[0_0_0_1px_rgba(125,211,252,0.45),0_0_16px_rgba(56,189,248,0.45)]"
                       : "border-[color:var(--panel-border)] text-[color:var(--text-muted)]"
                   }`}
                 >
