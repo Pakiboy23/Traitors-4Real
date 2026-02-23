@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import CountdownTimer from "../components/CountdownTimer";
 import { UiVariant } from "../types";
 import {
   cardRevealVariants,
@@ -88,15 +89,6 @@ const Welcome: React.FC<WelcomeProps> = ({
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
 
-  const activityText =
-    leaguePulse.pendingSubmissions === null
-      ? "Private activity"
-      : leaguePulse.pendingSubmissions > 0
-      ? `${leaguePulse.pendingSubmissions} new weekly vote${
-          leaguePulse.pendingSubmissions === 1 ? "" : "s"
-        }`
-      : "No new votes yet";
-
   const summaryCards = [
     {
       label: "Friends Playing",
@@ -178,9 +170,11 @@ const Welcome: React.FC<WelcomeProps> = ({
                     >
                       Lock Weekly Picks
                     </PremiumButton>
-                    <div className="premium-overview-live-wrap">
-                      <span className="premium-overview-live-dot" aria-hidden="true" />
-                      <PremiumStatusBadge tone="accent">{activityText}</PremiumStatusBadge>
+                    <div className="mt-4 p-4 bg-slate-100 dark:bg-slate-900 rounded-md border border-slate-300 dark:border-slate-800 shadow-inner">
+                      <p className="text-sm text-center mb-2 uppercase tracking-widest text-slate-500">
+                        Picks lock in:
+                      </p>
+                      <CountdownTimer targetDate="2026-02-26T21:00:00-05:00" />
                     </div>
                   </div>
                 </div>
