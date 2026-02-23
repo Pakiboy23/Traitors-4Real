@@ -372,6 +372,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
 
       <motion.section className="premium-weekly-workspace" variants={sectionStaggerVariants}>
         <PremiumCard className="premium-panel-pad premium-decision-board">
+          <p className="premium-meta-line">
+            <strong>Main Council</strong> is your primary entry for the season leaderboard. <strong>Jr. Council</strong> is a
+            separate side entry for the rival you invite, tracked independently with the same weekly questions.
+          </p>
+
           <section className="premium-decision-league">
             <div className="premium-section-topline">
               <h3 className="premium-section-title">{WEEKLY_LABEL}</h3>
