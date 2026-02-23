@@ -364,7 +364,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
           <PremiumPanelHeader
             kicker="Weekly"
             title="Decision Desk"
-            description="Main and Jr league workflows in one coherent intake surface."
+            description="Main Council is for players who completed the full season-opening draft. Jr Council is for players who skipped the opening draft and only submit weekly predictions."
             rightSlot={<PremiumStatusBadge tone="accent">Main + Jr</PremiumStatusBadge>}
           />
         </PremiumCard>
@@ -384,6 +384,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                 {mainSubmitted ? "Submitted" : "Open"}
               </PremiumStatusBadge>
             </div>
+            <p className="premium-meta-line mt-2">
+              For drafted players: you completed the season-opening draft and now submit weekly
+              calls here.
+            </p>
 
             <div className="premium-inline-grid mt-3">
               <PremiumField
@@ -498,6 +502,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                 {jrSubmitted ? "Submitted" : "Open"}
               </PremiumStatusBadge>
             </div>
+            <p className="premium-meta-line mt-2">
+              For weekly-only players: you did not complete the season-opening draft and only
+              submit weekly predictions here.
+            </p>
 
             <div className="premium-inline-grid mt-3">
               <PremiumField
@@ -647,7 +655,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   <div>
                     <p className="premium-row-title">Main League</p>
                     <p className="premium-meta-line">
-                      {mainSubmitted ? "Submitted and share-ready." : "Pending submission."}
+                      Season-opening draft completed; weekly picks active.
                     </p>
                   </div>
                   <PremiumStatusBadge tone={mainSubmitted ? "positive" : "warning"}>
@@ -658,7 +666,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   <div>
                     <p className="premium-row-title">Jr League</p>
                     <p className="premium-meta-line">
-                      {jrSubmitted ? "Submitted and share-ready." : "Pending submission."}
+                      No season-opening draft; weekly predictions only.
                     </p>
                   </div>
                   <PremiumStatusBadge tone={jrSubmitted ? "positive" : "warning"}>
