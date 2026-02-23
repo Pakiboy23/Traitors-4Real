@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CAST_NAMES, COUNCIL_LABELS, GameState, PlayerEntry, UiVariant } from "../types";
+import {
+  CAST_NAMES,
+  COUNCIL_LABELS,
+  FinalePredictions,
+  GameState,
+  PlayerEntry,
+  UiVariant,
+} from "../types";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { useToast } from "./Toast";
 import {
@@ -28,11 +35,22 @@ const normalize = (value: string) => value.trim().toLowerCase();
 const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
 const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
 const JR_LABEL = COUNCIL_LABELS.jr;
+const FINALE_CONFETTI_COUNT = 22;
+const FINALE_VIEWPORT_CONFETTI_COUNT = 42;
 
 const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, uiVariant }) => {
   const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
   const isPremiumUi = uiVariant === "premium";
+  const isFinaleMode = Boolean(gameState.finaleConfig?.enabled);
+  const finaleLabel =
+    typeof gameState.finaleConfig?.label === "string" && gameState.finaleConfig.label.trim()
+      ? gameState.finaleConfig.label
+      : "Season 4 Finale Gauntlet";
+  const finaleLockAt = gameState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00";
+  const finaleLockLabel = Number.isNaN(Date.parse(finaleLockAt))
+    ? finaleLockAt
+    : new Date(finaleLockAt).toLocaleString();
   const activeCastNames = useMemo(
     () => CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated),
     [gameState.castStatus]
@@ -48,6 +66,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
   const [bonusDoubleOrNothing, setBonusDoubleOrNothing] = useState(false);
   const [bonusShield, setBonusShield] = useState("");
   const [bonusTrio, setBonusTrio] = useState<string[]>(["", "", ""]);
+  const [mainFinalWinner, setMainFinalWinner] = useState("");
+  const [mainLastFaithful, setMainLastFaithful] = useState("");
+  const [mainLastTraitor, setMainLastTraitor] = useState("");
+  const [mainFinalPotEstimate, setMainFinalPotEstimate] = useState("");
   const [mainSubmitted, setMainSubmitted] = useState(false);
   const [isMainSubmitting, setIsMainSubmitting] = useState(false);
 
@@ -59,6 +81,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
   const [jrBonusDoubleOrNothing, setJrBonusDoubleOrNothing] = useState(false);
   const [jrBonusShield, setJrBonusShield] = useState("");
   const [jrBonusTrio, setJrBonusTrio] = useState<string[]>(["", "", ""]);
+  const [jrFinalWinner, setJrFinalWinner] = useState("");
+  const [jrLastFaithful, setJrLastFaithful] = useState("");
+  const [jrLastTraitor, setJrLastTraitor] = useState("");
+  const [jrFinalPotEstimate, setJrFinalPotEstimate] = useState("");
   const [jrSubmitted, setJrSubmitted] = useState(false);
   const [isJrSubmitting, setIsJrSubmitting] = useState(false);
 
@@ -73,6 +99,40 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         bonus.doubleOrNothing ||
         bonus.shieldGambit ||
         bonus.traitorTrio?.some(Boolean)
+    );
+
+  const toFinalePredictions = (
+    values: {
+      finalWinner: string;
+      lastFaithfulStanding: string;
+      lastTraitorStanding: string;
+      finalPotEstimateRaw: string;
+    },
+    fallback?: FinalePredictions
+  ): FinalePredictions => {
+    const parsedPot = Number(values.finalPotEstimateRaw);
+    const finalPotEstimate =
+      values.finalPotEstimateRaw.trim().length > 0 && Number.isFinite(parsedPot)
+        ? parsedPot
+        : null;
+
+    return {
+      finalWinner: values.finalWinner || fallback?.finalWinner || "",
+      lastFaithfulStanding:
+        values.lastFaithfulStanding || fallback?.lastFaithfulStanding || "",
+      lastTraitorStanding:
+        values.lastTraitorStanding || fallback?.lastTraitorStanding || "",
+      finalPotEstimate,
+    };
+  };
+
+  const hasCompleteFinalePrediction = (prediction: FinalePredictions) =>
+    Boolean(
+      prediction.finalWinner &&
+        prediction.lastFaithfulStanding &&
+        prediction.lastTraitorStanding &&
+        typeof prediction.finalPotEstimate === "number" &&
+        Number.isFinite(prediction.finalPotEstimate)
     );
 
   const updateTrioPick = (
@@ -148,7 +208,23 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
       return;
     }
 
-    if (
+    const mainFinalePrediction = toFinalePredictions({
+      finalWinner: mainFinalWinner,
+      lastFaithfulStanding: mainLastFaithful,
+      lastTraitorStanding: mainLastTraitor,
+      finalPotEstimateRaw: mainFinalPotEstimate,
+    });
+
+    if (isFinaleMode) {
+      if (!weeklyBanished && !weeklyMurdered) {
+        showToast(`Select at least one ${WEEKLY_LABEL_LOWER} prediction.`, "warning");
+        return;
+      }
+      if (!hasCompleteFinalePrediction(mainFinalePrediction)) {
+        showToast("Complete all finale fields before submitting.", "warning");
+        return;
+      }
+    } else if (
       !weeklyBanished &&
       !weeklyMurdered &&
       !hasBonusSelection({
@@ -181,10 +257,13 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         nextMurdered: weeklyMurdered,
         bonusGames: {
           redemptionRoulette: bonusRedemption,
-          doubleOrNothing: bonusDoubleOrNothing,
+          doubleOrNothing: isFinaleMode ? false : bonusDoubleOrNothing,
           shieldGambit: bonusShield,
           traitorTrio: bonusTrio.filter(Boolean),
         },
+        finalePredictions: isFinaleMode
+          ? mainFinalePrediction
+          : existingPlayer.weeklyPredictions?.finalePredictions,
       },
     };
 
@@ -201,10 +280,11 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         weekId: gameState.activeWeekId,
         bonusGames: {
           redemptionRoulette: bonusRedemption,
-          doubleOrNothing: bonusDoubleOrNothing,
+          doubleOrNothing: isFinaleMode ? false : bonusDoubleOrNothing,
           shieldGambit: bonusShield,
           traitorTrio: bonusTrio.filter(Boolean),
         },
+        finalePredictions: isFinaleMode ? mainFinalePrediction : undefined,
         league: "main",
       });
       showToast(`${WEEKLY_LABEL} submitted.`, "success");
@@ -229,7 +309,23 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
       return;
     }
 
-    if (
+    const jrFinalePrediction = toFinalePredictions({
+      finalWinner: jrFinalWinner,
+      lastFaithfulStanding: jrLastFaithful,
+      lastTraitorStanding: jrLastTraitor,
+      finalPotEstimateRaw: jrFinalPotEstimate,
+    });
+
+    if (isFinaleMode) {
+      if (!jrWeeklyBanished && !jrWeeklyMurdered) {
+        showToast(`Select at least one ${WEEKLY_LABEL_LOWER} prediction.`, "warning");
+        return;
+      }
+      if (!hasCompleteFinalePrediction(jrFinalePrediction)) {
+        showToast("Complete all finale fields before submitting.", "warning");
+        return;
+      }
+    } else if (
       !jrWeeklyBanished &&
       !jrWeeklyMurdered &&
       !hasBonusSelection({
@@ -249,7 +345,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
     };
     const jrBonusPrediction = {
       redemptionRoulette: jrBonusRedemption,
-      doubleOrNothing: jrBonusDoubleOrNothing,
+      doubleOrNothing: isFinaleMode ? false : jrBonusDoubleOrNothing,
       shieldGambit: jrBonusShield,
       traitorTrio: jrBonusTrio.filter(Boolean),
     };
@@ -271,8 +367,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
       email: jrEmail,
       league: "jr",
       weeklyPredictions: {
+        weekId: gameState.activeWeekId,
         ...jrWeeklyPrediction,
         bonusGames: jrBonusPrediction,
+        finalePredictions: isFinaleMode
+          ? jrFinalePrediction
+          : existingJrPlayer?.weeklyPredictions?.finalePredictions,
       },
     };
 
@@ -288,6 +388,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         weeklyPredictions: jrWeeklyPrediction,
         weekId: gameState.activeWeekId,
         bonusGames: jrBonusPrediction,
+        finalePredictions: isFinaleMode ? jrFinalePrediction : undefined,
         league: "jr",
       });
       showToast(`${JR_LABEL} vote submitted.`, "success");
@@ -354,28 +455,118 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-weekly" : ""}`}
+      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-weekly" : ""} ${
+        isFinaleMode ? "premium-finale-page" : ""
+      }`}
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "show"}
       variants={pageRevealVariants}
     >
+      {isFinaleMode && (
+        <div className="premium-finale-viewport-fx" aria-hidden="true">
+          <span className="premium-finale-viewport-beam premium-finale-viewport-beam-a" />
+          <span className="premium-finale-viewport-beam premium-finale-viewport-beam-b" />
+          {!reduceMotion &&
+            Array.from({ length: FINALE_VIEWPORT_CONFETTI_COUNT }).map((_, idx) => (
+              <span
+                key={`viewport-confetti-${idx}`}
+                className="premium-finale-viewport-piece"
+                style={
+                  {
+                    "--viewport-left": `${2 + ((idx * 73) % 96)}%`,
+                    "--viewport-delay": `${(idx % 12) * 0.14}s`,
+                    "--viewport-duration": `${3.4 + (idx % 7) * 0.36}s`,
+                    "--viewport-hue": `${(idx * 29) % 360}`,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+        </div>
+      )}
+
       <motion.section variants={sectionStaggerVariants}>
-        <PremiumCard className="premium-panel-pad">
+        <PremiumCard className={`premium-panel-pad ${isFinaleMode ? "premium-finale-command-card" : ""}`}>
           <PremiumPanelHeader
             kicker="Weekly"
-            title="Decision Desk"
-            description="Main Council is for players who completed the full season-opening draft. Jr Council is for players who skipped the opening draft and only submit weekly predictions."
-            rightSlot={<PremiumStatusBadge tone="accent">Main + Jr</PremiumStatusBadge>}
+            title={isFinaleMode ? "Finale Gauntlet Command Deck" : "Decision Desk"}
+            description={
+              isFinaleMode
+                ? "Finale Gauntlet is live. Main and Jr players submit weighted finale predictions this week."
+                : "Main Council is for players who completed the full season-opening draft. Jr Council is for players who skipped the opening draft and only submit weekly predictions."
+            }
+            rightSlot={
+              <PremiumStatusBadge tone="accent">
+                {isFinaleMode ? "Live Finale Mode" : "Main + Jr"}
+              </PremiumStatusBadge>
+            }
           />
         </PremiumCard>
       </motion.section>
 
-      <motion.section className="premium-weekly-workspace" variants={sectionStaggerVariants}>
-        <PremiumCard className="premium-panel-pad premium-decision-board">
+      {isFinaleMode && (
+        <motion.section className="premium-finale-siren" variants={sectionStaggerVariants}>
+          <div className="premium-finale-siren-inner">
+            <p className="premium-finale-siren-kicker">Season 4 Finale Is Live</p>
+            <h2 className="premium-finale-siren-title">{finaleLabel}</h2>
+            <p className="premium-finale-siren-sub">
+              One night. Weighted scoring. Champion crowned.
+            </p>
+          </div>
+        </motion.section>
+      )}
+
+      <motion.section
+        className={`premium-weekly-workspace ${
+          isFinaleMode ? "premium-weekly-workspace-finale" : ""
+        }`}
+        variants={sectionStaggerVariants}
+      >
+        <PremiumCard
+          className={`premium-panel-pad premium-decision-board ${
+            isFinaleMode ? "premium-finale-board" : ""
+          }`}
+        >
           <p className="premium-meta-line">
-            <strong>Main Council</strong> is your primary entry for the season leaderboard. <strong>Jr. Council</strong> is a
-            separate side entry for the rival you invite, tracked independently with the same weekly questions.
+            {isFinaleMode ? (
+              <>
+                <strong>{finaleLabel}</strong> lock time is set to{" "}
+                <strong>{finaleLockLabel}</strong>. Main and Jr entries both
+                run through the same finale rules and tie-break.
+              </>
+            ) : (
+              <>
+                <strong>Main Council</strong> is your primary entry for the season leaderboard.{" "}
+                <strong>Jr. Council</strong> is a separate side entry for the rival you invite, tracked
+                independently with the same weekly questions.
+              </>
+            )}
           </p>
+
+          {isFinaleMode && (
+            <section className="premium-finale-hero" aria-live="polite">
+              <div className="premium-finale-confetti" aria-hidden="true">
+                {Array.from({ length: FINALE_CONFETTI_COUNT }).map((_, idx) => (
+                  <span
+                    key={`finale-confetti-${idx}`}
+                    className="premium-finale-confetti-piece"
+                    style={
+                      {
+                        "--piece-left": `${3 + ((idx * 97) % 90)}%`,
+                        "--piece-delay": `${(idx % 6) * 0.2}s`,
+                        "--piece-duration": `${3 + (idx % 5) * 0.32}s`,
+                        "--piece-hue": `${(idx * 37) % 360}`,
+                      } as React.CSSProperties
+                    }
+                  />
+                ))}
+              </div>
+              <p className="premium-finale-hero-kicker">Season Finale Activated</p>
+              <h2 className="premium-finale-hero-title">{finaleLabel}</h2>
+              <p className="premium-finale-hero-copy">
+                Bold calls only. Weighted scoring. One explosive night decides the crown.
+              </p>
+            </section>
+          )}
 
           <section className="premium-decision-league">
             <div className="premium-section-topline">
@@ -385,8 +576,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
               </PremiumStatusBadge>
             </div>
             <p className="premium-meta-line mt-2">
-              For drafted players: you completed the season-opening draft and now submit weekly
-              calls here.
+              {isFinaleMode
+                ? "For drafted players: submit your weekly calls plus the full finale prediction set."
+                : "For drafted players: you completed the season-opening draft and now submit weekly calls here."}
             </p>
 
             <div className="premium-inline-grid mt-3">
@@ -428,6 +620,55 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
               </PremiumSelect>
             </div>
 
+            {isFinaleMode && (
+              <div className="premium-inline-grid mt-3">
+                <PremiumSelect
+                  value={mainFinalWinner}
+                  onChange={(e) => setMainFinalWinner(e.target.value)}
+                  aria-label="Main final winner"
+                >
+                  <option value="">Final Winner</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`main-finale-winner-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumSelect
+                  value={mainLastFaithful}
+                  onChange={(e) => setMainLastFaithful(e.target.value)}
+                  aria-label="Main last faithful standing"
+                >
+                  <option value="">Last Faithful Standing</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`main-finale-faithful-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumSelect
+                  value={mainLastTraitor}
+                  onChange={(e) => setMainLastTraitor(e.target.value)}
+                  aria-label="Main last traitor standing"
+                >
+                  <option value="">Last Traitor Standing</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`main-finale-traitor-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumField
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Final Pot Estimate"
+                  value={mainFinalPotEstimate}
+                  onChange={(e) => setMainFinalPotEstimate(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="premium-inline-grid mt-3">
               <PremiumSelect value={bonusRedemption} onChange={(e) => setBonusRedemption(e.target.value)}>
                 <option value="">Redemption Roulette</option>
@@ -445,11 +686,17 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   </option>
                 ))}
               </PremiumSelect>
-              <PremiumToggle
-                label="Double or Nothing"
-                checked={bonusDoubleOrNothing}
-                onChange={setBonusDoubleOrNothing}
-              />
+              {!isFinaleMode ? (
+                <PremiumToggle
+                  label="Double or Nothing"
+                  checked={bonusDoubleOrNothing}
+                  onChange={setBonusDoubleOrNothing}
+                />
+              ) : (
+                <div className="premium-row-item premium-row-item-plain">
+                  <p className="premium-meta-line">Double or Nothing disabled in finale mode.</p>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 {bonusTrio.map((pick, index) => (
                   <PremiumSelect
@@ -470,8 +717,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
             </div>
 
             <div className="premium-action-row mt-3">
-              <PremiumStatusBadge tone={hasMainDouble ? "positive" : "warning"}>
-                {hasMainDouble ? "2x Active" : "2x Locked"}
+              <PremiumStatusBadge tone={isFinaleMode ? "accent" : hasMainDouble ? "positive" : "warning"}>
+                {isFinaleMode ? "Finale Rules" : hasMainDouble ? "2x Active" : "2x Locked"}
               </PremiumStatusBadge>
               <div className="flex items-center gap-2">
                 {mainSubmitted && (
@@ -488,6 +735,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   variant="primary"
                   onClick={handleWeeklySubmit}
                   disabled={isMainSubmitting}
+                  className={isFinaleMode ? "premium-finale-submit-btn" : ""}
                 >
                   {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
                 </PremiumButton>
@@ -503,8 +751,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
               </PremiumStatusBadge>
             </div>
             <p className="premium-meta-line mt-2">
-              For weekly-only players: you did not complete the season-opening draft and only
-              submit weekly predictions here.
+              {isFinaleMode
+                ? "For weekly-only players: submit weekly calls plus full finale predictions for this week."
+                : "For weekly-only players: you did not complete the season-opening draft and only submit weekly predictions here."}
             </p>
 
             <div className="premium-inline-grid mt-3">
@@ -546,6 +795,55 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
               </PremiumSelect>
             </div>
 
+            {isFinaleMode && (
+              <div className="premium-inline-grid mt-3">
+                <PremiumSelect
+                  value={jrFinalWinner}
+                  onChange={(e) => setJrFinalWinner(e.target.value)}
+                  aria-label="Jr final winner"
+                >
+                  <option value="">Final Winner</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`jr-finale-winner-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumSelect
+                  value={jrLastFaithful}
+                  onChange={(e) => setJrLastFaithful(e.target.value)}
+                  aria-label="Jr last faithful standing"
+                >
+                  <option value="">Last Faithful Standing</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`jr-finale-faithful-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumSelect
+                  value={jrLastTraitor}
+                  onChange={(e) => setJrLastTraitor(e.target.value)}
+                  aria-label="Jr last traitor standing"
+                >
+                  <option value="">Last Traitor Standing</option>
+                  {activeCastNames.map((name) => (
+                    <option key={`jr-finale-traitor-${name}`} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </PremiumSelect>
+                <PremiumField
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="Final Pot Estimate"
+                  value={jrFinalPotEstimate}
+                  onChange={(e) => setJrFinalPotEstimate(e.target.value)}
+                />
+              </div>
+            )}
+
             <div className="premium-inline-grid mt-3">
               <PremiumSelect value={jrBonusRedemption} onChange={(e) => setJrBonusRedemption(e.target.value)}>
                 <option value="">Redemption Roulette</option>
@@ -563,11 +861,17 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   </option>
                 ))}
               </PremiumSelect>
-              <PremiumToggle
-                label="Double or Nothing"
-                checked={jrBonusDoubleOrNothing}
-                onChange={setJrBonusDoubleOrNothing}
-              />
+              {!isFinaleMode ? (
+                <PremiumToggle
+                  label="Double or Nothing"
+                  checked={jrBonusDoubleOrNothing}
+                  onChange={setJrBonusDoubleOrNothing}
+                />
+              ) : (
+                <div className="premium-row-item premium-row-item-plain">
+                  <p className="premium-meta-line">Double or Nothing disabled in finale mode.</p>
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 {jrBonusTrio.map((pick, index) => (
                   <PremiumSelect
@@ -588,8 +892,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
             </div>
 
             <div className="premium-action-row mt-3">
-              <PremiumStatusBadge tone={hasJrDouble ? "positive" : "warning"}>
-                {hasJrDouble ? "2x Active" : "2x Locked"}
+              <PremiumStatusBadge tone={isFinaleMode ? "accent" : hasJrDouble ? "positive" : "warning"}>
+                {isFinaleMode ? "Finale Rules" : hasJrDouble ? "2x Active" : "2x Locked"}
               </PremiumStatusBadge>
               <div className="flex items-center gap-2">
                 {jrSubmitted && (
@@ -606,6 +910,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   variant="primary"
                   onClick={handleJrWeeklySubmit}
                   disabled={isJrSubmitting}
+                  className={isFinaleMode ? "premium-finale-submit-btn" : ""}
                 >
                   {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
                 </PremiumButton>
@@ -614,30 +919,56 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
           </section>
         </PremiumCard>
 
-        <aside>
-          <PremiumCard className="premium-panel-pad premium-stack-md">
+        <aside className={isFinaleMode ? "premium-finale-aside" : ""}>
+          <PremiumCard
+            className={`premium-panel-pad premium-stack-md ${
+              isFinaleMode ? "premium-finale-rules-card" : ""
+            }`}
+          >
             <section>
               <div className="premium-section-topline">
-                <h3 className="premium-section-title">Shared Bonus Logic</h3>
-                <PremiumStatusBadge tone="accent">Rules</PremiumStatusBadge>
+                <h3 className="premium-section-title">
+                  {isFinaleMode ? "Finale Scoring Logic" : "Shared Bonus Logic"}
+                </h3>
+                <PremiumStatusBadge tone="accent">
+                  {isFinaleMode ? "Weighted Week" : "Rules"}
+                </PremiumStatusBadge>
               </div>
               <div className="premium-divider-list mt-3">
                 <article className="premium-row-item premium-row-item-plain">
                   <div>
-                    <p className="premium-row-title">Redemption Roulette</p>
-                    <p className="premium-meta-line">Correct +8, incorrect -1.</p>
+                    <p className="premium-row-title">
+                      {isFinaleMode ? "Weekly Calls (Weighted)" : "Redemption Roulette"}
+                    </p>
+                    <p className="premium-meta-line">
+                      {isFinaleMode
+                        ? "Banished/Murdered are worth +4 each, with -1 on incorrect calls."
+                        : "Correct +8, incorrect -1."}
+                    </p>
                   </div>
                 </article>
                 <article className="premium-row-item premium-row-item-plain">
                   <div>
-                    <p className="premium-row-title">Double or Nothing</p>
-                    <p className="premium-meta-line">2x multiplier on weekly banished and murdered calls.</p>
+                    <p className="premium-row-title">
+                      {isFinaleMode ? "Finale Picks" : "Double or Nothing"}
+                    </p>
+                    <p className="premium-meta-line">
+                      {isFinaleMode
+                        ? "Final Winner +15, Last Faithful +8, Last Traitor +8."
+                        : "2x multiplier on weekly banished and murdered calls."}
+                    </p>
                   </div>
                 </article>
                 <article className="premium-row-item premium-row-item-plain">
                   <div>
-                    <p className="premium-row-title">Shield + Traitor Trio</p>
-                    <p className="premium-meta-line">Shield pick plus three-person traitor shortlist.</p>
+                    <p className="premium-row-title">
+                      {isFinaleMode ? "Tie-Break" : "Shield + Traitor Trio"}
+                    </p>
+                    <p className="premium-meta-line">
+                      {isFinaleMode
+                        ? "Closest final pot estimate wins tied totals."
+                        : "Shield pick plus three-person traitor shortlist."}
+                    </p>
                   </div>
                 </article>
               </div>
@@ -655,7 +986,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   <div>
                     <p className="premium-row-title">Main League</p>
                     <p className="premium-meta-line">
-                      Season-opening draft completed; weekly picks active.
+                      {isFinaleMode
+                        ? "Season-opening draft completed; finale gauntlet picks active."
+                        : "Season-opening draft completed; weekly picks active."}
                     </p>
                   </div>
                   <PremiumStatusBadge tone={mainSubmitted ? "positive" : "warning"}>
@@ -666,7 +999,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   <div>
                     <p className="premium-row-title">Jr League</p>
                     <p className="premium-meta-line">
-                      No season-opening draft; weekly predictions only.
+                      {isFinaleMode
+                        ? "No season-opening draft; finale gauntlet predictions active."
+                        : "No season-opening draft; weekly predictions only."}
                     </p>
                   </div>
                   <PremiumStatusBadge tone={jrSubmitted ? "positive" : "warning"}>

@@ -34,6 +34,11 @@ import {
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
+const DEFAULT_FINALE_CONFIG = {
+  enabled: false,
+  label: "Season 4 Finale Gauntlet",
+  lockAt: "2026-02-26T21:00:00-05:00",
+};
 const DEFAULT_WEEKLY_RESULTS = {
   nextBanished: "",
   nextMurdered: "",
@@ -42,13 +47,35 @@ const DEFAULT_WEEKLY_RESULTS = {
     shieldGambit: "",
     traitorTrio: [],
   },
+  finaleResults: {
+    finalWinner: "",
+    lastFaithfulStanding: "",
+    lastTraitorStanding: "",
+    finalPotValue: null as number | null,
+  },
 };
+
+const normalizeFinaleConfig = (
+  input?: GameState["finaleConfig"] | null
+): GameState["finaleConfig"] => ({
+  enabled: Boolean(input?.enabled),
+  label:
+    typeof input?.label === "string" && input.label.trim()
+      ? input.label
+      : DEFAULT_FINALE_CONFIG.label,
+  lockAt:
+    typeof input?.lockAt === "string" && input.lockAt.trim()
+      ? input.lockAt
+      : DEFAULT_FINALE_CONFIG.lockAt,
+});
 
 const normalizeWeeklyResults = (
   input?: GameState["weeklyResults"] | null,
   fallbackWeekId?: string
 ): GameState["weeklyResults"] => {
   const bonusGames = input?.bonusGames ?? DEFAULT_WEEKLY_RESULTS.bonusGames;
+  const finaleResults =
+    input?.finaleResults ?? DEFAULT_WEEKLY_RESULTS.finaleResults;
   return {
     weekId: normalizeWeekId(input?.weekId) ?? normalizeWeekId(fallbackWeekId) ?? undefined,
     nextBanished: input?.nextBanished ?? DEFAULT_WEEKLY_RESULTS.nextBanished,
@@ -63,6 +90,20 @@ const normalizeWeeklyResults = (
       traitorTrio: Array.isArray(bonusGames.traitorTrio)
         ? bonusGames.traitorTrio
         : DEFAULT_WEEKLY_RESULTS.bonusGames.traitorTrio,
+    },
+    finaleResults: {
+      finalWinner: finaleResults.finalWinner ?? DEFAULT_WEEKLY_RESULTS.finaleResults.finalWinner,
+      lastFaithfulStanding:
+        finaleResults.lastFaithfulStanding ??
+        DEFAULT_WEEKLY_RESULTS.finaleResults.lastFaithfulStanding,
+      lastTraitorStanding:
+        finaleResults.lastTraitorStanding ??
+        DEFAULT_WEEKLY_RESULTS.finaleResults.lastTraitorStanding,
+      finalPotValue:
+        typeof finaleResults.finalPotValue === "number" &&
+        Number.isFinite(finaleResults.finalPotValue)
+          ? finaleResults.finalPotValue
+          : DEFAULT_WEEKLY_RESULTS.finaleResults.finalPotValue,
     },
   };
 };
@@ -130,6 +171,20 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
           traitorTrio:
             player.weeklyPredictions?.bonusGames?.traitorTrio ?? [],
         },
+        finalePredictions: {
+          finalWinner:
+            player.weeklyPredictions?.finalePredictions?.finalWinner ?? "",
+          lastFaithfulStanding:
+            player.weeklyPredictions?.finalePredictions?.lastFaithfulStanding ?? "",
+          lastTraitorStanding:
+            player.weeklyPredictions?.finalePredictions?.lastTraitorStanding ?? "",
+          finalPotEstimate:
+            typeof player.weeklyPredictions?.finalePredictions?.finalPotEstimate ===
+              "number" &&
+            Number.isFinite(player.weeklyPredictions?.finalePredictions?.finalPotEstimate)
+              ? player.weeklyPredictions?.finalePredictions?.finalPotEstimate
+              : null,
+        },
       },
     } as PlayerEntry;
   });
@@ -142,6 +197,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     activeWeekId,
     players: normalizedPlayers,
     castStatus,
+    finaleConfig: normalizeFinaleConfig(input?.finaleConfig),
     weeklyResults: normalizeWeeklyResults(input?.weeklyResults, activeWeekId),
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
@@ -545,6 +601,7 @@ const App: React.FC = () => {
             leaguePulse={leaguePulse}
             topMovers={topMovers}
             actionQueue={actionQueue}
+            finaleConfig={gameState.finaleConfig}
             uiVariant={uiVariant}
           />
         );
@@ -592,6 +649,7 @@ const App: React.FC = () => {
             leaguePulse={leaguePulse}
             topMovers={topMovers}
             actionQueue={actionQueue}
+            finaleConfig={gameState.finaleConfig}
             uiVariant={uiVariant}
           />
         );

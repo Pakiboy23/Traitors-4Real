@@ -1,5 +1,5 @@
 import type { RecordModel } from "pocketbase";
-import type { GameState } from "../types";
+import type { FinalePredictions, GameState } from "../types";
 import { pb, pocketbaseUrl } from "../src/lib/pocketbase";
 
 const GAME_COLLECTION = "games";
@@ -297,6 +297,7 @@ export const submitWeeklyCouncilVote = async (input: {
     shieldGambit?: string;
     traitorTrio?: string[];
   };
+  finalePredictions?: FinalePredictions;
   league?: string;
 }) => {
   const normalizedEmail = normalizeEmail(input.email || "");
@@ -320,6 +321,16 @@ export const submitWeeklyCouncilVote = async (input: {
           doubleOrNothing: Boolean(input.bonusGames?.doubleOrNothing),
           shieldGambit: input.bonusGames?.shieldGambit || "",
           traitorTrio: input.bonusGames?.traitorTrio ?? [],
+        },
+        finalePredictions: {
+          finalWinner: input.finalePredictions?.finalWinner || "",
+          lastFaithfulStanding: input.finalePredictions?.lastFaithfulStanding || "",
+          lastTraitorStanding: input.finalePredictions?.lastTraitorStanding || "",
+          finalPotEstimate:
+            typeof input.finalePredictions?.finalPotEstimate === "number" &&
+            Number.isFinite(input.finalePredictions.finalPotEstimate)
+              ? input.finalePredictions.finalPotEstimate
+              : null,
         },
       },
     },

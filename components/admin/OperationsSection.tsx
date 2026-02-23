@@ -1,5 +1,10 @@
 import React from "react";
-import { COUNCIL_LABELS, WeeklyScoreSnapshot } from "../../types";
+import {
+  COUNCIL_LABELS,
+  FinaleConfig,
+  FinaleResults,
+  WeeklyScoreSnapshot,
+} from "../../types";
 import { LIMITS } from "../../src/utils/scoringConstants";
 import { formatScore } from "../../src/utils/scoring";
 
@@ -9,12 +14,22 @@ interface OperationsSectionProps {
   activeCastNames: string[];
   nextBanished: string;
   nextMurdered: string;
+  finaleConfig: FinaleConfig;
+  finaleResults: FinaleResults;
   bonusResults: {
     redemptionRoulette?: string;
     shieldGambit?: string;
   };
   onSetNextBanished: (value: string) => void;
   onSetNextMurdered: (value: string) => void;
+  onSetFinaleEnabled: (enabled: boolean) => void;
+  onSetFinaleLabel: (value: string) => void;
+  onSetFinaleLockAt: (value: string) => void;
+  onSetFinaleResult: (
+    key: "finalWinner" | "lastFaithfulStanding" | "lastTraitorStanding",
+    value: string
+  ) => void;
+  onSetFinalePotValue: (value: number | null) => void;
   onUpdateBonusResult: (
     key: "redemptionRoulette" | "shieldGambit",
     value: string
@@ -36,9 +51,16 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
   activeCastNames,
   nextBanished,
   nextMurdered,
+  finaleConfig,
+  finaleResults,
   bonusResults,
   onSetNextBanished,
   onSetNextMurdered,
+  onSetFinaleEnabled,
+  onSetFinaleLabel,
+  onSetFinaleLockAt,
+  onSetFinaleResult,
+  onSetFinalePotValue,
   onUpdateBonusResult,
   scoreHistory,
   visibleScoreHistory,
@@ -47,6 +69,16 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
   onArchiveWeeklyScores,
   getScoreTopper,
 }) => {
+  const toLocalDateTimeValue = (value: string) => {
+    const parsed = Date.parse(value);
+    if (Number.isNaN(parsed)) return "";
+    const date = new Date(parsed);
+    const pad = (input: number) => String(input).padStart(2, "0");
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+      date.getHours()
+    )}:${pad(date.getMinutes())}`;
+  };
+
   return (
     <div className="space-y-5">
       <section className="soft-card rounded-3xl p-5 md:p-6 space-y-5">
@@ -131,6 +163,134 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                   </option>
                 ))}
               </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+              Finale Control
+            </p>
+            <button
+              type="button"
+              onClick={() => onSetFinaleEnabled(!finaleConfig.enabled)}
+              className={`px-3 py-1 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
+                finaleConfig.enabled ? "bg-[color:var(--accent)] text-black" : "btn-secondary"
+              }`}
+            >
+              {finaleConfig.enabled ? "Enabled" : "Disabled"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Finale Label
+              </label>
+              <input
+                type="text"
+                value={finaleConfig.label}
+                onChange={(e) => onSetFinaleLabel(e.target.value)}
+                className="w-full field-soft p-3 text-sm"
+                placeholder="Season 4 Finale Gauntlet"
+              />
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Lock Time
+              </label>
+              <input
+                type="datetime-local"
+                value={toLocalDateTimeValue(finaleConfig.lockAt)}
+                onChange={(e) => {
+                  const next = e.target.value ? new Date(e.target.value) : null;
+                  onSetFinaleLockAt(
+                    next && !Number.isNaN(next.getTime()) ? next.toISOString() : finaleConfig.lockAt
+                  );
+                }}
+                className="w-full field-soft p-3 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Final Winner
+              </label>
+              <select
+                value={finaleResults.finalWinner ?? ""}
+                onChange={(e) => onSetFinaleResult("finalWinner", e.target.value)}
+                className="w-full field-soft p-3 text-sm"
+              >
+                <option value="">Select...</option>
+                {activeCastNames.map((member) => (
+                  <option key={`finale-final-winner-${member}`} value={member}>
+                    {member}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Last Faithful Standing
+              </label>
+              <select
+                value={finaleResults.lastFaithfulStanding ?? ""}
+                onChange={(e) => onSetFinaleResult("lastFaithfulStanding", e.target.value)}
+                className="w-full field-soft p-3 text-sm"
+              >
+                <option value="">Select...</option>
+                {activeCastNames.map((member) => (
+                  <option key={`finale-last-faithful-${member}`} value={member}>
+                    {member}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Last Traitor Standing
+              </label>
+              <select
+                value={finaleResults.lastTraitorStanding ?? ""}
+                onChange={(e) => onSetFinaleResult("lastTraitorStanding", e.target.value)}
+                className="w-full field-soft p-3 text-sm"
+              >
+                <option value="">Select...</option>
+                {activeCastNames.map((member) => (
+                  <option key={`finale-last-traitor-${member}`} value={member}>
+                    {member}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+                Final Pot Value
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={
+                  typeof finaleResults.finalPotValue === "number"
+                    ? String(finaleResults.finalPotValue)
+                    : ""
+                }
+                onChange={(e) => {
+                  const value = e.target.value.trim();
+                  if (!value.length) {
+                    onSetFinalePotValue(null);
+                    return;
+                  }
+                  const parsed = Number(value);
+                  onSetFinalePotValue(Number.isFinite(parsed) ? parsed : null);
+                }}
+                className="w-full field-soft p-3 text-sm"
+                placeholder="e.g. 75000"
+              />
             </div>
           </div>
         </div>

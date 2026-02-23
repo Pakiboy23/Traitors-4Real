@@ -25,6 +25,21 @@ export const SCORING_POINTS = {
   /** Base penalty for incorrect weekly council prediction (multiplied by weekly multiplier) */
   WEEKLY_INCORRECT_BASE: 0.5,
 
+  /** Weekly council points in finale mode */
+  FINALE_WEEKLY_CORRECT: 4,
+
+  /** Weekly council penalty in finale mode */
+  FINALE_WEEKLY_INCORRECT: 1,
+
+  /** Finale bonus points for correct final winner */
+  FINALE_FINAL_WINNER: 15,
+
+  /** Finale bonus points for correct last faithful standing */
+  FINALE_LAST_FAITHFUL_STANDING: 8,
+
+  /** Finale bonus points for correct last traitor standing */
+  FINALE_LAST_TRAITOR_STANDING: 8,
+
   /** Points for correct Redemption Roulette guess (normal) */
   REDEMPTION_ROULETTE_CORRECT: 8,
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import CountdownTimer from "../components/CountdownTimer";
-import { UiVariant } from "../types";
+import { FinaleConfig, UiVariant } from "../types";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -41,6 +41,7 @@ interface WelcomeProps {
   leaguePulse: LeaguePulseOverview;
   topMovers: TopMoverEntry[];
   actionQueue: string[];
+  finaleConfig?: FinaleConfig;
   uiVariant: UiVariant;
 }
 
@@ -93,11 +94,20 @@ const Welcome: React.FC<WelcomeProps> = ({
   leaguePulse,
   topMovers,
   actionQueue,
+  finaleConfig,
   uiVariant,
 }) => {
   const reduceMotion = useReducedMotion();
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
+  const isFinaleMode = Boolean(finaleConfig?.enabled);
+  const countdownTarget = isFinaleMode
+    ? finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00"
+    : "2026-02-26T21:00:00-05:00";
+  const lockLabel =
+    typeof finaleConfig?.label === "string" && finaleConfig.label.trim()
+      ? finaleConfig.label
+      : "Season 4 Finale Gauntlet";
 
   const summaryCards: Array<{
     label: string;
@@ -142,27 +152,49 @@ const Welcome: React.FC<WelcomeProps> = ({
     ? getMomentumDisplay(weeklyMvp.score)
     : null;
 
-  const gameLoop = [
-    {
-      title: "Lock Picks",
-      detail:
-        leaguePulse.pendingSubmissions && leaguePulse.pendingSubmissions > 0
-          ? "Friends are already submitting this week. Counter before lock."
-          : "Set your banished + murdered calls before episode results hit.",
-    },
-    {
-      title: "Watch Episode Night",
-      detail: "After each episode airs, the board can swing hard in one reveal.",
-    },
-    {
-      title: "Admin Logs Results",
-      detail: "Weekly outcomes are entered and bonuses resolve across the league.",
-    },
-    {
-      title: "Leaderboard Flips",
-      detail: "One clean call can jump you past multiple rivals in a single week.",
-    },
-  ];
+  const gameLoop = isFinaleMode
+    ? [
+        {
+          title: "Lock Finale Gauntlet",
+          detail:
+            leaguePulse.pendingSubmissions && leaguePulse.pendingSubmissions > 0
+              ? "Finale submissions are already arriving. Counter before lock."
+              : "Submit banished + murdered calls plus finale outcome predictions before lock.",
+        },
+        {
+          title: "Finale Airs",
+          detail: "Every reveal can swing weighted finale scoring in one move.",
+        },
+        {
+          title: "Admin Resolves Finale",
+          detail: "Finale outcomes and final pot value are logged to settle all picks.",
+        },
+        {
+          title: "Crown The Winner",
+          detail: "Ties resolve by closest final pot estimate, then the board locks.",
+        },
+      ]
+    : [
+        {
+          title: "Lock Picks",
+          detail:
+            leaguePulse.pendingSubmissions && leaguePulse.pendingSubmissions > 0
+              ? "Friends are already submitting this week. Counter before lock."
+              : "Set your banished + murdered calls before episode results hit.",
+        },
+        {
+          title: "Watch Episode Night",
+          detail: "After each episode airs, the board can swing hard in one reveal.",
+        },
+        {
+          title: "Admin Logs Results",
+          detail: "Weekly outcomes are entered and bonuses resolve across the league.",
+        },
+        {
+          title: "Leaderboard Flips",
+          detail: "One clean call can jump you past multiple rivals in a single week.",
+        },
+      ];
 
   return (
     <motion.div
@@ -188,8 +220,10 @@ const Welcome: React.FC<WelcomeProps> = ({
 
                   <div className="premium-overview-hero-actions flex-col gap-2">
                     <div className="premium-btn premium-overview-lockbar" role="status" aria-live="polite">
-                      <span className="premium-overview-lockbar-label">Picks Lock In</span>
-                      <CountdownTimer targetDate="2026-02-26T21:00:00-05:00" />
+                      <span className="premium-overview-lockbar-label">
+                        {isFinaleMode ? lockLabel : "Picks Lock In"}
+                      </span>
+                      <CountdownTimer targetDate={countdownTarget} />
                     </div>
                     <PremiumButton
                       variant="primary"

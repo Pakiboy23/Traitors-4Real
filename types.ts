@@ -18,6 +18,7 @@ export interface WeeklyPredictions {
   nextBanished: string;
   nextMurdered: string;
   bonusGames?: BonusGamePredictions;
+  finalePredictions?: FinalePredictions;
 }
 
 export interface WeeklyResults {
@@ -25,6 +26,27 @@ export interface WeeklyResults {
   nextBanished?: string;
   nextMurdered?: string;
   bonusGames?: BonusGameResults;
+  finaleResults?: FinaleResults;
+}
+
+export interface FinaleConfig {
+  enabled: boolean;
+  label: string;
+  lockAt: string;
+}
+
+export interface FinalePredictions {
+  finalWinner: string;
+  lastFaithfulStanding: string;
+  lastTraitorStanding: string;
+  finalPotEstimate: number | null;
+}
+
+export interface FinaleResults {
+  finalWinner?: string;
+  lastFaithfulStanding?: string;
+  lastTraitorStanding?: string;
+  finalPotValue?: number | null;
 }
 
 export interface BonusGamePredictions {
@@ -70,6 +92,7 @@ export interface WeeklySubmissionHistoryEntry {
   weeklyBanished?: string;
   weeklyMurdered?: string;
   bonusGames?: BonusGamePredictions;
+  finalePredictions?: FinalePredictions;
   bonusPoints?: number;
   bonusPointBreakdown?: BonusPointBreakdownEntry[];
   league?: League;
@@ -96,6 +119,7 @@ export interface GameState {
   players: PlayerEntry[];
   castStatus: Record<string, CastMemberStatus>;
   weeklyResults?: WeeklyResults;
+  finaleConfig?: FinaleConfig;
   weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
   weeklyScoreHistory?: WeeklyScoreSnapshot[];
 }

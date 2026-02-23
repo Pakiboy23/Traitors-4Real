@@ -3,6 +3,7 @@ import {
   BonusGamePredictions,
   BonusPointBreakdownEntry,
   GameState,
+  FinalePredictions,
   CAST_NAMES,
   COUNCIL_LABELS,
   inferActiveWeekId,
@@ -132,6 +133,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       shieldGambit: "",
       traitorTrio: [],
     },
+    finaleResults: {
+      finalWinner: "",
+      lastFaithfulStanding: "",
+      lastTraitorStanding: "",
+      finalPotValue: null,
+    },
   });
   const hasWeeklyPredictionContent = (
     weeklyPredictions?: PlayerEntry["weeklyPredictions"] | null
@@ -147,6 +154,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       typeof weeklyPredictions.nextMurdered === "string" &&
       weeklyPredictions.nextMurdered.trim()
     ) {
+      return true;
+    }
+    const finale = weeklyPredictions.finalePredictions;
+    if (typeof finale?.finalWinner === "string" && finale.finalWinner.trim()) {
+      return true;
+    }
+    if (
+      typeof finale?.lastFaithfulStanding === "string" &&
+      finale.lastFaithfulStanding.trim()
+    ) {
+      return true;
+    }
+    if (
+      typeof finale?.lastTraitorStanding === "string" &&
+      finale.lastTraitorStanding.trim()
+    ) {
+      return true;
+    }
+    if (typeof finale?.finalPotEstimate === "number" && Number.isFinite(finale.finalPotEstimate)) {
       return true;
     }
     const bonus = weeklyPredictions.bonusGames;
@@ -193,6 +219,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (Number.isNaN(createdAtMs)) return false;
     return createdAtMs >= currentWeekStartMs;
   };
+  const isSubmissionBeforeFinaleLock = (submission: SubmissionRecord) => {
+    const finaleConfig = gameStateRef.current.finaleConfig;
+    if (!finaleConfig?.enabled) return true;
+    const lockAtMs = Date.parse(finaleConfig.lockAt || "");
+    if (Number.isNaN(lockAtMs)) return true;
+    const createdAtMs = Date.parse(submission.created || "");
+    if (Number.isNaN(createdAtMs)) return false;
+    return createdAtMs <= lockAtMs;
+  };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
     const payload = submission.payload as { league?: string } | undefined;
     const league = payload?.league || submission.league;
@@ -220,6 +255,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       | undefined;
     return payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
   };
+  const getSubmissionFinalePredictions = (submission: SubmissionRecord) => {
+    const payload = submission.payload as
+      | {
+          finalePredictions?: FinalePredictions;
+          weeklyPredictions?: {
+            finalePredictions?: FinalePredictions;
+          };
+        }
+      | undefined;
+    return payload?.weeklyPredictions?.finalePredictions ?? payload?.finalePredictions;
+  };
   const normalizeSubmissionBonusGames = (
     submission: SubmissionRecord
   ): BonusGamePredictions | undefined => {
@@ -246,6 +292,43 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (traitorTrio.length > 0) normalized.traitorTrio = traitorTrio;
     return Object.keys(normalized).length > 0 ? normalized : undefined;
   };
+  const normalizeSubmissionFinalePredictions = (
+    submission: SubmissionRecord
+  ): FinalePredictions | undefined => {
+    const finalePredictions = getSubmissionFinalePredictions(submission);
+    if (!finalePredictions) return undefined;
+    const finalWinner =
+      typeof finalePredictions.finalWinner === "string"
+        ? finalePredictions.finalWinner.trim()
+        : "";
+    const lastFaithfulStanding =
+      typeof finalePredictions.lastFaithfulStanding === "string"
+        ? finalePredictions.lastFaithfulStanding.trim()
+        : "";
+    const lastTraitorStanding =
+      typeof finalePredictions.lastTraitorStanding === "string"
+        ? finalePredictions.lastTraitorStanding.trim()
+        : "";
+    const finalPotEstimate =
+      typeof finalePredictions.finalPotEstimate === "number" &&
+      Number.isFinite(finalePredictions.finalPotEstimate)
+        ? finalePredictions.finalPotEstimate
+        : null;
+    if (
+      !finalWinner &&
+      !lastFaithfulStanding &&
+      !lastTraitorStanding &&
+      finalPotEstimate === null
+    ) {
+      return undefined;
+    }
+    return {
+      finalWinner,
+      lastFaithfulStanding,
+      lastTraitorStanding,
+      finalPotEstimate,
+    };
+  };
   const getSubmissionPlayerId = (submission: SubmissionRecord) => {
     const payload = submission.payload as { playerId?: string } | undefined;
     return payload?.playerId ?? null;
@@ -256,7 +339,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (kind === "weekly") return true;
     if (submission.weeklyBanished?.trim()) return true;
     if (submission.weeklyMurdered?.trim()) return true;
-    return Boolean(getSubmissionBonusGames(submission));
+    if (getSubmissionBonusGames(submission)) return true;
+    return Boolean(getSubmissionFinalePredictions(submission));
   };
   const mergeHistoryEntries = (
     existing: WeeklySubmissionHistoryEntry[],
@@ -327,6 +411,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
+    const normalizedFinalePredictions = normalizeSubmissionFinalePredictions(submission);
     const submissionWeekId = getSubmissionWeekId(submission) ?? getActiveWeekId();
     const basePlayer: PlayerEntry = match
       ? players[match.index]
@@ -355,6 +440,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           shieldGambit: normalizedBonusGames?.shieldGambit || "",
           traitorTrio: normalizedBonusGames?.traitorTrio ?? [],
         },
+        finalePredictions: normalizedFinalePredictions,
       },
     };
 
@@ -384,6 +470,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       weeklyBanished: submission.weeklyBanished || "",
       weeklyMurdered: submission.weeklyMurdered || "",
       bonusGames: normalizeSubmissionBonusGames(submission),
+      finalePredictions: normalizeSubmissionFinalePredictions(submission),
       bonusPoints: bonusScore.hasResults ? bonusScore.points : undefined,
       bonusPointBreakdown: bonusScore.hasResults
         ? bonusScore.breakdown
@@ -656,9 +743,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!isSubmissionForActiveWeek(submission)) {
       return { matched: false as const, stale: true as const, players };
     }
+    if (!isSubmissionBeforeFinaleLock(submission)) {
+      return { matched: false as const, late: true as const, players };
+    }
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
     const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
+    const normalizedFinalePredictions = normalizeSubmissionFinalePredictions(submission);
     const incomingBanished = normalizeEmpty(submission.weeklyBanished);
     const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
     const incomingBonusGames = {
@@ -693,6 +784,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             shieldGambit: incomingBonusGames.shieldGambit ?? "",
             traitorTrio: incomingBonusGames.traitorTrio ?? [],
           },
+          finalePredictions: normalizedFinalePredictions ?? {
+            finalWinner: "",
+            lastFaithfulStanding: "",
+            lastTraitorStanding: "",
+            finalPotEstimate: null,
+          },
         },
       };
       return {
@@ -708,8 +805,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         nextBanished: "",
         nextMurdered: "",
         bonusGames: {},
+        finalePredictions: {
+          finalWinner: "",
+          lastFaithfulStanding: "",
+          lastTraitorStanding: "",
+          finalPotEstimate: null,
+        },
       };
       const existingBonus = existingWeekly.bonusGames ?? {};
+      const existingFinale = existingWeekly.finalePredictions;
       const nextBonusGames = {
         redemptionRoulette:
           incomingBonusGames.redemptionRoulette ?? existingBonus.redemptionRoulette ?? "",
@@ -722,6 +826,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         traitorTrio:
           incomingBonusGames.traitorTrio ?? existingBonus.traitorTrio ?? [],
       };
+      const nextFinalePredictions = normalizedFinalePredictions
+        ? {
+            finalWinner:
+              normalizedFinalePredictions.finalWinner || existingFinale?.finalWinner || "",
+            lastFaithfulStanding:
+              normalizedFinalePredictions.lastFaithfulStanding ||
+              existingFinale?.lastFaithfulStanding ||
+              "",
+            lastTraitorStanding:
+              normalizedFinalePredictions.lastTraitorStanding ||
+              existingFinale?.lastTraitorStanding ||
+              "",
+            finalPotEstimate:
+              typeof normalizedFinalePredictions.finalPotEstimate === "number"
+                ? normalizedFinalePredictions.finalPotEstimate
+                : existingFinale?.finalPotEstimate ?? null,
+          }
+        : existingFinale;
       return {
         ...player,
         name: submission.name || player.name,
@@ -737,6 +859,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               ? incomingMurdered
               : existingWeekly.nextMurdered || "",
           bonusGames: nextBonusGames,
+          finalePredictions: nextFinalePredictions,
         },
       };
     });
@@ -755,6 +878,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         setMsg({
           text: result.stale
             ? `Skipped stale vote for ${submission.name}; it belongs to a previous week.`
+            : result.late
+            ? `Skipped late vote for ${submission.name}; submission arrived after finale lock.`
             : `No matching player found for ${submission.name}.`,
           type: "error",
         });
@@ -803,6 +928,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const historyAdds: WeeklySubmissionHistoryEntry[] = [];
     let skipped = 0;
     let staleSkipped = 0;
+    let lateSkipped = 0;
 
     list.forEach((submission) => {
       const historyEntry = buildHistoryEntry(submission, updatedPlayers);
@@ -813,6 +939,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         historyAdds.push(historyEntry);
       } else if (result.stale) {
         staleSkipped += 1;
+      } else if (result.late) {
+        lateSkipped += 1;
       } else {
         skipped += 1;
       }
@@ -841,6 +969,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         setMsg({
           text:
             `Merged ${mergedIds.length} weekly votes` +
+            `${lateSkipped ? `, skipped ${lateSkipped} late` : ""}` +
             `${staleSkipped ? `, skipped ${staleSkipped} stale` : ""}` +
             `${skipped ? `, skipped ${skipped}` : ""}.`,
           type: "success",
@@ -891,6 +1020,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         nextBanished: editWeeklyBanished,
         nextMurdered: editWeeklyMurdered,
         bonusGames: selectedPlayer.weeklyPredictions?.bonusGames,
+        finalePredictions: selectedPlayer.weeklyPredictions?.finalePredictions,
       },
     });
     setMsg({
@@ -961,6 +1091,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               nextBanished: edit.weeklyBanished,
               nextMurdered: edit.weeklyMurdered,
               bonusGames: player.weeklyPredictions?.bonusGames,
+              finalePredictions: player.weeklyPredictions?.finalePredictions,
             },
           }
         : p
@@ -1080,6 +1211,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
+  const finaleConfig = gameState.finaleConfig ?? {
+    enabled: false,
+    label: "Season 4 Finale Gauntlet",
+    lockAt: "2026-02-26T21:00:00-05:00",
+  };
+  const finaleResults = gameState.weeklyResults?.finaleResults ?? {
+    finalWinner: "",
+    lastFaithfulStanding: "",
+    lastTraitorStanding: "",
+    finalPotValue: null,
+  };
   const updateBonusResult = (
     key: "redemptionRoulette" | "shieldGambit",
     value: string
@@ -1095,6 +1237,45 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         bonusGames: {
           ...(gameStateRef.current.weeklyResults?.bonusGames ?? {}),
           [key]: value,
+        },
+      },
+    };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
+  };
+  const updateFinaleResult = (
+    key: "finalWinner" | "lastFaithfulStanding" | "lastTraitorStanding",
+    value: string
+  ) => {
+    const currentWeekId =
+      normalizeWeekId(gameStateRef.current.weeklyResults?.weekId) ??
+      getActiveWeekId();
+    const nextState = {
+      ...gameStateRef.current,
+      weeklyResults: {
+        ...(gameStateRef.current.weeklyResults ?? {}),
+        weekId: currentWeekId,
+        finaleResults: {
+          ...(gameStateRef.current.weeklyResults?.finaleResults ?? {}),
+          [key]: value,
+        },
+      },
+    };
+    gameStateRef.current = nextState;
+    updateGameState(nextState);
+  };
+  const updateFinalePotValue = (value: number | null) => {
+    const currentWeekId =
+      normalizeWeekId(gameStateRef.current.weeklyResults?.weekId) ??
+      getActiveWeekId();
+    const nextState = {
+      ...gameStateRef.current,
+      weeklyResults: {
+        ...(gameStateRef.current.weeklyResults ?? {}),
+        weekId: currentWeekId,
+        finaleResults: {
+          ...(gameStateRef.current.weeklyResults?.finaleResults ?? {}),
+          finalPotValue: value,
         },
       },
     };
@@ -1123,6 +1304,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       activeCastNames={activeCastNames}
       nextBanished={gameState.weeklyResults?.nextBanished ?? ""}
       nextMurdered={gameState.weeklyResults?.nextMurdered ?? ""}
+      finaleConfig={finaleConfig}
+      finaleResults={finaleResults}
       bonusResults={bonusResults}
       onSetNextBanished={(value) =>
         updateGameState((prevState) => ({
@@ -1148,6 +1331,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           },
         }))
       }
+      onSetFinaleEnabled={(enabled) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          finaleConfig: {
+            enabled,
+            label: prevState.finaleConfig?.label || "Season 4 Finale Gauntlet",
+            lockAt: prevState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00",
+          },
+        }))
+      }
+      onSetFinaleLabel={(value) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          finaleConfig: {
+            enabled: Boolean(prevState.finaleConfig?.enabled),
+            label: value,
+            lockAt: prevState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00",
+          },
+        }))
+      }
+      onSetFinaleLockAt={(value) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          finaleConfig: {
+            enabled: Boolean(prevState.finaleConfig?.enabled),
+            label: prevState.finaleConfig?.label || "Season 4 Finale Gauntlet",
+            lockAt: value,
+          },
+        }))
+      }
+      onSetFinaleResult={updateFinaleResult}
+      onSetFinalePotValue={updateFinalePotValue}
       onUpdateBonusResult={updateBonusResult}
       scoreHistory={scoreHistory}
       visibleScoreHistory={visibleScoreHistory}
@@ -1170,6 +1385,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       mergeAllDisabled={submissions.length === 0}
       getSubmissionLeague={getSubmissionLeague}
       getSubmissionBonusGames={normalizeSubmissionBonusGames}
+      getSubmissionFinalePredictions={normalizeSubmissionFinalePredictions}
+      isSubmissionLateForFinale={(submission) => !isSubmissionBeforeFinaleLock(submission)}
       getSubmissionBonusScore={(submission) =>
         getSubmissionBonusScore(submission, gameState.players)
       }

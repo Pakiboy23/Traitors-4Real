@@ -17,6 +17,7 @@ export interface ScoreBreakdown {
   penalty: boolean;
   weeklyCouncil: { label: string; result: "correct" | "incorrect" }[];
   bonusGames: { label: string; result: "correct" | "incorrect" | "partial"; points: number }[];
+  finaleGauntlet: { label: string; result: "correct" | "incorrect"; points: number }[];
 }
 
 export interface PlayerScore {
@@ -27,6 +28,20 @@ export interface PlayerScore {
 
 export const formatScore = (value: number) =>
   Number.isInteger(value) ? value.toFixed(0) : value.toFixed(1);
+
+export const getFinaleTieBreakDistance = (
+  player: PlayerEntry,
+  finalPotValue?: number | null
+) => {
+  if (typeof finalPotValue !== "number" || !Number.isFinite(finalPotValue)) {
+    return null;
+  }
+  const estimate = player.weeklyPredictions?.finalePredictions?.finalPotEstimate;
+  if (typeof estimate !== "number" || !Number.isFinite(estimate)) {
+    return null;
+  }
+  return Math.abs(estimate - finalPotValue);
+};
 
 const hasWeeklyPredictionContent = (
   weeklyPredictions?: PlayerEntry["weeklyPredictions"] | null
@@ -42,6 +57,25 @@ const hasWeeklyPredictionContent = (
     typeof weeklyPredictions.nextMurdered === "string" &&
     weeklyPredictions.nextMurdered.trim()
   ) {
+    return true;
+  }
+  const finale = weeklyPredictions.finalePredictions;
+  if (typeof finale?.finalWinner === "string" && finale.finalWinner.trim()) {
+    return true;
+  }
+  if (
+    typeof finale?.lastFaithfulStanding === "string" &&
+    finale.lastFaithfulStanding.trim()
+  ) {
+    return true;
+  }
+  if (
+    typeof finale?.lastTraitorStanding === "string" &&
+    finale.lastTraitorStanding.trim()
+  ) {
+    return true;
+  }
+  if (typeof finale?.finalPotEstimate === "number" && Number.isFinite(finale.finalPotEstimate)) {
     return true;
   }
   const bonus = weeklyPredictions.bonusGames;
@@ -149,6 +183,7 @@ export const calculatePlayerScore = (
     penalty: false,
     weeklyCouncil: [],
     bonusGames: [],
+    finaleGauntlet: [],
   };
 
   player.picks.forEach((pick) => {
@@ -222,9 +257,14 @@ export const calculatePlayerScore = (
       weeklyResultWeekId &&
       weeklyPredictionWeekId === weeklyResultWeekId
   );
-  const weeklyMultiplier = getWeeklyMultiplier(player);
-  const weeklyCorrectPoints = SCORING_POINTS.WEEKLY_CORRECT_BASE * weeklyMultiplier;
-  const weeklyIncorrectPoints = SCORING_POINTS.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
+  const isFinaleWeek = Boolean(gameState.finaleConfig?.enabled);
+  const weeklyMultiplier = isFinaleWeek ? MULTIPLIERS.NORMAL : getWeeklyMultiplier(player);
+  const weeklyCorrectPoints = isFinaleWeek
+    ? SCORING_POINTS.FINALE_WEEKLY_CORRECT
+    : SCORING_POINTS.WEEKLY_CORRECT_BASE * weeklyMultiplier;
+  const weeklyIncorrectPoints = isFinaleWeek
+    ? SCORING_POINTS.FINALE_WEEKLY_INCORRECT
+    : SCORING_POINTS.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
 
   if (
     hasMatchingWeeklyWeek &&
@@ -264,6 +304,93 @@ export const calculatePlayerScore = (
     } else {
       score -= weeklyIncorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "incorrect" });
+    }
+  }
+
+  const finaleResults = weeklyResults?.finaleResults;
+  const finalePredictions = weeklyPredictions?.finalePredictions;
+
+  if (
+    hasMatchingWeeklyWeek &&
+    isFinaleWeek &&
+    finaleResults?.finalWinner &&
+    finalePredictions?.finalWinner
+  ) {
+    if (finaleResults.finalWinner === finalePredictions.finalWinner) {
+      score += SCORING_POINTS.FINALE_FINAL_WINNER;
+      breakdown.finaleGauntlet.push({
+        label: "Final Winner",
+        result: "correct",
+        points: SCORING_POINTS.FINALE_FINAL_WINNER,
+      });
+      achievements.push({
+        member: finalePredictions.finalWinner,
+        type: "Finale: Final Winner",
+        points: SCORING_POINTS.FINALE_FINAL_WINNER,
+        icon: "👑",
+      });
+    } else {
+      breakdown.finaleGauntlet.push({
+        label: "Final Winner",
+        result: "incorrect",
+        points: 0,
+      });
+    }
+  }
+
+  if (
+    hasMatchingWeeklyWeek &&
+    isFinaleWeek &&
+    finaleResults?.lastFaithfulStanding &&
+    finalePredictions?.lastFaithfulStanding
+  ) {
+    if (finaleResults.lastFaithfulStanding === finalePredictions.lastFaithfulStanding) {
+      score += SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING;
+      breakdown.finaleGauntlet.push({
+        label: "Last Faithful Standing",
+        result: "correct",
+        points: SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING,
+      });
+      achievements.push({
+        member: finalePredictions.lastFaithfulStanding,
+        type: "Finale: Last Faithful Standing",
+        points: SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING,
+        icon: "🕯️",
+      });
+    } else {
+      breakdown.finaleGauntlet.push({
+        label: "Last Faithful Standing",
+        result: "incorrect",
+        points: 0,
+      });
+    }
+  }
+
+  if (
+    hasMatchingWeeklyWeek &&
+    isFinaleWeek &&
+    finaleResults?.lastTraitorStanding &&
+    finalePredictions?.lastTraitorStanding
+  ) {
+    if (finaleResults.lastTraitorStanding === finalePredictions.lastTraitorStanding) {
+      score += SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING;
+      breakdown.finaleGauntlet.push({
+        label: "Last Traitor Standing",
+        result: "correct",
+        points: SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING,
+      });
+      achievements.push({
+        member: finalePredictions.lastTraitorStanding,
+        type: "Finale: Last Traitor Standing",
+        points: SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING,
+        icon: "🎭",
+      });
+    } else {
+      breakdown.finaleGauntlet.push({
+        label: "Last Traitor Standing",
+        result: "incorrect",
+        points: 0,
+      });
     }
   }
 

@@ -2,6 +2,7 @@ import React from "react";
 import {
   BonusGamePredictions,
   BonusPointBreakdownEntry,
+  FinalePredictions,
   PlayerEntry,
   WeeklySubmissionHistoryEntry,
 } from "../../types";
@@ -26,6 +27,10 @@ interface SubmissionsSectionProps {
   getSubmissionBonusGames: (
     submission: SubmissionRecord
   ) => BonusGamePredictions | undefined;
+  getSubmissionFinalePredictions: (
+    submission: SubmissionRecord
+  ) => FinalePredictions | undefined;
+  isSubmissionLateForFinale: (submission: SubmissionRecord) => boolean;
   getSubmissionBonusScore: (
     submission: SubmissionRecord
   ) => SubmissionBonusScore;
@@ -63,6 +68,32 @@ const renderBonusSummary = (bonusGames?: BonusGamePredictions) => {
       <span className="text-[color:var(--text)]">
         {" "}
         Trio {traitorTrio.length > 0 ? traitorTrio.join(", ") : "None"}
+      </span>
+    </p>
+  );
+};
+
+const renderFinaleSummary = (finalePredictions?: FinalePredictions) => {
+  if (!finalePredictions) return null;
+  return (
+    <p className="text-xs text-[color:var(--text-muted)] mt-1">
+      Finale: <span className="text-[color:var(--text)]">Winner {finalePredictions.finalWinner || "None"}</span> ·
+      <span className="text-[color:var(--text)]">
+        {" "}
+        Last Faithful {finalePredictions.lastFaithfulStanding || "None"}
+      </span>{" "}
+      ·
+      <span className="text-[color:var(--text)]">
+        {" "}
+        Last Traitor {finalePredictions.lastTraitorStanding || "None"}
+      </span>{" "}
+      ·
+      <span className="text-[color:var(--text)]">
+        {" "}
+        Pot{" "}
+        {typeof finalePredictions.finalPotEstimate === "number"
+          ? finalePredictions.finalPotEstimate
+          : "None"}
       </span>
     </p>
   );
@@ -124,6 +155,8 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
   mergeAllDisabled,
   getSubmissionLeague,
   getSubmissionBonusGames,
+  getSubmissionFinalePredictions,
+  isSubmissionLateForFinale,
   getSubmissionBonusScore,
   findPlayerMatch,
   onMergeSubmission,
@@ -173,9 +206,11 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
           {submissions.map((submission) => {
             const league = getSubmissionLeague(submission);
             const bonusGames = getSubmissionBonusGames(submission);
+            const finalePredictions = getSubmissionFinalePredictions(submission);
             const bonusScore = getSubmissionBonusScore(submission);
             const match = findPlayerMatch(players, submission, league);
-            const canMerge = Boolean(match) || league === "jr";
+            const isLate = isSubmissionLateForFinale(submission);
+            const canMerge = (Boolean(match) || league === "jr") && !isLate;
             const createdLabel = submission.created ? new Date(submission.created).toLocaleString() : "";
             return (
               <article key={submission.id} className="soft-card soft-card-subtle rounded-2xl p-4">
@@ -192,10 +227,12 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                       Murdered: <span className="text-[color:var(--text)]">{submission.weeklyMurdered || "None"}</span>
                     </p>
                     {renderBonusSummary(bonusGames)}
+                    {renderFinaleSummary(finalePredictions)}
                     {renderBonusPointsPreview(bonusScore)}
                     <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] mt-1">
                       {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}
                       {match ? ` · Match by ${match.type}` : league === "jr" ? " · New Jr player" : " · No match"}
+                      {isLate ? " · Late (after finale lock)" : ""}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -209,7 +246,7 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                           : "border border-[color:var(--panel-border)] text-[color:var(--text-muted)] cursor-not-allowed"
                       }`}
                     >
-                      Merge
+                      {isLate ? "Locked" : "Merge"}
                     </button>
                     <button
                       type="button"
@@ -268,6 +305,7 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                     Murdered: <span className="text-[color:var(--text)]">{entry.weeklyMurdered || "None"}</span>
                   </p>
                   {renderBonusSummary(entry.bonusGames)}
+                  {renderFinaleSummary(entry.finalePredictions)}
                   {renderHistoryBonusPoints(entry)}
                   <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] mt-1">
                     {createdLabel ? `Submitted ${createdLabel}` : "Submitted"}

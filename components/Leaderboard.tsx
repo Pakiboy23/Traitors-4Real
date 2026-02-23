@@ -13,6 +13,7 @@ import { getCastPortraitSrc } from "../src/castPortraits";
 import {
   calculatePlayerScore,
   formatScore,
+  getFinaleTieBreakDistance,
   resolveEffectiveWeeklyPredictionWeekId,
 } from "../src/utils/scoring";
 import { LIMITS, TIMING } from "../src/utils/scoringConstants";
@@ -50,6 +51,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
   const scoreHistory: WeeklyScoreSnapshot[] = Array.isArray(gameState.weeklyScoreHistory)
     ? gameState.weeklyScoreHistory
     : [];
+  const finalePotValue = gameState.weeklyResults?.finaleResults?.finalPotValue;
+  const isFinaleTieBreakActive =
+    Boolean(gameState.finaleConfig?.enabled) &&
+    typeof finalePotValue === "number" &&
+    Number.isFinite(finalePotValue);
 
   const hasActiveWeeklyResults = useMemo(() => {
     const weekly = gameState.weeklyResults;
@@ -58,7 +64,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
         weekly?.nextMurdered ||
         weekly?.bonusGames?.redemptionRoulette ||
         weekly?.bonusGames?.shieldGambit ||
-        weekly?.bonusGames?.traitorTrio?.length
+        weekly?.bonusGames?.traitorTrio?.length ||
+        weekly?.finaleResults?.finalWinner ||
+        weekly?.finaleResults?.lastFaithfulStanding ||
+        weekly?.finaleResults?.lastTraitorStanding ||
+        typeof weekly?.finaleResults?.finalPotValue === "number"
     );
   }, [gameState.weeklyResults]);
 
@@ -74,7 +84,19 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
       const bArchived = latestSnapshotTotals[b.id];
       const aTotal = !hasActiveWeeklyResults && typeof aArchived === "number" ? aArchived : a.scoring.total;
       const bTotal = !hasActiveWeeklyResults && typeof bArchived === "number" ? bArchived : b.scoring.total;
-      return bTotal - aTotal;
+      if (bTotal !== aTotal) return bTotal - aTotal;
+
+      if (isFinaleTieBreakActive) {
+        const aDistance = getFinaleTieBreakDistance(a, finalePotValue);
+        const bDistance = getFinaleTieBreakDistance(b, finalePotValue);
+        if (aDistance === null && bDistance !== null) return 1;
+        if (aDistance !== null && bDistance === null) return -1;
+        if (typeof aDistance === "number" && typeof bDistance === "number" && aDistance !== bDistance) {
+          return aDistance - bDistance;
+        }
+      }
+
+      return a.name.localeCompare(b.name);
     });
 
   const weeklyDeltaById = useMemo(() => {
@@ -350,6 +372,28 @@ const Leaderboard: React.FC<LeaderboardProps> = ({ gameState, uiVariant }) => {
                           )}
                         </div>
                       </div>
+
+                      {isFinaleTieBreakActive && (
+                        <div className="premium-subpanel mt-3">
+                          <p className="premium-kicker mb-2">Finale Tie-Break</p>
+                          <p className="premium-meta-line">
+                            Final pot target: {typeof finalePotValue === "number" ? formatScore(finalePotValue) : "—"}
+                          </p>
+                          <p className="premium-row-title">
+                            Your estimate:{" "}
+                            {typeof player.weeklyPredictions?.finalePredictions?.finalPotEstimate === "number"
+                              ? formatScore(player.weeklyPredictions.finalePredictions.finalPotEstimate)
+                              : "No estimate submitted"}
+                          </p>
+                          <p className="premium-meta-line">
+                            Distance:{" "}
+                            {(() => {
+                              const distance = getFinaleTieBreakDistance(player, finalePotValue);
+                              return typeof distance === "number" ? formatScore(distance) : "N/A";
+                            })()}
+                          </p>
+                        </div>
+                      )}
 
                       <div className="premium-subpanel mt-3">
                         <p className="premium-kicker mb-2">Weekly Timeline</p>
