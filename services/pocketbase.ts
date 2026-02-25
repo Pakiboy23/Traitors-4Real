@@ -9,8 +9,7 @@ const ADMIN_COLLECTION = "admins";
 const SUBMISSIONS_COLLECTION = "submissions";
 const SUBMISSIONS_SORT = "-id";
 
-const escapeFilterValue = (value: string) =>
-  value.replace(/["\\]/g, "\\$&");
+const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
 
 const isNotFound = (error: any) =>
   error?.status === 404 || error?.response?.code === 404;
@@ -165,9 +164,37 @@ const isWeeklySubmissionRecord = (item: SubmissionRecord) => {
         weeklyPredictions?: {
           nextBanished?: string;
           nextMurdered?: string;
+          bonusGames?: {
+            redemptionRoulette?: string;
+            shieldGambit?: string;
+            doubleOrNothing?: boolean;
+            traitorTrio?: string[];
+          };
+          finalePredictions?: {
+            finalWinner?: string;
+            lastFaithfulStanding?: string;
+            lastTraitorStanding?: string;
+            finalPotEstimate?: number | null;
+          };
+        };
+        bonusGames?: {
+          redemptionRoulette?: string;
+          shieldGambit?: string;
+          doubleOrNothing?: boolean;
+          traitorTrio?: string[];
+        };
+        finalePredictions?: {
+          finalWinner?: string;
+          lastFaithfulStanding?: string;
+          lastTraitorStanding?: string;
+          finalPotEstimate?: number | null;
         };
       }
     | undefined;
+
+  const bonusGames = payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
+  const finalePredictions =
+    payload?.weeklyPredictions?.finalePredictions ?? payload?.finalePredictions;
 
   const hasWeeklyFields =
     typeof item.weeklyBanished === "string" ||
@@ -175,8 +202,18 @@ const isWeeklySubmissionRecord = (item: SubmissionRecord) => {
   const hasWeeklyPayload =
     typeof payload?.weeklyPredictions?.nextBanished === "string" ||
     typeof payload?.weeklyPredictions?.nextMurdered === "string";
+  const hasBonusPayload =
+    typeof bonusGames?.redemptionRoulette === "string" ||
+    typeof bonusGames?.shieldGambit === "string" ||
+    Array.isArray(bonusGames?.traitorTrio) ||
+    typeof bonusGames?.doubleOrNothing === "boolean";
+  const hasFinalePayload =
+    typeof finalePredictions?.finalWinner === "string" ||
+    typeof finalePredictions?.lastFaithfulStanding === "string" ||
+    typeof finalePredictions?.lastTraitorStanding === "string" ||
+    typeof finalePredictions?.finalPotEstimate === "number";
 
-  return hasWeeklyFields || hasWeeklyPayload;
+  return hasWeeklyFields || hasWeeklyPayload || hasBonusPayload || hasFinalePayload;
 };
 
 const normalizeWeeklySubmissions = (items: unknown): SubmissionRecord[] => {
