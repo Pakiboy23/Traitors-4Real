@@ -1,8 +1,5 @@
 name: Deploy (Fly)
 
-permissions:
-  contents: read
-
 on:
   workflow_dispatch:
   push:
