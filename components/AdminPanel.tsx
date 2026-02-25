@@ -61,6 +61,14 @@ type PromptDialogState = {
   resolve: (value: string | null) => void;
 };
 
+const parseTimestampMs = (value: string | null | undefined): number | null => {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const trimmed = value.trim();
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
+  const parsed = Date.parse(normalized);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
 const AdminPanel: React.FC<AdminPanelProps> = ({
   gameState,
   updateGameState,
@@ -206,8 +214,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       : [];
     if (history.length === 0) return null;
     const last = history[history.length - 1];
-    const createdAtMs = Date.parse(last.createdAt || "");
-    return Number.isNaN(createdAtMs) ? null : createdAtMs;
+    return parseTimestampMs(last.createdAt);
   };
   const isSubmissionForActiveWeek = (submission: SubmissionRecord) => {
     const activeWeekId = getActiveWeekId();
@@ -215,17 +222,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (submissionWeekId) return submissionWeekId === activeWeekId;
     const currentWeekStartMs = getCurrentWeekStartMs();
     if (currentWeekStartMs === null) return true;
-    const createdAtMs = Date.parse(submission.created || "");
-    if (Number.isNaN(createdAtMs)) return false;
+    const createdAtMs = parseTimestampMs(submission.created);
+    if (createdAtMs === null) return false;
     return createdAtMs >= currentWeekStartMs;
   };
   const isSubmissionBeforeFinaleLock = (submission: SubmissionRecord) => {
     const finaleConfig = gameStateRef.current.finaleConfig;
     if (!finaleConfig?.enabled) return true;
-    const lockAtMs = Date.parse(finaleConfig.lockAt || "");
-    if (Number.isNaN(lockAtMs)) return true;
-    const createdAtMs = Date.parse(submission.created || "");
-    if (Number.isNaN(createdAtMs)) return false;
+    const lockAtMs = parseTimestampMs(finaleConfig.lockAt);
+    if (lockAtMs === null) return true;
+    const createdAtMs = parseTimestampMs(submission.created);
+    if (createdAtMs === null) return true;
     return createdAtMs <= lockAtMs;
   };
   const getSubmissionLeague = (submission: SubmissionRecord) => {
