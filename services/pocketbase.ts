@@ -9,7 +9,8 @@ const ADMIN_COLLECTION = "admins";
 const SUBMISSIONS_COLLECTION = "submissions";
 const SUBMISSIONS_SORT = "-id";
 
-const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
+const escapeFilterValue = (value: string) =>
+  value.replace(/["\\]/g, "\\$&");
 
 const isNotFound = (error: any) =>
   error?.status === 404 || error?.response?.code === 404;
