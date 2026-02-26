@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "framer-motion": "^12.34.3",
-    "pocketbase": "^0.25.2",
+    "pocketbase": "^0.26.8",
     "react": "^19.2.3",
     "react-dom": "^19.2.4"
   },
