@@ -139,46 +139,8 @@ export const savePlayerPortrait = async (
   }
 };
 
-          bonusGames?: {
-            redemptionRoulette?: string;
-            shieldGambit?: string;
-            doubleOrNothing?: boolean;
-            traitorTrio?: string[];
-          };
-          finalePredictions?: {
-            finalWinner?: string;
-            lastFaithfulStanding?: string;
-            lastTraitorStanding?: string;
-            finalPotEstimate?: number | null;
-          };
-        };
-        bonusGames?: {
-          redemptionRoulette?: string;
-          shieldGambit?: string;
-          doubleOrNothing?: boolean;
-          traitorTrio?: string[];
-        };
-        finalePredictions?: {
-          finalWinner?: string;
-          lastFaithfulStanding?: string;
-          lastTraitorStanding?: string;
-          finalPotEstimate?: number | null;
-  const bonusGames = payload?.weeklyPredictions?.bonusGames ?? payload?.bonusGames;
-  const finalePredictions =
-    payload?.weeklyPredictions?.finalePredictions ?? payload?.finalePredictions;
 
-  const hasBonusPayload =
-    typeof bonusGames?.redemptionRoulette === "string" ||
-    typeof bonusGames?.shieldGambit === "string" ||
-    Array.isArray(bonusGames?.traitorTrio) ||
-    typeof bonusGames?.doubleOrNothing === "boolean";
-  const hasFinalePayload =
-    typeof finalePredictions?.finalWinner === "string" ||
-    typeof finalePredictions?.lastFaithfulStanding === "string" ||
-    typeof finalePredictions?.lastTraitorStanding === "string" ||
-    typeof finalePredictions?.finalPotEstimate === "number";
-
-  return hasWeeklyFields || hasWeeklyPayload || hasBonusPayload || hasFinalePayload;
+export interface SubmissionRecord extends RecordModel {
   name: string;
   email: string;
   kind: string;
