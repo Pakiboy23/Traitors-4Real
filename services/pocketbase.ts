@@ -1,13 +1,29 @@
 import type { RecordModel } from "pocketbase";
-import type { FinalePredictions, GameState } from "../types";
+import type {
+  FinalePredictions,
+  GameState,
+  ScoreAdjustment,
+  SeasonConfig,
+  SeasonState,
+  ShowConfig,
+  SubmissionStatus,
+} from "../types";
+import { normalizeWeekId } from "../types";
 import { pb, pocketbaseUrl } from "../src/lib/pocketbase";
+import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
+import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
+import { logger } from "../src/utils/logger";
 
 const GAME_COLLECTION = "games";
-const GAME_SLUG = "default";
+const GAME_SLUG = DEFAULT_SHOW_SLUG;
 const PORTRAITS_COLLECTION = "playerPortraits";
 const ADMIN_COLLECTION = "admins";
 const SUBMISSIONS_COLLECTION = "submissions";
 const SUBMISSIONS_SORT = "-id";
+const SHOW_CONFIG_COLLECTION = "showConfigs";
+const SEASONS_COLLECTION = "seasons";
+const SEASON_STATES_COLLECTION = "seasonStates";
+const SCORE_ADJUSTMENTS_COLLECTION = "scoreAdjustments";
 
 const escapeFilterValue = (value: string) => value.replace(/"/g, '\\"');
 
@@ -29,6 +45,270 @@ export const signInAdmin = async (email: string, password: string) => {
 
 export const signOutAdmin = () => {
   pb.authStore.clear();
+};
+
+export interface ShowConfigRecord extends RecordModel {
+  slug: string;
+  config: ShowConfig;
+}
+
+export interface SeasonRecord extends RecordModel, SeasonConfig {}
+
+export interface SeasonStateRecord extends RecordModel {
+  seasonId: string;
+  state: SeasonState;
+}
+
+export interface ScoreAdjustmentRecord extends RecordModel {
+  seasonId: string;
+  playerId: string;
+  weekId?: string;
+  reason: string;
+  points: number;
+  createdBy?: string;
+}
+
+export const fetchShowConfig = async (
+  slug = DEFAULT_SHOW_SLUG
+): Promise<ShowConfig | null> => {
+  try {
+    const record = await pb
+      .collection(SHOW_CONFIG_COLLECTION)
+      .getFirstListItem<ShowConfigRecord>(`slug="${escapeFilterValue(slug)}"`);
+    return sanitizeShowConfig(record.config);
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    logger.warn("fetchShowConfig failed:", error);
+    return null;
+  }
+};
+
+export const saveShowConfig = async (
+  config: ShowConfig,
+  slug = DEFAULT_SHOW_SLUG
+) => {
+  const sanitized = sanitizeShowConfig({ ...config, slug });
+  try {
+    const existing = await pb
+      .collection(SHOW_CONFIG_COLLECTION)
+      .getFirstListItem<ShowConfigRecord>(`slug="${escapeFilterValue(slug)}"`);
+    return pb.collection(SHOW_CONFIG_COLLECTION).update(existing.id, {
+      slug,
+      config: sanitized,
+    });
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
+  return pb.collection(SHOW_CONFIG_COLLECTION).create({
+    slug,
+    config: sanitized,
+  });
+};
+
+export const ensureDefaultShowConfig = async () => {
+  const existing = await fetchShowConfig(DEFAULT_SHOW_SLUG);
+  if (existing) return existing;
+  await saveShowConfig(DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG);
+  return DEFAULT_SHOW_CONFIG;
+};
+
+export const listSeasons = async (): Promise<SeasonConfig[]> => {
+  try {
+    const records = await pb.collection(SEASONS_COLLECTION).getFullList<SeasonRecord>({
+      sort: "-created",
+      perPage: 200,
+    });
+    return records.map((record) => sanitizeSeasonConfig(record, record.seasonId || record.id));
+  } catch (error) {
+    if (isNotFound(error)) return [];
+    logger.warn("listSeasons failed:", error);
+    return [];
+  }
+};
+
+export const createSeason = async (input: SeasonConfig) => {
+  const season = sanitizeSeasonConfig(input, input.seasonId);
+  return pb.collection(SEASONS_COLLECTION).create(season);
+};
+
+export const updateSeason = async (
+  seasonId: string,
+  updates: Partial<SeasonConfig>
+) => {
+  const existing = await pb
+    .collection(SEASONS_COLLECTION)
+    .getFirstListItem<SeasonRecord>(`seasonId="${escapeFilterValue(seasonId)}"`);
+  const merged = sanitizeSeasonConfig(
+    {
+      ...existing,
+      ...updates,
+      seasonId,
+    },
+    seasonId
+  );
+  return pb.collection(SEASONS_COLLECTION).update(existing.id, merged);
+};
+
+export const archiveSeason = async (seasonId: string) =>
+  updateSeason(seasonId, { status: "archived" });
+
+export const finalizeSeason = async (seasonId: string) =>
+  updateSeason(seasonId, { status: "finalized" });
+
+export const fetchSeasonState = async (
+  seasonId: string
+): Promise<SeasonState | null> => {
+  try {
+    const record = await pb
+      .collection(SEASON_STATES_COLLECTION)
+      .getFirstListItem<SeasonStateRecord>(
+        `seasonId="${escapeFilterValue(seasonId)}"`
+      );
+    return {
+      ...(record.state as SeasonState),
+      seasonId,
+    };
+  } catch (error) {
+    if (isNotFound(error)) return null;
+    throw error;
+  }
+};
+
+export const saveSeasonState = async (
+  seasonId: string,
+  state: SeasonState
+) => {
+  try {
+    const existing = await pb
+      .collection(SEASON_STATES_COLLECTION)
+      .getFirstListItem<SeasonStateRecord>(
+        `seasonId="${escapeFilterValue(seasonId)}"`
+      );
+    return pb.collection(SEASON_STATES_COLLECTION).update(existing.id, {
+      seasonId,
+      state: { ...state, seasonId },
+    });
+  } catch (error) {
+    if (!isNotFound(error)) throw error;
+  }
+  return pb.collection(SEASON_STATES_COLLECTION).create({
+    seasonId,
+    state: { ...state, seasonId },
+  });
+};
+
+const resetSeasonStateForClone = (state: SeasonState): SeasonState => {
+  const castStatus = Object.fromEntries(
+    Object.entries(state.castStatus || {}).map(([name, status]) => [
+      name,
+      {
+        ...status,
+        isWinner: false,
+        isFirstOut: false,
+        isTraitor: false,
+        isEliminated: false,
+      },
+    ])
+  );
+  return {
+    ...state,
+    players: [],
+    castStatus,
+    weeklyResults: {
+      weekId: "week-1",
+      nextBanished: "",
+      nextMurdered: "",
+      bonusGames: {
+        redemptionRoulette: "",
+        shieldGambit: "",
+        traitorTrio: [],
+      },
+      finaleResults: {
+        finalWinner: "",
+        lastFaithfulStanding: "",
+        lastTraitorStanding: "",
+        finalPotValue: null,
+      },
+    },
+    activeWeekId: "week-1",
+    weeklySubmissionHistory: [],
+    weeklyScoreHistory: [],
+    scoreAdjustments: [],
+  };
+};
+
+export const cloneSeason = async (params: {
+  sourceSeasonId: string;
+  targetSeason: SeasonConfig;
+}) => {
+  const sourceState = await fetchSeasonState(params.sourceSeasonId);
+  await createSeason(params.targetSeason);
+  if (!sourceState) return null;
+  return saveSeasonState(
+    params.targetSeason.seasonId,
+    resetSeasonStateForClone(sourceState)
+  );
+};
+
+export const listScoreAdjustments = async (
+  seasonId: string
+): Promise<ScoreAdjustment[]> => {
+  try {
+    const records = await pb
+      .collection(SCORE_ADJUSTMENTS_COLLECTION)
+      .getFullList<ScoreAdjustmentRecord>({
+        filter: `seasonId="${escapeFilterValue(seasonId)}"`,
+        sort: "-created",
+        perPage: 500,
+      });
+    return records.map((record) => ({
+      id: record.id,
+      seasonId: record.seasonId,
+      playerId: record.playerId,
+      weekId: record.weekId,
+      reason: record.reason,
+      points: Number(record.points) || 0,
+      createdBy: record.createdBy || "admin",
+      createdAt: record.created || new Date().toISOString(),
+    }));
+  } catch (error) {
+    if (isNotFound(error)) return [];
+    logger.warn("listScoreAdjustments failed:", error);
+    return [];
+  }
+};
+
+export const createScoreAdjustment = async (input: {
+  seasonId: string;
+  playerId: string;
+  weekId?: string;
+  reason: string;
+  points: number;
+  createdBy: string;
+}) => {
+  const payload = {
+    seasonId: input.seasonId,
+    playerId: input.playerId,
+    weekId: input.weekId || "",
+    reason: input.reason.trim(),
+    points: input.points,
+    createdBy: input.createdBy.trim(),
+  };
+  const record = await pb.collection(SCORE_ADJUSTMENTS_COLLECTION).create(payload);
+  return {
+    id: record.id,
+    seasonId: payload.seasonId,
+    playerId: payload.playerId,
+    weekId: payload.weekId || undefined,
+    reason: payload.reason,
+    points: payload.points,
+    createdBy: payload.createdBy,
+    createdAt: record.created || new Date().toISOString(),
+  } as ScoreAdjustment;
+};
+
+export const deleteScoreAdjustment = async (id: string) => {
+  await pb.collection(SCORE_ADJUSTMENTS_COLLECTION).delete(id);
 };
 
 export const fetchGameState = async (): Promise<{
@@ -85,7 +365,7 @@ export const subscribeToGameState = (
   };
 
   pb.collection(GAME_COLLECTION).subscribe("*", callback).catch((error) => {
-    console.warn("PocketBase subscription failed:", error);
+    logger.warn("PocketBase subscription failed:", error);
   });
 
   return () => {
@@ -144,6 +424,10 @@ export interface SubmissionRecord extends RecordModel {
   name: string;
   email: string;
   kind: string;
+  seasonId?: string;
+  weekId?: string;
+  submissionStatus?: SubmissionStatus;
+  rulePackId?: string;
   league?: string;
   weeklyBanished?: string;
   weeklyMurdered?: string;
@@ -156,7 +440,9 @@ const sortSubmissions = (items: SubmissionRecord[]) =>
   [...items].sort((a, b) => (b.id || "").localeCompare(a.id || ""));
 
 const isWeeklySubmissionRecord = (item: SubmissionRecord) => {
-  if (item.kind === "weekly") return true;
+  const kind = String(item.kind ?? "").trim().toLowerCase();
+  if (kind === "weekly") return true;
+  if (kind) return false;
 
   // Some API responses can omit `kind`; keep weekly records visible by shape.
   const payload = item.payload as
@@ -225,14 +511,25 @@ const normalizeWeeklySubmissions = (items: unknown): SubmissionRecord[] => {
   );
 };
 
-export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
+const buildActiveSubmissionFilter = (seasonId?: string | null) => {
+  const normalizedSeasonId = normalizeWeekId(seasonId);
+  const seasonFilter = normalizedSeasonId
+    ? `seasonId="${escapeFilterValue(normalizedSeasonId)}" && `
+    : "";
+  return `${seasonFilter}((kind="weekly" && (submissionStatus="" || submissionStatus="new")) || kind="")`;
+};
+
+export const fetchWeeklySubmissions = async (input?: {
+  seasonId?: string | null;
+}): Promise<SubmissionRecord[]> => {
+  const activeSubmissionFilter = buildActiveSubmissionFilter(input?.seasonId);
   try {
     const perPage = 200;
     const firstPage = await pb
       .collection(SUBMISSIONS_COLLECTION)
       .getList<SubmissionRecord>(1, perPage, {
         sort: SUBMISSIONS_SORT,
-        filter: 'kind="weekly"',
+        filter: activeSubmissionFilter,
       });
     const items = [...firstPage.items];
     for (let page = 2; page <= firstPage.totalPages; page += 1) {
@@ -240,17 +537,17 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
         .collection(SUBMISSIONS_COLLECTION)
         .getList<SubmissionRecord>(page, perPage, {
           sort: SUBMISSIONS_SORT,
-          filter: 'kind="weekly"',
+          filter: activeSubmissionFilter,
         });
       items.push(...nextPage.items);
     }
     const normalized = normalizeWeeklySubmissions(items);
-    console.log(
+    logger.log(
       `fetchWeeklySubmissions: Loaded ${normalized.length} submissions via SDK`
     );
     return normalized;
   } catch (error) {
-    console.warn("PocketBase SDK submissions fetch failed:", error);
+    logger.warn("PocketBase SDK submissions fetch failed:", error);
   }
 
   // Fallback: use fetch with and without sort/filter variants.
@@ -260,8 +557,8 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
       headers["Authorization"] = pb.authStore.token;
     }
     const queryVariants = [
-      { perPage: "200", sort: SUBMISSIONS_SORT, filter: '(kind="weekly")' },
-      { perPage: "200", filter: '(kind="weekly")' },
+      { perPage: "200", sort: SUBMISSIONS_SORT, filter: activeSubmissionFilter },
+      { perPage: "200", filter: activeSubmissionFilter },
       { perPage: "200", sort: SUBMISSIONS_SORT },
       { perPage: "200" },
     ];
@@ -271,7 +568,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
       const url = `${pocketbaseUrl}/api/collections/${SUBMISSIONS_COLLECTION}/records?${params.toString()}`;
       const response = await fetch(url, { headers });
       if (!response.ok) {
-        console.warn(
+        logger.warn(
           `Fallback submissions fetch failed (${response.status}) for ${params.toString()}`
         );
         continue;
@@ -279,7 +576,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
       const data = (await response.json()) as { items?: SubmissionRecord[] };
       const normalized = normalizeWeeklySubmissions(data.items);
       if (normalized.length > 0) {
-        console.log(
+        logger.log(
           `fetchWeeklySubmissions: Loaded ${normalized.length} submissions via fallback`
         );
         return normalized;
@@ -288,7 +585,7 @@ export const fetchWeeklySubmissions = async (): Promise<SubmissionRecord[]> => {
 
     return [];
   } catch (fallbackError) {
-    console.warn("Fallback submissions fetch failed:", fallbackError);
+    logger.warn("Fallback submissions fetch failed:", fallbackError);
     return [];
   }
 };
@@ -297,22 +594,23 @@ export const subscribeToWeeklySubmissions = (
   handler: (submission: SubmissionRecord) => void
 ) => {
   if (!pb.authStore.isValid) {
-    console.warn("subscribeToWeeklySubmissions: Admin not authenticated, skipping subscription");
+    logger.warn("subscribeToWeeklySubmissions: Admin not authenticated, skipping subscription");
     return () => {};
   }
 
   const callback = (event: any) => {
     const record = event?.record as SubmissionRecord | undefined;
     if (!record || record.kind !== "weekly") return;
+    if (record.submissionStatus && record.submissionStatus !== "new") return;
     if (event?.action !== "create") return;
-    console.log("New weekly submission received:", record.id, record.name);
+    logger.log("New weekly submission received:", record.id, record.name);
     handler(record);
   };
 
   pb.collection(SUBMISSIONS_COLLECTION).subscribe("*", callback).then(() => {
-    console.log("Subscribed to weekly submissions");
+    logger.log("Subscribed to weekly submissions");
   }).catch((error) => {
-    console.warn("PocketBase submission subscription failed:", error);
+    logger.warn("PocketBase submission subscription failed:", error);
   });
 
   return () => {
@@ -324,11 +622,44 @@ export const deleteSubmission = async (id: string) => {
   await pb.collection(SUBMISSIONS_COLLECTION).delete(id);
 };
 
+export const markSubmissionMerged = async (id: string) => {
+  try {
+    await pb.collection(SUBMISSIONS_COLLECTION).update(id, {
+      kind: "weekly_merged",
+      submissionStatus: "merged",
+    });
+  } catch (error: any) {
+    if (error?.status === 400 || error?.response?.code === 400) {
+      await pb.collection(SUBMISSIONS_COLLECTION).update(id, {
+        kind: "weekly_merged",
+      });
+      return;
+    }
+    throw error;
+  }
+};
+
+export const markSubmissionSkipped = async (
+  id: string,
+  status: "skipped_late" | "skipped_stale"
+) => {
+  try {
+    await pb.collection(SUBMISSIONS_COLLECTION).update(id, {
+      submissionStatus: status,
+    });
+  } catch (error: any) {
+    if (error?.status === 400 || error?.response?.code === 400) return;
+    throw error;
+  }
+};
+
 export const submitWeeklyCouncilVote = async (input: {
   name: string;
   email: string;
   weeklyPredictions: { nextBanished: string; nextMurdered: string };
   weekId?: string;
+  seasonId?: string;
+  rulePackId?: string;
   bonusGames?: {
     redemptionRoulette?: string;
     doubleOrNothing?: boolean;
@@ -341,14 +672,20 @@ export const submitWeeklyCouncilVote = async (input: {
   const normalizedEmail = normalizeEmail(input.email || "");
   const normalizedWeekId =
     typeof input.weekId === "string" ? input.weekId.trim() : "";
-  return pb.collection(SUBMISSIONS_COLLECTION).create({
+  const nextPayload = {
     name: input.name,
     email: normalizedEmail,
     kind: "weekly",
+    seasonId: input.seasonId || "",
+    weekId: normalizedWeekId,
+    submissionStatus: "new",
+    rulePackId: input.rulePackId || "",
     weeklyBanished: input.weeklyPredictions?.nextBanished || "",
     weeklyMurdered: input.weeklyPredictions?.nextMurdered || "",
     payload: {
       league: input.league || "main",
+      seasonId: input.seasonId || "",
+      rulePackId: input.rulePackId || "",
       weekId: normalizedWeekId,
       weeklyPredictions: {
         weekId: normalizedWeekId,
@@ -372,7 +709,22 @@ export const submitWeeklyCouncilVote = async (input: {
         },
       },
     },
-  });
+  };
+  try {
+    return await pb.collection(SUBMISSIONS_COLLECTION).create(nextPayload);
+  } catch (error: any) {
+    if (error?.status !== 400 && error?.response?.code !== 400) throw error;
+    // Backward compatibility for legacy schema before season shell fields exist.
+    const legacyPayload = {
+      name: nextPayload.name,
+      email: nextPayload.email,
+      kind: nextPayload.kind,
+      weeklyBanished: nextPayload.weeklyBanished,
+      weeklyMurdered: nextPayload.weeklyMurdered,
+      payload: nextPayload.payload,
+    };
+    return pb.collection(SUBMISSIONS_COLLECTION).create(legacyPayload);
+  }
 };
 
 export const submitDraftEntry = async (entry: {

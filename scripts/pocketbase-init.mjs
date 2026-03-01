@@ -74,6 +74,184 @@ try {
     deleteRule: '@request.auth.collectionName = "admins"',
   });
 
+  await ensureCollection("showConfigs", {
+    name: "showConfigs",
+    type: "base",
+    fields: [
+      {
+        name: "slug",
+        type: "text",
+        required: true,
+        unique: true,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "config",
+        type: "json",
+        required: true,
+        unique: false,
+        options: { maxSize: 5000000 },
+      },
+    ],
+    listRule: "",
+    viewRule: "",
+    createRule: '@request.auth.collectionName = "admins"',
+    updateRule: '@request.auth.collectionName = "admins"',
+    deleteRule: '@request.auth.collectionName = "admins"',
+  });
+
+  await ensureCollection("seasons", {
+    name: "seasons",
+    type: "base",
+    fields: [
+      {
+        name: "seasonId",
+        type: "text",
+        required: true,
+        unique: true,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "label",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 200, pattern: "" },
+      },
+      {
+        name: "status",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 40, pattern: "" },
+      },
+      {
+        name: "timezone",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "lockSchedule",
+        type: "json",
+        required: false,
+        unique: false,
+        options: { maxSize: 5000000 },
+      },
+      {
+        name: "activeWeekId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
+      },
+      {
+        name: "finaleConfig",
+        type: "json",
+        required: false,
+        unique: false,
+        options: { maxSize: 5000000 },
+      },
+      {
+        name: "rulePackId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
+      },
+    ],
+    listRule: "",
+    viewRule: "",
+    createRule: '@request.auth.collectionName = "admins"',
+    updateRule: '@request.auth.collectionName = "admins"',
+    deleteRule: '@request.auth.collectionName = "admins"',
+  });
+
+  await ensureCollection("seasonStates", {
+    name: "seasonStates",
+    type: "base",
+    fields: [
+      {
+        name: "seasonId",
+        type: "text",
+        required: true,
+        unique: true,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "state",
+        type: "json",
+        required: true,
+        unique: false,
+        options: { maxSize: 5000000 },
+      },
+    ],
+    listRule: "",
+    viewRule: "",
+    createRule: '@request.auth.collectionName = "admins"',
+    updateRule: '@request.auth.collectionName = "admins"',
+    deleteRule: '@request.auth.collectionName = "admins"',
+  });
+
+  await ensureCollection("scoreAdjustments", {
+    name: "scoreAdjustments",
+    type: "base",
+    fields: [
+      {
+        name: "seasonId",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "playerId",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 120, pattern: "" },
+      },
+      {
+        name: "weekId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
+      },
+      {
+        name: "reason",
+        type: "text",
+        required: true,
+        unique: false,
+        options: { min: 1, max: 500, pattern: "" },
+      },
+      {
+        name: "points",
+        type: "number",
+        required: true,
+        unique: false,
+        options: {
+          min: -100000,
+          max: 100000,
+          noDecimal: false,
+        },
+      },
+      {
+        name: "createdBy",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 200, pattern: "" },
+      },
+    ],
+    listRule: '@request.auth.collectionName = "admins"',
+    viewRule: '@request.auth.collectionName = "admins"',
+    createRule: '@request.auth.collectionName = "admins"',
+    updateRule: '@request.auth.collectionName = "admins"',
+    deleteRule: '@request.auth.collectionName = "admins"',
+  });
+
   await ensureCollection("playerPortraits", {
     name: "playerPortraits",
     type: "base",
@@ -131,6 +309,34 @@ try {
         required: true,
         unique: false,
         options: { min: 1, max: 50, pattern: "" },
+      },
+      {
+        name: "seasonId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
+      },
+      {
+        name: "weekId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
+      },
+      {
+        name: "submissionStatus",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 40, pattern: "" },
+      },
+      {
+        name: "rulePackId",
+        type: "text",
+        required: false,
+        unique: false,
+        options: { min: 0, max: 120, pattern: "" },
       },
       {
         name: "weeklyBanished",

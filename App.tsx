@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
-import Welcome, { type LeaguePulseOverview, type TopMoverEntry } from "./components/Welcome";
+import Welcome, {
+  type FinalStandingEntry,
+  type LeaguePulseOverview,
+  type TopMoverEntry,
+} from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
 import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
@@ -14,18 +18,29 @@ import {
   inferActiveWeekId,
   normalizeWeekId,
   PlayerEntry,
+  ScoreAdjustment,
+  SeasonConfig,
+  ShowConfig,
   UiVariant,
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
 } from "./types";
 import { calculatePlayerScore, getFinaleTieBreakDistance } from "./src/utils/scoring";
 import { TIMING } from "./src/utils/scoringConstants";
+import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
+import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
+import { logger } from "./src/utils/logger";
 import {
+  fetchShowConfig,
+  fetchSeasonState,
   fetchGameState,
+  listSeasons,
+  listScoreAdjustments,
   fetchPlayerPortraits,
   normalizeEmail,
   onAdminAuthChange,
   saveGameState,
+  saveSeasonState,
   signInAdmin,
   signOutAdmin,
   submitGrowthEvent,
@@ -34,10 +49,12 @@ import {
 } from "./services/pocketbase";
 
 const STORAGE_KEY = "traitors_db_v4";
+const buildDefaultFinaleLockAt = () =>
+  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 const DEFAULT_FINALE_CONFIG = {
   enabled: false,
-  label: "Season 4 Finale Gauntlet",
-  lockAt: "2026-02-26T21:00:00-05:00",
+  label: "Finale Gauntlet",
+  lockAt: buildDefaultFinaleLockAt(),
 };
 const DEFAULT_WEEKLY_RESULTS = {
   nextBanished: "",
@@ -117,11 +134,25 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     weeklyScoreHistory,
   });
 
+  const showConfig: ShowConfig = sanitizeShowConfig(input?.showConfig ?? DEFAULT_SHOW_CONFIG);
+  const seasonConfig: SeasonConfig = sanitizeSeasonConfig(
+    input?.seasonConfig ?? null,
+    typeof input?.seasonId === "string" && input.seasonId.trim()
+      ? input.seasonId
+      : "season-1"
+  );
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
     input?.castStatus ?? {};
+  const castNames = Array.from(
+    new Set([
+      ...showConfig.castNames,
+      ...CAST_NAMES,
+      ...Object.keys(incomingCast),
+    ])
+  ).sort((a, b) => a.localeCompare(b));
 
-  CAST_NAMES.forEach((name) => {
+  castNames.forEach((name) => {
     const current = incomingCast[name] ?? {};
     castStatus[name] = {
       isWinner: Boolean(current.isWinner),
@@ -139,6 +170,15 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const normalizedPlayers = players.map((player, index) => {
     const safeName = typeof player.name === "string" ? player.name : "";
     const safeEmail = typeof player.email === "string" ? player.email : "";
+    const legacyPlayer = player as PlayerEntry & {
+      finalePredictions?: {
+        finalWinner?: string;
+        lastFaithfulStanding?: string;
+        lastTraitorStanding?: string;
+        finalPotEstimate?: number | null;
+      };
+    };
+    const legacyFinale = legacyPlayer.finalePredictions;
     const fallbackIdSeed =
       normalizeEmail(safeEmail) ||
       safeName.trim().toLowerCase().replace(/\s+/g, "-");
@@ -173,16 +213,25 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
         },
         finalePredictions: {
           finalWinner:
-            player.weeklyPredictions?.finalePredictions?.finalWinner ?? "",
+            player.weeklyPredictions?.finalePredictions?.finalWinner ??
+            legacyFinale?.finalWinner ??
+            "",
           lastFaithfulStanding:
-            player.weeklyPredictions?.finalePredictions?.lastFaithfulStanding ?? "",
+            player.weeklyPredictions?.finalePredictions?.lastFaithfulStanding ??
+            legacyFinale?.lastFaithfulStanding ??
+            "",
           lastTraitorStanding:
-            player.weeklyPredictions?.finalePredictions?.lastTraitorStanding ?? "",
+            player.weeklyPredictions?.finalePredictions?.lastTraitorStanding ??
+            legacyFinale?.lastTraitorStanding ??
+            "",
           finalPotEstimate:
             typeof player.weeklyPredictions?.finalePredictions?.finalPotEstimate ===
               "number" &&
             Number.isFinite(player.weeklyPredictions?.finalePredictions?.finalPotEstimate)
               ? player.weeklyPredictions?.finalePredictions?.finalPotEstimate
+              : typeof legacyFinale?.finalPotEstimate === "number" &&
+                Number.isFinite(legacyFinale?.finalPotEstimate)
+              ? legacyFinale.finalPotEstimate
               : null,
         },
       },
@@ -192,12 +241,48 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const history = Array.isArray(input?.weeklySubmissionHistory)
     ? (input!.weeklySubmissionHistory as WeeklySubmissionHistoryEntry[])
     : [];
+  const scoreAdjustments = Array.isArray(input?.scoreAdjustments)
+    ? (input!.scoreAdjustments as ScoreAdjustment[])
+        .filter(
+          (adjustment) =>
+            adjustment &&
+            typeof adjustment.id === "string" &&
+            typeof adjustment.playerId === "string" &&
+            typeof adjustment.seasonId === "string" &&
+            typeof adjustment.reason === "string" &&
+            typeof adjustment.points === "number"
+        )
+        .map((adjustment) => ({
+          ...adjustment,
+          weekId: normalizeWeekId(adjustment.weekId) ?? undefined,
+          createdBy: adjustment.createdBy || "admin",
+          createdAt: adjustment.createdAt || new Date().toISOString(),
+        }))
+    : [];
+  const seasonId =
+    normalizeWeekId(input?.seasonId) ??
+    normalizeWeekId(seasonConfig.seasonId) ??
+    "season-1";
+  const rulePackId =
+    normalizeWeekId(input?.rulePackId) ??
+    normalizeWeekId(seasonConfig.rulePackId) ??
+    "traitors-classic";
 
   return {
+    seasonId,
+    rulePackId,
     activeWeekId,
     players: normalizedPlayers,
     castStatus,
+    showConfig,
+    seasonConfig: {
+      ...seasonConfig,
+      seasonId,
+      activeWeekId: normalizeWeekId(seasonConfig.activeWeekId) ?? activeWeekId,
+      rulePackId,
+    },
     finaleConfig: normalizeFinaleConfig(input?.finaleConfig),
+    scoreAdjustments,
     weeklyResults: normalizeWeeklyResults(input?.weeklyResults, activeWeekId),
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
@@ -211,6 +296,9 @@ const App: React.FC = () => {
   const [pendingSubmissions, setPendingSubmissions] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
+  const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
+  const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
+  const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
   const writeTimerRef = useRef<number | null>(null);
@@ -261,7 +349,7 @@ const App: React.FC = () => {
         tab: tab || "home",
       },
     }).catch((error) => {
-      console.warn("Failed to log invite open event:", error);
+      logger.warn("Failed to log invite open event:", error);
     });
   }, []);
 
@@ -290,9 +378,20 @@ const App: React.FC = () => {
 
   const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated) return;
+    const scopedSeasonId = normalizeWeekId(activeSeasonId);
+    if (seasonShellEnabled && !scopedSeasonId) {
+      setLastWriteError("No active season selected.");
+      return;
+    }
     try {
       const safeState = normalizeUndefined(gameState);
-      const record = await saveGameState(safeState as GameState);
+      const record =
+        seasonShellEnabled && scopedSeasonId
+          ? await saveSeasonState(
+              scopedSeasonId,
+              safeState as GameState
+            )
+          : await saveGameState(safeState as GameState);
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
@@ -302,9 +401,9 @@ const App: React.FC = () => {
       setLastWriteError(
         error instanceof Error ? error.message : String(error)
       );
-      console.warn("Manual save failed:", error);
+      logger.warn("Manual save failed:", error);
     }
-  }, [gameState, isAdminAuthenticated]);
+  }, [activeSeasonId, gameState, isAdminAuthenticated, seasonShellEnabled]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
@@ -321,15 +420,173 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let cancelled = false;
+    const loadShowConfig = async () => {
+      try {
+        const config = await fetchShowConfig();
+        if (!config || cancelled) return;
+        setUiVariant(config.defaultUiVariant || "premium");
+        setGameState((prev) => {
+          const next = normalizeGameState({
+            ...prev,
+            showConfig: config,
+          });
+          return next;
+        });
+      } catch (error) {
+        logger.warn("Failed to load show config:", error);
+      }
+    };
+    void loadShowConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadSeasons = async () => {
+      try {
+        const records = await listSeasons();
+        if (cancelled) return;
+        if (!Array.isArray(records) || records.length === 0) {
+          setSeasons([]);
+          setSeasonShellEnabled(false);
+          return;
+        }
+        setSeasonShellEnabled(true);
+        setSeasons(records);
+        const stored = normalizeWeekId(localStorage.getItem("traitors_active_season"));
+        const preferred =
+          records.find((season) => season.seasonId === stored) ??
+          records.find((season) => season.status !== "archived") ??
+          records[0];
+        setActiveSeasonId(preferred?.seasonId || null);
+      } catch (error) {
+        logger.warn("Failed to load seasons:", error);
+      }
+    };
+    void loadSeasons();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!seasonShellEnabled) return;
+    const seasonId = normalizeWeekId(activeSeasonId);
+    if (!seasonId) return;
+    localStorage.setItem("traitors_active_season", seasonId);
+    let cancelled = false;
+    const loadSeasonState = async () => {
+      try {
+        const seasonState = await fetchSeasonState(seasonId);
+        if (cancelled) return;
+        if (!seasonState) {
+          hasRemoteSnapshotRef.current = true;
+          remoteExistsRef.current = false;
+          lastRemoteStateRef.current = null;
+          return;
+        }
+        const serialized = JSON.stringify(seasonState);
+        hasRemoteSnapshotRef.current = true;
+        remoteExistsRef.current = true;
+        lastRemoteStateRef.current = serialized;
+        const seasonMeta =
+          seasons.find((season) => season.seasonId === seasonId) || undefined;
+        setGameState(
+          normalizeGameState({
+            ...seasonState,
+            seasonId,
+            seasonConfig: seasonMeta ?? seasonState.seasonConfig,
+          })
+        );
+      } catch (error) {
+        logger.warn("Failed to load season state:", error);
+      }
+    };
+    void loadSeasonState();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSeasonId, seasonShellEnabled, seasons]);
+
+  useEffect(() => {
+    if (!seasonShellEnabled || seasons.length === 0) return;
+    if (
+      activeSeasonId &&
+      seasons.some((season) => season.seasonId === activeSeasonId)
+    ) {
+      return;
+    }
+    const preferred =
+      seasons.find((season) => season.status !== "archived") ?? seasons[0];
+    setActiveSeasonId(preferred?.seasonId || null);
+  }, [activeSeasonId, seasonShellEnabled, seasons]);
+
+  useEffect(() => {
+    if (!seasonShellEnabled) return;
+    let cancelled = false;
+    const refreshSeasons = async () => {
+      try {
+        const records = await listSeasons();
+        if (cancelled || !Array.isArray(records)) return;
+        setSeasons(records);
+      } catch (error) {
+        logger.warn("Failed to refresh seasons:", error);
+      }
+    };
+    void refreshSeasons();
+    const intervalId = window.setInterval(refreshSeasons, 45000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [seasonShellEnabled]);
+
+  useEffect(() => {
+    const seasonId =
+      normalizeWeekId(gameState.seasonId) ??
+      normalizeWeekId(gameState.seasonConfig?.seasonId);
+    if (!seasonId) return;
+    let cancelled = false;
+    const syncAdjustments = async () => {
+      try {
+        const records = await listScoreAdjustments(seasonId);
+        if (cancelled || !Array.isArray(records)) return;
+        setGameState((prev) => {
+          const previous = Array.isArray(prev.scoreAdjustments)
+            ? prev.scoreAdjustments
+            : [];
+          if (JSON.stringify(previous) === JSON.stringify(records)) return prev;
+          return normalizeGameState({
+            ...prev,
+            scoreAdjustments: records,
+          });
+        });
+      } catch (error) {
+        logger.warn("Failed to sync score adjustments:", error);
+      }
+    };
+    void syncAdjustments();
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState.seasonConfig?.seasonId, gameState.seasonId]);
+
+  useEffect(() => {
+    let cancelled = false;
 
     const loadPendingSubmissions = async () => {
       try {
-        const records = await fetchWeeklySubmissions();
+        const scopedSeasonId = seasonShellEnabled
+          ? normalizeWeekId(activeSeasonId ?? gameState.seasonId)
+          : null;
+        const records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
         if (cancelled) return;
         setPendingSubmissions(records.length);
       } catch (error) {
         if (cancelled) return;
-        console.warn("Failed to load pending submissions:", error);
+        logger.warn("Failed to load pending submissions:", error);
         setPendingSubmissions(null);
       }
     };
@@ -341,9 +598,10 @@ const App: React.FC = () => {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [isAdminAuthenticated]);
+  }, [activeSeasonId, gameState.seasonId, isAdminAuthenticated, seasonShellEnabled]);
 
   useEffect(() => {
+    if (seasonShellEnabled) return () => undefined;
     let isMounted = true;
     const loadRemote = async () => {
       try {
@@ -358,11 +616,17 @@ const App: React.FC = () => {
           setLastSavedAt(remote.updatedAt);
         }
       } catch (error) {
-        console.warn("PocketBase sync failed:", error);
+        // If initial unauthenticated sync fails, try again after admin auth.
+        if (isAdminAuthenticated && !hasRemoteSnapshotRef.current) {
+          hasRemoteSnapshotRef.current = true;
+          remoteExistsRef.current = false;
+        }
+        logger.warn("PocketBase sync failed:", error);
       }
     };
-    loadRemote();
+    void loadRemote();
     const unsubscribe = subscribeToGameState((remoteState, updatedAt) => {
+      if (!isMounted) return;
       hasRemoteSnapshotRef.current = true;
       remoteExistsRef.current = true;
       const serialized = JSON.stringify(remoteState);
@@ -376,13 +640,19 @@ const App: React.FC = () => {
       isMounted = false;
       unsubscribe?.();
     };
-  }, []);
+  }, [isAdminAuthenticated, seasonShellEnabled]);
 
 
   useEffect(() => {
     if (!isAdminAuthenticated) return undefined;
-    if (!hasRemoteSnapshotRef.current) return undefined;
-    if (remoteExistsRef.current && !lastRemoteStateRef.current) {
+    const scopedSeasonId = normalizeWeekId(activeSeasonId);
+    if (seasonShellEnabled && !scopedSeasonId) return undefined;
+    if (!seasonShellEnabled && !hasRemoteSnapshotRef.current) return undefined;
+    if (
+      !seasonShellEnabled &&
+      remoteExistsRef.current &&
+      !lastRemoteStateRef.current
+    ) {
       return undefined;
     }
     if (writeTimerRef.current) {
@@ -398,7 +668,14 @@ const App: React.FC = () => {
     writeTimerRef.current = window.setTimeout(() => {
       pendingWriteRef.current = serialized;
       const safeState = normalizeUndefined(gameState);
-      saveGameState(safeState as GameState)
+      const persistPromise =
+        seasonShellEnabled && scopedSeasonId
+          ? saveSeasonState(
+              scopedSeasonId,
+              safeState as GameState
+            )
+          : saveGameState(safeState as GameState);
+      persistPromise
         .then((record) => {
           lastRemoteStateRef.current = serialized;
           pendingWriteRef.current = null;
@@ -413,7 +690,7 @@ const App: React.FC = () => {
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );
-          console.warn("PocketBase write failed:", error);
+          logger.warn("PocketBase write failed:", error);
         });
     }, TIMING.SAVE_DEBOUNCE_MS);
     return () => {
@@ -421,7 +698,7 @@ const App: React.FC = () => {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [gameState, isAdminAuthenticated]);
+  }, [activeSeasonId, gameState, isAdminAuthenticated, seasonShellEnabled]);
   useEffect(() => {
     let isMounted = true;
     const hydratePortraits = async () => {
@@ -437,7 +714,7 @@ const App: React.FC = () => {
           return { ...prev, players: updatedPlayers };
         });
       } catch (err) {
-        console.error("Failed to load player portraits:", err);
+        logger.error("Failed to load player portraits:", err);
       }
     };
     hydratePortraits();
@@ -489,6 +766,10 @@ const App: React.FC = () => {
     signOutAdmin();
   }, []);
 
+  const handleSeasonChange = useCallback((seasonId: string) => {
+    setActiveSeasonId(seasonId);
+  }, []);
+
   const scoreHistory = Array.isArray(gameState.weeklyScoreHistory)
     ? gameState.weeklyScoreHistory
     : [];
@@ -508,7 +789,7 @@ const App: React.FC = () => {
     );
   }, [gameState.weeklyResults]);
 
-  const overallMvp = useMemo(() => {
+  const rankedPlayers = useMemo(() => {
     if (gameState.players.length === 0) return null;
 
     const latestSnapshotTotals = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
@@ -543,17 +824,41 @@ const App: React.FC = () => {
 
         return a.player.name.localeCompare(b.player.name);
       });
-
-    const top = scored[0];
-    return top
-      ? {
-          name: top.player.name,
-          score: top.score,
-          portraitUrl: top.player.portraitUrl,
-          label: "Season MVP",
-        }
-      : null;
+    return scored;
   }, [gameState, hasActiveWeeklyResults, scoreHistory]);
+
+  const overallMvp = useMemo(() => {
+    const top = rankedPlayers?.[0];
+    if (!top) return null;
+    return {
+      name: top.player.name,
+      score: top.score,
+      portraitUrl: top.player.portraitUrl,
+      label: "Season MVP",
+    };
+  }, [rankedPlayers]);
+
+  const finalStandings = useMemo<FinalStandingEntry[]>(
+    () =>
+      (rankedPlayers ?? []).slice(0, 3).map((entry) => ({
+        name: entry.player.name,
+        score: entry.score,
+        portraitUrl: entry.player.portraitUrl,
+        league: entry.player.league === "jr" ? "jr" : "main",
+      })),
+    [rankedPlayers]
+  );
+
+  const seasonFinalized = useMemo(
+    () =>
+      Boolean(
+        gameState.finaleConfig?.enabled &&
+          gameState.weeklyResults?.finaleResults?.finalWinner &&
+          gameState.weeklyResults?.finaleResults?.lastFaithfulStanding &&
+          gameState.weeklyResults?.finaleResults?.lastTraitorStanding
+      ),
+    [gameState.finaleConfig?.enabled, gameState.weeklyResults?.finaleResults]
+  );
 
   const weeklyMvp = useMemo(() => {
     if (scoreHistory.length === 0) return null;
@@ -603,9 +908,10 @@ const App: React.FC = () => {
 
   const leaguePulse = useMemo<LeaguePulseOverview>(() => {
     const latestArchive = scoreHistory[scoreHistory.length - 1];
+    const castNames = Object.keys(gameState.castStatus || {});
     return {
       entries: gameState.players.length,
-      activeCastCount: CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated).length,
+      activeCastCount: castNames.filter((name) => !gameState.castStatus[name]?.isEliminated).length,
       latestArchiveLabel: latestArchive?.label || "No archives yet",
       pendingSubmissions,
     };
@@ -638,13 +944,21 @@ const App: React.FC = () => {
       case "home":
         return (
           <Welcome
-            onStart={() => setActiveTab("weekly")}
+            onStart={() =>
+              setActiveTab(seasonFinalized ? "leaderboard" : "weekly")
+            }
             mvp={overallMvp}
             weeklyMvp={weeklyMvp}
             leaguePulse={leaguePulse}
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            seasonFinalized={seasonFinalized}
+            finalStandings={finalStandings}
+            showConfig={gameState.showConfig}
+            seasons={seasons}
+            activeSeasonId={activeSeasonId || gameState.seasonId}
+            onSeasonChange={handleSeasonChange}
             uiVariant={uiVariant}
           />
         );
@@ -661,11 +975,20 @@ const App: React.FC = () => {
           <WeeklyCouncil
             gameState={gameState}
             onAddEntry={handleAddEntry}
+            showConfig={gameState.showConfig}
             uiVariant={uiVariant}
           />
         );
       case "leaderboard":
-        return <Leaderboard gameState={gameState} uiVariant={uiVariant} />;
+        return (
+          <Leaderboard
+            gameState={gameState}
+            uiVariant={uiVariant}
+            seasons={seasons}
+            activeSeasonId={activeSeasonId || gameState.seasonId}
+            onSeasonChange={handleSeasonChange}
+          />
+        );
       case "admin":
         return isAdminAuthenticated ? (
           <AdminPanel
@@ -675,6 +998,11 @@ const App: React.FC = () => {
             lastSavedAt={lastSavedAt}
             lastWriteError={lastWriteError}
             onSaveNow={saveNow}
+            showConfig={gameState.showConfig}
+            seasonConfig={gameState.seasonConfig}
+            seasons={seasons}
+            activeSeasonId={activeSeasonId || gameState.seasonId}
+            onSeasonChange={handleSeasonChange}
             uiVariant={uiVariant}
           />
         ) : (
@@ -686,13 +1014,21 @@ const App: React.FC = () => {
       default:
         return (
           <Welcome
-            onStart={() => setActiveTab("weekly")}
+            onStart={() =>
+              setActiveTab(seasonFinalized ? "leaderboard" : "weekly")
+            }
             mvp={overallMvp}
             weeklyMvp={weeklyMvp}
             leaguePulse={leaguePulse}
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            seasonFinalized={seasonFinalized}
+            finalStandings={finalStandings}
+            showConfig={gameState.showConfig}
+            seasons={seasons}
+            activeSeasonId={activeSeasonId || gameState.seasonId}
+            onSeasonChange={handleSeasonChange}
             uiVariant={uiVariant}
           />
         );
@@ -711,8 +1047,13 @@ const App: React.FC = () => {
     lastWriteError,
     overallMvp,
     saveNow,
+    seasonFinalized,
+    finalStandings,
+    handleSeasonChange,
     topMovers,
     updateGameState,
+    seasons,
+    activeSeasonId,
     weeklyMvp,
   ]);
 
@@ -722,6 +1063,7 @@ const App: React.FC = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         lastSync={lastSavedAt ?? undefined}
+        showConfig={gameState.showConfig}
         uiVariant={uiVariant}
       >
         {content}

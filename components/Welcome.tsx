@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import CountdownTimer from "../components/CountdownTimer";
-import { FinaleConfig, UiVariant } from "../types";
+import { FinaleConfig, SeasonConfig, ShowConfig, UiVariant } from "../types";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -34,6 +34,13 @@ export interface TopMoverEntry {
   league: "main" | "jr";
 }
 
+export interface FinalStandingEntry {
+  name: string;
+  score: number;
+  portraitUrl?: string;
+  league?: "main" | "jr";
+}
+
 interface WelcomeProps {
   onStart: () => void;
   mvp?: MvpHighlight | null;
@@ -42,10 +49,18 @@ interface WelcomeProps {
   topMovers: TopMoverEntry[];
   actionQueue: string[];
   finaleConfig?: FinaleConfig;
+  seasonFinalized?: boolean;
+  finalStandings?: FinalStandingEntry[];
+  showConfig?: ShowConfig;
+  seasons?: SeasonConfig[];
+  activeSeasonId?: string | null;
+  onSeasonChange?: (seasonId: string) => void;
   uiVariant: UiVariant;
 }
 
 const FINALE_OVERVIEW_CONFETTI_COUNT = 20;
+const buildDefaultLockAt = () =>
+  new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
 const formatDelta = (value: number) => {
   const formatted = formatScore(value);
@@ -83,7 +98,7 @@ const LeaderMiniCard: React.FC<{
           <p className="premium-meta-line">{player.label}</p>
         </>
       ) : (
-        <p className="premium-meta-line">No score data yet.</p>
+        <p className="premium-meta-line">No certified score data yet.</p>
       )}
     </article>
   );
@@ -97,19 +112,29 @@ const Welcome: React.FC<WelcomeProps> = ({
   topMovers,
   actionQueue,
   finaleConfig,
+  seasonFinalized,
+  finalStandings,
+  showConfig,
+  seasons = [],
+  activeSeasonId,
+  onSeasonChange,
   uiVariant,
 }) => {
   const reduceMotion = useReducedMotion();
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
   const isFinaleMode = Boolean(finaleConfig?.enabled);
-  const countdownTarget = isFinaleMode
-    ? finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00"
-    : "2026-02-26T21:00:00-05:00";
+  const countdownTarget = finaleConfig?.lockAt || buildDefaultLockAt();
   const lockLabel =
     typeof finaleConfig?.label === "string" && finaleConfig.label.trim()
       ? finaleConfig.label
-      : "Season 4 Finale Gauntlet";
+      : showConfig?.terminology?.finaleLabelDefault || "Finale Gauntlet";
+  const winner = finalStandings?.[0] ?? null;
+  const runnerUp = finalStandings?.[1] ?? null;
+  const thirdPlace = finalStandings?.[2] ?? null;
+  const isSeasonFinalized = Boolean(isFinaleMode && seasonFinalized && winner);
+  const winningMargin =
+    winner && runnerUp ? winner.score - runnerUp.score : null;
 
   const summaryCards: Array<{
     label: string;
@@ -117,33 +142,33 @@ const Welcome: React.FC<WelcomeProps> = ({
     hint: React.ReactNode;
   }> = [
     {
-      label: "Friends Playing",
+      label: "Private Members",
       value: String(leaguePulse.entries),
-      hint: "League entries",
+      hint: "Confirmed entries",
     },
     {
-      label: "Cast In Play",
+      label: "Suspects In Play",
       value: String(leaguePulse.activeCastCount),
-      hint: "Still active",
+      hint: "Still on the board",
     },
     {
-      label: "Latest Snapshot",
+      label: "Certified Snapshot",
       value: leaguePulse.latestArchiveLabel,
-      hint: "Most recent archive",
+      hint: "Most recent archived board",
     },
     {
-      label: "Weekly Activity",
+      label: "Ballots Pending",
       value:
         leaguePulse.pendingSubmissions === null
           ? "Private"
           : String(leaguePulse.pendingSubmissions),
       hint:
         leaguePulse.pendingSubmissions === null ? (
-          "Private activity"
+          "Submission intake is private"
         ) : (
           <>
-            submissions. The Round Table is quiet...{" "}
-            <span className="text-white font-semibold">for now.</span>
+            entries await operations review.{" "}
+            <span className="text-white font-semibold">Window still open.</span>
           </>
         ),
     },
@@ -154,47 +179,69 @@ const Welcome: React.FC<WelcomeProps> = ({
     ? getMomentumDisplay(weeklyMvp.score)
     : null;
 
-  const gameLoop = isFinaleMode
+  const gameLoop = isSeasonFinalized
     ? [
         {
-          title: "Lock Finale Gauntlet",
+          title: "Final Board Certified",
+          detail: "Official standings are now locked and published.",
+        },
+        {
+          title: "Tie-Break Audited",
+          detail:
+            typeof winningMargin === "number"
+              ? `Winning margin was ${formatScore(winningMargin)} points after tie-break checks.`
+              : "Tie-break validation is complete.",
+        },
+        {
+          title: "Scoring Window Closed",
+          detail: "No further submissions or score changes are accepted for this season.",
+        },
+        {
+          title: "Season Ledger Sealed",
+          detail: "All outcomes, bonuses, and validations are archived for record.",
+        },
+      ]
+    : isFinaleMode
+    ? [
+        {
+          title: "Lock Finale Dossier",
           detail:
             leaguePulse.pendingSubmissions && leaguePulse.pendingSubmissions > 0
-              ? "Finale submissions are already arriving. Counter before lock."
-              : "Submit banished + murdered calls plus finale outcome predictions before lock.",
+              ? "Finale entries are arriving now. Counter before lock."
+              : "Submit banished + murdered calls with all finale outcome predictions before lock.",
         },
         {
-          title: "Finale Airs",
-          detail: "Every reveal can swing weighted finale scoring in one move.",
+          title: "Finale Broadcast Window",
+          detail: "Each reveal can reprice the board under weighted finale scoring.",
         },
         {
-          title: "Admin Resolves Finale",
-          detail: "Finale outcomes and final pot value are logged to settle all picks.",
+          title: "Operations Certifies Finale",
+          detail: "Finale outcomes and final pot value are entered into the official ledger.",
         },
         {
-          title: "Crown The Winner",
-          detail: "Ties resolve by closest final pot estimate, then the board locks.",
+          title: "Crown Confirmed",
+          detail: "Tie-break resolves by closest final pot estimate, then standings seal.",
         },
       ]
     : [
         {
-          title: "Lock Picks",
+          title: "Secure Weekly Picks",
           detail:
             leaguePulse.pendingSubmissions && leaguePulse.pendingSubmissions > 0
-              ? "Friends are already submitting this week. Counter before lock."
-              : "Set your banished + murdered calls before episode results hit.",
+              ? "Entries are already coming in. Counter before lock."
+              : "Set banished + murdered calls before episode outcomes land.",
         },
         {
-          title: "Watch Episode Night",
-          detail: "After each episode airs, the board can swing hard in one reveal.",
+          title: "Episode Night Volatility",
+          detail: "One reveal can shift multiple positions across the board.",
         },
         {
-          title: "Admin Logs Results",
-          detail: "Weekly outcomes are entered and bonuses resolve across the league.",
+          title: "Operations Certifies Outcomes",
+          detail: "Weekly outcomes are entered and bonuses resolve under the scoring rules.",
         },
         {
-          title: "Leaderboard Flips",
-          detail: "One clean call can jump you past multiple rivals in a single week.",
+          title: "Leaderboard Reprices",
+          detail: "One precise call can move you past several rivals in one week.",
         },
       ];
 
@@ -210,16 +257,51 @@ const Welcome: React.FC<WelcomeProps> = ({
       {isFinaleMode && (
         <motion.section className="premium-overview-finale-alert" variants={cardRevealVariants}>
           <div className="premium-overview-finale-alert-inner">
-            <p className="premium-overview-finale-alert-kicker">Season 4 Finale</p>
-            <h2 className="premium-overview-finale-alert-title">{lockLabel} Is Live</h2>
+            <p className="premium-overview-finale-alert-kicker">
+              {isSeasonFinalized ? "Final Results" : "Finale Window"}
+            </p>
+            <h2 className="premium-overview-finale-alert-title">
+              {isSeasonFinalized ? `Winner: ${winner?.name || "TBD"}` : `${lockLabel} Is Active`}
+            </h2>
             <p className="premium-overview-finale-alert-sub">
-              Weighted scoring activated. Tie-break in effect. One episode decides everything.
+              {isSeasonFinalized
+                ? "Final standings are locked. Full podium is listed below."
+                : "Weighted scoring is active. Tie-break protocol is armed. One episode closes the season."}
             </p>
           </div>
           <div className="premium-overview-finale-ticker" aria-hidden="true">
-            <span>Finale Gauntlet Live • Lock Picks • Claim The Crown •</span>
-            <span>Finale Gauntlet Live • Lock Picks • Claim The Crown •</span>
+            <span>
+              {isSeasonFinalized
+                ? "Final Results Locked • Scoring Closed • Season Complete •"
+                : "Finale Operations Live • Lock Picks • High Stakes •"}
+            </span>
+            <span>
+              {isSeasonFinalized
+                ? "Final Results Locked • Scoring Closed • Season Complete •"
+                : "Finale Operations Live • Lock Picks • High Stakes •"}
+            </span>
           </div>
+        </motion.section>
+      )}
+
+      {seasons.length > 0 && (
+        <motion.section variants={cardRevealVariants}>
+          <PremiumCard className="premium-panel-pad-compact">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <p className="premium-meta-line">Active season</p>
+              <select
+                value={activeSeasonId || ""}
+                onChange={(event) => onSeasonChange?.(event.target.value)}
+                className="premium-field premium-input-compact max-w-sm"
+              >
+                {seasons.map((season) => (
+                  <option key={season.seasonId} value={season.seasonId}>
+                    {season.label} {season.status === "archived" ? "(Archived)" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </PremiumCard>
         </motion.section>
       )}
 
@@ -233,39 +315,60 @@ const Welcome: React.FC<WelcomeProps> = ({
             >
               <div className="premium-overview-hero-inner">
                 <div className="premium-overview-hero-copy space-y-4">
-                  <p className="premium-kicker">Traitors Fantasy Draft: Titanic Swim Team Edition</p>
+                  <p className="premium-kicker">
+                    {showConfig?.showName || "Traitors Fantasy Draft"} | Private Estate League
+                  </p>
                   <h2
                     className={`premium-overview-title ${
                       isFinaleMode ? "premium-overview-title-finale" : ""
                     }`}
                   >
-                    {isFinaleMode
-                      ? "FINALE GAUNTLET IS LIVE"
-                      : "Outdraft the field. Own the Round Table."}
+                    {isSeasonFinalized
+                      ? "SEASON COMPLETE"
+                      : isFinaleMode
+                      ? "FINALE PROTOCOL IS ACTIVE"
+                      : "CONTROL THE ESTATE. COMMAND THE BOARD."}
                   </h2>
                   <p
                     className={`premium-overview-copy ${
                       isFinaleMode ? "premium-overview-copy-finale" : ""
                     }`}
                   >
-                    {isFinaleMode
-                      ? "This is the last stand. Submit your finale predictions now and chase the championship before lock."
-                      : "Pick who survives, call each weekly vote, and chase the top spot before the next betrayal flips the leaderboard."}
+                    {isSeasonFinalized
+                      ? "The board is finalized. Review the final standings and complete ledger below."
+                      : isFinaleMode
+                      ? "Finale dossier submissions are open. Lock every call before the estate seals."
+                      : "Track betrayals, forecast outcomes, and outmaneuver the room with disciplined weekly calls."}
                   </p>
 
                   <div className="premium-overview-hero-actions flex-col gap-2">
-                    <div
-                      className={`premium-btn premium-overview-lockbar ${
-                        isFinaleMode ? "premium-overview-lockbar-finale" : ""
-                      }`}
-                      role="status"
-                      aria-live="polite"
-                    >
-                      <span className="premium-overview-lockbar-label">
-                        {isFinaleMode ? lockLabel : "Picks Lock In"}
-                      </span>
-                      <CountdownTimer targetDate={countdownTarget} />
-                    </div>
+                    {isSeasonFinalized ? (
+                      <div
+                        className={`premium-btn premium-overview-lockbar ${
+                          isFinaleMode ? "premium-overview-lockbar-finale" : ""
+                        }`}
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <span className="premium-overview-lockbar-label">Results Certified</span>
+                        <span className="premium-meta-line">
+                          No further submissions or score updates this season.
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        className={`premium-btn premium-overview-lockbar ${
+                          isFinaleMode ? "premium-overview-lockbar-finale" : ""
+                        }`}
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <span className="premium-overview-lockbar-label">
+                          {isFinaleMode ? lockLabel : "Picks Lock In"}
+                        </span>
+                        <CountdownTimer targetDate={countdownTarget} />
+                      </div>
+                    )}
                     <PremiumButton
                       variant="primary"
                       onClick={onStart}
@@ -273,12 +376,12 @@ const Welcome: React.FC<WelcomeProps> = ({
                         isFinaleMode ? "premium-overview-cta-finale" : ""
                       }`}
                     >
-                      Lock Weekly Picks
+                      {isSeasonFinalized ? "View Final Standings" : "Enter Weekly Picks"}
                     </PremiumButton>
                   </div>
                 </div>
 
-                {isFinaleMode && !reduceMotion && (
+                {isFinaleMode && !isSeasonFinalized && !reduceMotion && (
                   <div className="premium-overview-finale-confetti" aria-hidden="true">
                     {Array.from({ length: FINALE_OVERVIEW_CONFETTI_COUNT }).map((_, idx) => (
                       <span
@@ -297,38 +400,42 @@ const Welcome: React.FC<WelcomeProps> = ({
                   </div>
                 )}
 
-                <article className="premium-overview-rival-card premium-overview-rival-card-inline relative pt-11">
-                  <div className="premium-section-topline absolute -top-3 left-4 z-20 rounded-full bg-black/70 px-3 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.35)] backdrop-blur-sm">
-                    <p className="premium-kicker">Live Rivalry Pulse</p>
-                    <PremiumStatusBadge tone="accent">Game Night</PremiumStatusBadge>
-                  </div>
-                  <div className="premium-overview-rival-grid mt-1">
-                    <div className="premium-overview-rival-slot">
-                      <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
-                        <p className="premium-overview-rival-label">Season Leader</p>
-                      </div>
-                      <p className="premium-overview-rival-name mt-1">{mvp?.name || "Open race"}</p>
-                      <p className="premium-overview-rival-score mt-1">{overallLeaderScore}</p>
+                {!isSeasonFinalized && (
+                  <article className="premium-overview-rival-card premium-overview-rival-card-inline relative pt-11">
+                    <div className="premium-section-topline absolute -top-3 left-4 z-20 rounded-full bg-black/70 px-3 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.35)] backdrop-blur-sm">
+                      <p className="premium-kicker">Live Rival Intel</p>
+                      <PremiumStatusBadge tone="accent">Live Feed</PremiumStatusBadge>
                     </div>
-                    <div className="premium-overview-rival-slot premium-overview-rival-slot-accent">
-                      <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
-                        <p className="premium-overview-rival-label">Weekly Surge</p>
+                    <div className="premium-overview-rival-grid mt-1">
+                      <div className="premium-overview-rival-slot">
+                        <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
+                          <p className="premium-overview-rival-label">Table Leader</p>
+                        </div>
+                        <p className="premium-overview-rival-name mt-1">{mvp?.name || "Race open"}</p>
+                        <p className="premium-overview-rival-score mt-1">{overallLeaderScore}</p>
                       </div>
-                      <p className="premium-overview-rival-name mt-1">{weeklyMvp?.name || "No weekly jump yet"}</p>
-                      <p
-                        className={`premium-overview-rival-score mt-1 ${
-                          weeklySurgeMomentum ? weeklySurgeMomentum.className : ""
-                        }`}
-                      >
-                        {weeklyMvp
-                          ? `${weeklySurgeMomentum?.icon ? `${weeklySurgeMomentum.icon} ` : ""}${formatDelta(
-                              weeklyMvp.score
-                            )}`
-                          : "No score yet"}
-                      </p>
+                      <div className="premium-overview-rival-slot premium-overview-rival-slot-accent">
+                        <div className="mb-2 inline-flex rounded-full bg-black/55 px-2 py-0.5 backdrop-blur-sm">
+                          <p className="premium-overview-rival-label">Momentum Leader</p>
+                        </div>
+                        <p className="premium-overview-rival-name mt-1">
+                          {weeklyMvp?.name || "No momentum spike yet"}
+                        </p>
+                        <p
+                          className={`premium-overview-rival-score mt-1 ${
+                            weeklySurgeMomentum ? weeklySurgeMomentum.className : ""
+                          }`}
+                        >
+                          {weeklyMvp
+                            ? `${weeklySurgeMomentum?.icon ? `${weeklySurgeMomentum.icon} ` : ""}${formatDelta(
+                                weeklyMvp.score
+                              )}`
+                            : "No score yet"}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                </article>
+                  </article>
+                )}
 
                 <div className="premium-overview-chip-grid premium-overview-chip-grid-hero">
                   {summaryCards.map((item) => (
@@ -342,7 +449,7 @@ const Welcome: React.FC<WelcomeProps> = ({
                       <p className="premium-overview-chip-value">{item.value}</p>
                       <p
                         className={`premium-overview-chip-hint !text-gray-400 ${
-                          item.label === "Weekly Activity" ? "italic" : ""
+                          item.label === "Ballots Pending" ? "italic" : ""
                         }`}
                       >
                         {item.hint}
@@ -357,8 +464,8 @@ const Welcome: React.FC<WelcomeProps> = ({
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline">
-                <h3 className="premium-section-title">This Week&apos;s Game Loop</h3>
-                <PremiumStatusBadge>How It Works</PremiumStatusBadge>
+                <h3 className="premium-section-title">Operations Runbook</h3>
+                <PremiumStatusBadge>How Scoring Resolves</PremiumStatusBadge>
               </div>
               <div className="premium-overview-stage-list mt-3">
                 {gameLoop.map((step, index) => (
@@ -383,13 +490,13 @@ const Welcome: React.FC<WelcomeProps> = ({
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <section className="premium-subpanel">
                 <div className="premium-section-topline">
-                  <h3 className="premium-section-title">Power Shifts</h3>
-                  <PremiumStatusBadge tone="accent">Friend Rivalries</PremiumStatusBadge>
+                  <h3 className="premium-section-title">Rival Movements</h3>
+                  <PremiumStatusBadge tone="accent">Table Dynamics</PremiumStatusBadge>
                 </div>
 
                 {topMovers.length === 0 ? (
                   <p className="premium-meta-line mt-4">
-                    Rival movement appears after at least two weekly archives.
+                    Movement appears after at least two certified weekly archives.
                   </p>
                 ) : (
                   <div className="premium-divider-list mt-3">
@@ -426,8 +533,10 @@ const Welcome: React.FC<WelcomeProps> = ({
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline">
-                <h3 className="premium-section-title">Your Next Moves</h3>
-                <PremiumStatusBadge>Before Next Episode</PremiumStatusBadge>
+                <h3 className="premium-section-title">Next Strategic Moves</h3>
+                <PremiumStatusBadge>
+                  {isSeasonFinalized ? "Season Closed" : "Before Lock"}
+                </PremiumStatusBadge>
               </div>
 
               <ol className="premium-action-list mt-3">
@@ -449,12 +558,47 @@ const Welcome: React.FC<WelcomeProps> = ({
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline mb-3">
-                <h3 className="premium-section-title">Season Front-Runners</h3>
-                <PremiumStatusBadge tone="positive">Live</PremiumStatusBadge>
+                <h3 className="premium-section-title">
+                  {isSeasonFinalized ? "Final Podium" : "Front-Runners"}
+                </h3>
+                <PremiumStatusBadge tone="positive">
+                  {isSeasonFinalized ? "Certified" : "Live Board"}
+                </PremiumStatusBadge>
               </div>
               <div className="grid grid-cols-1 gap-3">
-                <LeaderMiniCard title="Overall" player={mvp} />
-                <LeaderMiniCard title="Latest Weekly" player={weeklyMvp} tone="accent" />
+                {isSeasonFinalized ? (
+                  <>
+                    <LeaderMiniCard
+                      title="Winner"
+                      player={
+                        winner
+                          ? { name: winner.name, score: winner.score, label: "1st Place" }
+                          : null
+                      }
+                    />
+                    <LeaderMiniCard
+                      title="Runner-Up"
+                      player={
+                        runnerUp
+                          ? { name: runnerUp.name, score: runnerUp.score, label: "2nd Place" }
+                          : null
+                      }
+                    />
+                    <LeaderMiniCard
+                      title="Third Place"
+                      player={
+                        thirdPlace
+                          ? { name: thirdPlace.name, score: thirdPlace.score, label: "3rd Place" }
+                          : null
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <LeaderMiniCard title="Overall" player={mvp} />
+                    <LeaderMiniCard title="Latest Weekly" player={weeklyMvp} tone="accent" />
+                  </>
+                )}
               </div>
             </PremiumCard>
           </motion.div>

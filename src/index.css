@@ -2037,6 +2037,16 @@ body.premium-ui .premium-avatar-xs {
   height: 30px;
 }
 
+body.premium-ui .premium-avatar-achievement {
+  width: 18px;
+  height: 18px;
+}
+
+body.premium-ui .premium-avatar-cast-icon {
+  width: 16px;
+  height: 16px;
+}
+
 body.premium-ui .premium-draft-rank-input {
   text-align: center;
   font-weight: 700;
@@ -2688,6 +2698,48 @@ body.premium-ui .premium-top-leader-strip {
   gap: 0.52rem;
 }
 
+body.premium-ui .premium-leaderboard-final .premium-leader-summary {
+  border: 1px solid color-mix(in srgb, #f6e2a7 28%, var(--line-muted));
+  background:
+    radial-gradient(120% 140% at 2% 2%, rgba(246, 226, 167, 0.16), transparent 55%),
+    radial-gradient(120% 140% at 98% 12%, rgba(240, 120, 120, 0.12), transparent 58%),
+    var(--surface-elevated, rgba(12, 14, 22, 0.92));
+}
+
+body.premium-ui .premium-final-crown-banner {
+  border: 1px solid color-mix(in srgb, #f6e2a7 36%, var(--line-muted));
+  border-radius: var(--radius-md);
+  background: linear-gradient(
+    120deg,
+    rgba(246, 226, 167, 0.2) 0%,
+    rgba(255, 255, 255, 0.03) 56%,
+    rgba(246, 226, 167, 0.1) 100%
+  );
+  padding: 0.58rem 0.68rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+body.premium-ui .premium-final-crown-name {
+  margin: 0.12rem 0 0;
+  font-size: clamp(1.05rem, 2.1vw, 1.26rem);
+  font-weight: 760;
+  letter-spacing: 0.01em;
+  color: #f6e2a7;
+}
+
+body.premium-ui .premium-final-crown-meta {
+  text-align: right;
+  min-width: max-content;
+}
+
+body.premium-ui .premium-top-leader-strip-final {
+  background: color-mix(in srgb, #f6e2a7 16%, transparent);
+  border: 1px solid color-mix(in srgb, #f6e2a7 28%, var(--line-muted));
+}
+
 body.premium-ui .premium-top-leader-name {
   margin: 0.12rem 0 0;
   font-size: 0.92rem;
@@ -2699,6 +2751,213 @@ body.premium-ui .premium-top-leader-score {
   font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+body.premium-ui .premium-podium-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.48rem;
+}
+
+body.premium-ui .premium-podium-card {
+  border: 1px solid var(--line-muted);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.44rem 0.5rem;
+}
+
+body.premium-ui .premium-podium-card-final {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    rgba(4, 8, 18, 0.6);
+}
+
+body.premium-ui .premium-podium-card-final.premium-podium-card-rank-1 {
+  border-color: color-mix(in srgb, #f6e2a7 46%, var(--line-muted));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #f6e2a7 34%, transparent),
+    0 8px 22px rgba(0, 0, 0, 0.32);
+}
+
+body.premium-ui .premium-podium-card-final.premium-podium-card-rank-2 {
+  border-color: color-mix(in srgb, #d6d8df 38%, var(--line-muted));
+}
+
+body.premium-ui .premium-podium-card-final.premium-podium-card-rank-3 {
+  border-color: color-mix(in srgb, #c29a6b 38%, var(--line-muted));
+}
+
+body.premium-ui .premium-podium-card-lead {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
+body.premium-ui .premium-podium-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+body.premium-ui .premium-podium-player-row {
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+  margin-top: 0.36rem;
+  min-width: 0;
+}
+
+body.premium-ui .premium-podium-score-row {
+  margin-top: 0.36rem;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+body.premium-ui .premium-dossier-list {
+  display: grid;
+  gap: 0.62rem;
+}
+
+body.premium-ui .premium-dossier-card {
+  overflow: hidden;
+}
+
+body.premium-ui .premium-dossier-card-final {
+  position: relative;
+  border: 1px solid color-mix(in srgb, #f6e2a7 18%, var(--line-muted));
+}
+
+body.premium-ui .premium-dossier-card-final-1 {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, #f6e2a7 34%, transparent),
+    0 10px 26px rgba(0, 0, 0, 0.34);
+}
+
+body.premium-ui .premium-dossier-finish-badge {
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #f6e2a7 36%, var(--line-muted));
+  background: color-mix(in srgb, #f6e2a7 14%, transparent);
+  padding: 0.12rem 0.46rem;
+  font-size: 0.52rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  font-weight: 760;
+  color: #f6e2a7;
+  margin-right: 0.34rem;
+}
+
+body.premium-ui .premium-dossier-card-final-2 .premium-dossier-finish-badge {
+  border-color: color-mix(in srgb, #d6d8df 44%, var(--line-muted));
+  background: color-mix(in srgb, #d6d8df 12%, transparent);
+  color: #d6d8df;
+}
+
+body.premium-ui .premium-dossier-card-final-3 .premium-dossier-finish-badge {
+  border-color: color-mix(in srgb, #c29a6b 44%, var(--line-muted));
+  background: color-mix(in srgb, #c29a6b 12%, transparent);
+  color: #cfa879;
+}
+
+body.premium-ui .premium-dossier-card-leader {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+body.premium-ui .premium-dossier-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.56rem;
+}
+
+body.premium-ui .premium-dossier-player {
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+  min-width: 0;
+}
+
+body.premium-ui .premium-dossier-rank {
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  flex-shrink: 0;
+}
+
+body.premium-ui .premium-dossier-score {
+  text-align: right;
+}
+
+body.premium-ui .premium-dossier-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  margin-top: 0.5rem;
+}
+
+body.premium-ui .premium-dossier-chip {
+  border-radius: 999px;
+  border: 1px solid var(--line-muted);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 0.14rem 0.38rem;
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+body.premium-ui .premium-dossier-grid {
+  margin-top: 0.54rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 0.44rem;
+}
+
+body.premium-ui .premium-ledger-list {
+  display: grid;
+  gap: 0;
+}
+
+body.premium-ui .premium-ledger-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.36rem 0.02rem;
+}
+
+body.premium-ui .premium-ledger-item + .premium-ledger-item {
+  border-top: 1px solid var(--line-muted);
+}
+
+body.premium-ui .premium-ledger-divider {
+  border-top: 1px solid var(--line-muted);
+  margin-top: 0.46rem;
+  padding-top: 0.46rem;
+}
+
+body.premium-ui .premium-timeline-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+body.premium-ui .premium-timeline-chip {
+  border: 1px solid var(--line-muted);
+  border-radius: var(--radius-sm);
+  padding: 0.28rem 0.34rem;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 body.premium-ui .premium-cast-card {
@@ -3030,6 +3289,18 @@ body.premium-ui .rounded-xl {
     grid-template-columns: 1fr;
   }
 
+  body.premium-ui .premium-podium-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.premium-ui .premium-dossier-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.premium-ui .premium-timeline-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   body.premium-ui .premium-rank-head,
   body.premium-ui .premium-rank-row-button {
     grid-template-columns: 50px 1fr 92px;
@@ -3078,6 +3349,36 @@ body.premium-ui .rounded-xl {
   }
 
   body.premium-ui .premium-overview-chip-grid-hero {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.premium-ui .premium-podium-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.premium-ui .premium-final-crown-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  body.premium-ui .premium-final-crown-meta {
+    text-align: left;
+  }
+
+  body.premium-ui .premium-dossier-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  body.premium-ui .premium-dossier-score {
+    text-align: left;
+  }
+
+  body.premium-ui .premium-dossier-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.premium-ui .premium-timeline-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

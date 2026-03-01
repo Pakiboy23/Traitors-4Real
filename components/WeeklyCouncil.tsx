@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  CAST_NAMES,
   COUNCIL_LABELS,
   FinalePredictions,
   GameState,
   PlayerEntry,
+  ShowConfig,
   UiVariant,
 } from "../types";
 import { calculatePlayerScore } from "../src/utils/scoring";
+import { logger } from "../src/utils/logger";
 import { useToast } from "./Toast";
 import {
   pageRevealVariants,
@@ -28,32 +29,47 @@ import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/pocketba
 interface WeeklyCouncilProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
+  showConfig?: ShowConfig;
   uiVariant: UiVariant;
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
-const WEEKLY_LABEL = COUNCIL_LABELS.weekly;
-const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
-const JR_LABEL = COUNCIL_LABELS.jr;
 const FINALE_CONFETTI_COUNT = 16;
 const FINALE_VIEWPORT_CONFETTI_COUNT = 30;
+const buildDefaultLockAt = () =>
+  new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, uiVariant }) => {
+const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({
+  gameState,
+  onAddEntry,
+  showConfig,
+  uiVariant,
+}) => {
   const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
   const isPremiumUi = uiVariant === "premium";
+  const seasonStatus = gameState.seasonConfig?.status;
+  const isSeasonReadOnly =
+    seasonStatus === "finalized" || seasonStatus === "archived";
+  const WEEKLY_LABEL =
+    showConfig?.terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
+  const WEEKLY_LABEL_LOWER = WEEKLY_LABEL.toLowerCase();
+  const JR_LABEL = showConfig?.terminology?.jrCouncilLabel || COUNCIL_LABELS.jr;
   const isFinaleMode = Boolean(gameState.finaleConfig?.enabled);
   const finaleLabel =
     typeof gameState.finaleConfig?.label === "string" && gameState.finaleConfig.label.trim()
       ? gameState.finaleConfig.label
-      : "Season 4 Finale Gauntlet";
-  const finaleLockAt = gameState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00";
+      : showConfig?.terminology?.finaleLabelDefault || "Finale Gauntlet";
+  const finaleLockAt = gameState.finaleConfig?.lockAt || buildDefaultLockAt();
   const finaleLockLabel = Number.isNaN(Date.parse(finaleLockAt))
     ? finaleLockAt
     : new Date(finaleLockAt).toLocaleString();
+  const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
+    a.localeCompare(b)
+  );
   const activeCastNames = useMemo(
-    () => CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated),
-    [gameState.castStatus]
+    () => castNames.filter((name) => !gameState.castStatus[name]?.isEliminated),
+    [castNames, gameState.castStatus]
   );
   const banishedOptions = activeCastNames;
   const murderOptions = ["No Murder", ...activeCastNames];
@@ -202,6 +218,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
 
   const handleWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    if (isSeasonReadOnly) {
+      showToast("This season is locked. Submissions are disabled.", "warning");
+      return;
+    }
 
     if (!playerName || !playerEmail) {
       showToast("Enter name and email before submitting.", "warning");
@@ -278,6 +298,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
           nextMurdered: weeklyMurdered,
         },
         weekId: gameState.activeWeekId,
+        seasonId: gameState.seasonId,
+        rulePackId: gameState.rulePackId,
         bonusGames: {
           redemptionRoulette: bonusRedemption,
           doubleOrNothing: isFinaleMode ? false : bonusDoubleOrNothing,
@@ -294,7 +316,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
           : "Submission failed. Please try again.";
-      console.warn(`${WEEKLY_LABEL} submission failed:`, err);
+      logger.warn(`${WEEKLY_LABEL} submission failed:`, err);
       showToast(message, "error");
     } finally {
       setIsMainSubmitting(false);
@@ -303,6 +325,10 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
 
   const handleJrWeeklySubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    if (isSeasonReadOnly) {
+      showToast("This season is locked. Submissions are disabled.", "warning");
+      return;
+    }
 
     if (!jrName || !jrEmail) {
       showToast(`Enter name and email before submitting ${JR_LABEL} picks.`, "warning");
@@ -387,6 +413,8 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         email: jrEmail,
         weeklyPredictions: jrWeeklyPrediction,
         weekId: gameState.activeWeekId,
+        seasonId: gameState.seasonId,
+        rulePackId: gameState.rulePackId,
         bonusGames: jrBonusPrediction,
         finalePredictions: isFinaleMode ? jrFinalePrediction : undefined,
         league: "jr",
@@ -398,7 +426,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         typeof (err as Error)?.message === "string" && (err as Error).message.length
           ? (err as Error).message
           : "Submission failed. Please try again.";
-      console.warn(`${JR_LABEL} submission failed:`, err);
+      logger.warn(`${JR_LABEL} submission failed:`, err);
       showToast(message, "error");
     } finally {
       setIsJrSubmitting(false);
@@ -417,12 +445,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
     }
 
     const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-    const shareText = `${name || "A league member"} submitted picks in Traitors Fantasy. Lock yours in now.`;
+    const shareText = `${
+      name || "A league member"
+    } submitted picks in ${showConfig?.shortName || "Traitors Fantasy"}. Lock yours in now.`;
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "Traitors Fantasy: Weekly Picks",
+          title: `${showConfig?.shortName || "Traitors Fantasy"}: Weekly Picks`,
           text: shareText,
           url: shareUrl,
         });
@@ -440,7 +470,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
         payload: { league, ref: name || "league-member" },
       });
     } catch (error) {
-      console.warn("Invite share failed:", error);
+      logger.warn("Invite share failed:", error);
       showToast("Unable to share link on this device.", "warning");
     }
   };
@@ -506,7 +536,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
       {isFinaleMode && (
         <motion.section className="premium-finale-siren" variants={sectionStaggerVariants}>
           <div className="premium-finale-siren-inner">
-            <p className="premium-finale-siren-kicker">Season 4 Finale Is Live</p>
+            <p className="premium-finale-siren-kicker">Finale Window Is Live</p>
             <h2 className="premium-finale-siren-title">{finaleLabel}</h2>
             <p className="premium-finale-siren-sub">
               One night. Weighted scoring. Champion crowned.
@@ -734,10 +764,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   type="button"
                   variant="primary"
                   onClick={handleWeeklySubmit}
-                  disabled={isMainSubmitting}
+                  disabled={isMainSubmitting || isSeasonReadOnly}
                   className={isFinaleMode ? "premium-finale-submit-btn" : ""}
                 >
-                  {isMainSubmitting ? "Submitting..." : `Submit ${WEEKLY_LABEL}`}
+                  {isSeasonReadOnly
+                    ? "Season Locked"
+                    : isMainSubmitting
+                    ? "Submitting..."
+                    : `Submit ${WEEKLY_LABEL}`}
                 </PremiumButton>
               </div>
             </div>
@@ -909,10 +943,14 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({ gameState, onAddEntry, ui
                   type="button"
                   variant="primary"
                   onClick={handleJrWeeklySubmit}
-                  disabled={isJrSubmitting}
+                  disabled={isJrSubmitting || isSeasonReadOnly}
                   className={isFinaleMode ? "premium-finale-submit-btn" : ""}
                 >
-                  {isJrSubmitting ? "Submitting..." : `Submit ${JR_LABEL}`}
+                  {isSeasonReadOnly
+                    ? "Season Locked"
+                    : isJrSubmitting
+                    ? "Submitting..."
+                    : `Submit ${JR_LABEL}`}
                 </PremiumButton>
               </div>
             </div>

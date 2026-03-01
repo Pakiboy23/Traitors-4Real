@@ -78,6 +78,16 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
       date.getHours()
     )}:${pad(date.getMinutes())}`;
   };
+  const finaleOutcomeOptions = Array.from(
+    new Set(
+      [
+        ...activeCastNames,
+        finaleResults.finalWinner,
+        finaleResults.lastFaithfulStanding,
+        finaleResults.lastTraitorStanding,
+      ].filter((member): member is string => Boolean(member))
+    )
+  );
 
   return (
     <div className="space-y-5">
@@ -193,7 +203,7 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                 value={finaleConfig.label}
                 onChange={(e) => onSetFinaleLabel(e.target.value)}
                 className="w-full field-soft p-3 text-sm"
-                placeholder="Season 4 Finale Gauntlet"
+                placeholder="Finale Gauntlet"
               />
             </div>
             <div>
@@ -225,7 +235,7 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                 className="w-full field-soft p-3 text-sm"
               >
                 <option value="">Select...</option>
-                {activeCastNames.map((member) => (
+                {finaleOutcomeOptions.map((member) => (
                   <option key={`finale-final-winner-${member}`} value={member}>
                     {member}
                   </option>
@@ -242,7 +252,7 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                 className="w-full field-soft p-3 text-sm"
               >
                 <option value="">Select...</option>
-                {activeCastNames.map((member) => (
+                {finaleOutcomeOptions.map((member) => (
                   <option key={`finale-last-faithful-${member}`} value={member}>
                     {member}
                   </option>
@@ -259,7 +269,7 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                 className="w-full field-soft p-3 text-sm"
               >
                 <option value="">Select...</option>
-                {activeCastNames.map((member) => (
+                {finaleOutcomeOptions.map((member) => (
                   <option key={`finale-last-traitor-${member}`} value={member}>
                     {member}
                   </option>
@@ -327,6 +337,43 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
             {visibleScoreHistory.map((snapshot) => {
               const topper = getScoreTopper(snapshot);
               const weeklyResults = snapshot.weeklyResults;
+              const outcomeSummaryParts: string[] = [];
+              if (weeklyResults?.nextBanished) {
+                outcomeSummaryParts.push(`Banished: ${weeklyResults.nextBanished}`);
+              }
+              if (weeklyResults?.nextMurdered) {
+                outcomeSummaryParts.push(`Murdered: ${weeklyResults.nextMurdered}`);
+              }
+              if (weeklyResults?.bonusGames?.redemptionRoulette) {
+                outcomeSummaryParts.push(
+                  `Roulette: ${weeklyResults.bonusGames.redemptionRoulette}`
+                );
+              }
+              if (weeklyResults?.bonusGames?.shieldGambit) {
+                outcomeSummaryParts.push(
+                  `Shield: ${weeklyResults.bonusGames.shieldGambit}`
+                );
+              }
+              if (weeklyResults?.finaleResults?.finalWinner) {
+                outcomeSummaryParts.push(
+                  `Final Winner: ${weeklyResults.finaleResults.finalWinner}`
+                );
+              }
+              if (weeklyResults?.finaleResults?.lastFaithfulStanding) {
+                outcomeSummaryParts.push(
+                  `Last Faithful: ${weeklyResults.finaleResults.lastFaithfulStanding}`
+                );
+              }
+              if (weeklyResults?.finaleResults?.lastTraitorStanding) {
+                outcomeSummaryParts.push(
+                  `Last Traitor: ${weeklyResults.finaleResults.lastTraitorStanding}`
+                );
+              }
+              if (typeof weeklyResults?.finaleResults?.finalPotValue === "number") {
+                outcomeSummaryParts.push(
+                  `Pot: $${weeklyResults.finaleResults.finalPotValue.toLocaleString()}`
+                );
+              }
               return (
                 <article key={snapshot.id} className="soft-card soft-card-subtle rounded-2xl p-4">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -335,29 +382,17 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                       <p className="text-[11px] uppercase tracking-[0.14em] text-[color:var(--text-muted)] mt-1">
                         Archived {new Date(snapshot.createdAt).toLocaleString()}
                       </p>
-                      {(weeklyResults?.nextBanished ||
-                        weeklyResults?.nextMurdered ||
-                        weeklyResults?.bonusGames?.redemptionRoulette ||
-                        weeklyResults?.bonusGames?.shieldGambit) && (
-                        <p className="text-xs text-[color:var(--text-muted)] mt-2">
-                          {weeklyResults?.nextBanished ? `Banished: ${weeklyResults.nextBanished}` : ""}
-                          {weeklyResults?.nextBanished && weeklyResults?.nextMurdered ? " • " : ""}
-                          {weeklyResults?.nextMurdered ? `Murdered: ${weeklyResults.nextMurdered}` : ""}
-                          {(weeklyResults?.nextBanished || weeklyResults?.nextMurdered) &&
-                          (weeklyResults?.bonusGames?.redemptionRoulette || weeklyResults?.bonusGames?.shieldGambit)
-                            ? " • "
-                            : ""}
-                          {weeklyResults?.bonusGames?.redemptionRoulette
-                            ? `Roulette: ${weeklyResults.bonusGames.redemptionRoulette}`
-                            : ""}
-                          {weeklyResults?.bonusGames?.redemptionRoulette &&
-                          weeklyResults?.bonusGames?.shieldGambit
-                            ? " • "
-                            : ""}
-                          {weeklyResults?.bonusGames?.shieldGambit
-                            ? `Shield: ${weeklyResults.bonusGames.shieldGambit}`
-                            : ""}
-                        </p>
+                      {outcomeSummaryParts.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {outcomeSummaryParts.map((part, idx) => (
+                            <span
+                              key={`${snapshot.id}-outcome-${idx}`}
+                              className="inline-flex items-center rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-[color:var(--text-muted)]"
+                            >
+                              {part}
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <div className="text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)]">
