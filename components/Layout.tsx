@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { COUNCIL_LABELS, UiVariant } from "../types";
+import { COUNCIL_LABELS, ShowConfig, UiVariant } from "../types";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -17,22 +17,16 @@ interface LayoutProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   lastSync?: number;
+  showConfig?: ShowConfig;
   uiVariant: UiVariant;
 }
-
-const NAV_ITEMS: Array<{ id: string; label: string }> = [
-  { id: "home", label: "Overview" },
-  { id: "draft", label: "Draft" },
-  { id: "weekly", label: COUNCIL_LABELS.weekly },
-  { id: "leaderboard", label: "Leaderboard" },
-  { id: "admin", label: "Admin" },
-];
 
 const Layout: React.FC<LayoutProps> = ({
   children,
   activeTab,
   onTabChange,
   lastSync,
+  showConfig,
   uiVariant,
 }) => {
   const reduceMotion = useReducedMotion();
@@ -64,6 +58,17 @@ const Layout: React.FC<LayoutProps> = ({
     if (!lastSync) return "No sync yet";
     return `Synced ${new Date(lastSync).toLocaleTimeString()}`;
   }, [lastSync]);
+  const terminology = showConfig?.terminology;
+  const weeklyLabel = terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
+  const navItems: Array<{ id: string; label: string }> = [
+    { id: "home", label: "Overview" },
+    ...(showConfig?.featureToggles?.draftEnabled === false
+      ? []
+      : [{ id: "draft", label: terminology?.draftLabel || "Draft" }]),
+    { id: "weekly", label: weeklyLabel },
+    { id: "leaderboard", label: terminology?.leaderboardLabel || "Leaderboard" },
+    { id: "admin", label: terminology?.adminLabel || "Admin" },
+  ];
 
   const envLabel = import.meta.env.DEV ? "Development" : "Production";
 
@@ -97,18 +102,22 @@ const Layout: React.FC<LayoutProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => onTabChange("weekly")}
-                className="premium-btn premium-btn-primary px-5 text-xs md:text-sm"
-              >
-                Lock Weekly Picks
+                  onClick={() => onTabChange("weekly")}
+                  className="premium-btn premium-btn-primary px-5 text-xs md:text-sm"
+                >
+                Lock {weeklyLabel} Picks
               </button>
             </div>
           </motion.div>
 
           <motion.div className="premium-header-title-row" variants={cardRevealVariants}>
             <div>
-              <p className="premium-kicker">Traitors Fantasy Draft</p>
-              <h1 className="premium-app-title">Round Table Command Desk</h1>
+              <p className="premium-kicker">
+                {showConfig?.branding?.headerKicker || showConfig?.showName || "Traitors Fantasy Draft"}
+              </p>
+              <h1 className="premium-app-title">
+                {showConfig?.branding?.appTitle || "Round Table Command Desk"}
+              </h1>
             </div>
             <p className="premium-subtitle premium-shell-summary">
               Track standings, lock weekly calls, and chase the season lead in one compact,
@@ -117,7 +126,7 @@ const Layout: React.FC<LayoutProps> = ({
           </motion.div>
 
           <motion.div className="premium-nav-row" variants={cardRevealVariants}>
-            <PremiumTabs items={NAV_ITEMS} activeId={activeTab} onChange={onTabChange} />
+            <PremiumTabs items={navItems} activeId={activeTab} onChange={onTabChange} />
           </motion.div>
         </motion.header>
 
@@ -125,7 +134,9 @@ const Layout: React.FC<LayoutProps> = ({
           <div className="page-shell">{children}</div>
         </motion.main>
 
-        <footer className="premium-footer">Traitors Fantasy Draft: Titanic Swim Team Edition workspace.</footer>
+        <footer className="premium-footer">
+          {showConfig?.branding?.footerCopy || "Traitors Fantasy Draft workspace."}
+        </footer>
       </div>
     </motion.div>
   );

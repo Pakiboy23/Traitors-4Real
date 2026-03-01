@@ -1,5 +1,7 @@
 export type AdminSection =
   | "operations"
+  | "seasons"
+  | "adjustments"
   | "submissions"
   | "roster"
   | "cast"

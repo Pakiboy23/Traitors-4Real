@@ -1,9 +1,10 @@
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { CAST_NAMES, COUNCIL_LABELS, DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
+import { COUNCIL_LABELS, DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { useToast } from "./Toast";
+import { logger } from "../src/utils/logger";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -53,10 +54,20 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const [traitors, setTraitors] = useState(["", "", ""]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const seasonStatus = gameState.seasonConfig?.status;
+  const isSeasonLocked =
+    seasonStatus === "finalized" || seasonStatus === "archived";
+  const isDraftClosed =
+    DRAFT_CLOSED ||
+    gameState.showConfig?.featureToggles?.draftEnabled === false ||
+    isSeasonLocked;
+  const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
+    a.localeCompare(b)
+  );
 
   const activeCastNames = useMemo(
-    () => CAST_NAMES.filter((name) => !gameState.castStatus[name]?.isEliminated),
-    [gameState.castStatus]
+    () => castNames.filter((name) => !gameState.castStatus[name]?.isEliminated),
+    [castNames, gameState.castStatus]
   );
 
   const duplicateNames = useMemo(() => {
@@ -111,8 +122,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (DRAFT_CLOSED) {
-      showToast(`Draft submissions are closed. Use the ${COUNCIL_LABELS.weekly} tab for weekly picks.`, "warning");
+    if (isDraftClosed) {
+      if (isSeasonLocked) {
+        showToast("This season is locked and no longer accepts draft submissions.", "warning");
+      } else {
+        showToast(`Draft submissions are closed. Use the ${COUNCIL_LABELS.weekly} tab for weekly picks.`, "warning");
+      }
       return;
     }
 
@@ -149,7 +164,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
       await submitDraftEntry(newEntry);
       showToast("Draft submitted successfully.", "success");
     } catch (err) {
-      console.warn("Draft submission failed:", err);
+      logger.warn("Draft submission failed:", err);
       showToast("Submission to server failed. Your entry is still saved locally.", "warning");
     }
 
@@ -198,9 +213,11 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
               </div>
             }
           />
-          {DRAFT_CLOSED && (
+          {isDraftClosed && (
             <div className="premium-inline-alert premium-inline-alert-warning">
-              Draft submissions are currently closed. Continue with weekly picks in {COUNCIL_LABELS.weekly}.
+              {isSeasonLocked
+                ? "This season is finalized or archived. Draft submissions are closed."
+                : `Draft submissions are currently closed. Continue with weekly picks in ${COUNCIL_LABELS.weekly}.`}
             </div>
           )}
         </PremiumCard>

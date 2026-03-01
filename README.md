@@ -51,6 +51,43 @@ This repository hosts the Traitors Season 4 fantasy draft app.
 
 Weekly Council votes are stored in the `submissions` collection (public create, admin-only read).
 Admins can merge Weekly Council votes into the main `games` record from the Admin panel.
+Merged votes are retained in `submissions` with `kind="weekly_merged"` for audit/recovery.
+
+## Plug-and-Play Season Shell (MVP)
+
+The app now supports shell collections for reusable show/season operations:
+
+- `showConfigs` (white-label branding + terminology + cast list)
+- `seasons` (season lifecycle metadata)
+- `seasonStates` (state payload scoped by `seasonId`)
+- `scoreAdjustments` (manual point adjustments ledger with audit reason)
+- `submissions` now supports `seasonId`, `weekId`, `submissionStatus`, and `rulePackId`
+
+### Admin shell workflow
+
+In the Admin panel, use the **Seasons** section to:
+
+- Edit and save show branding/terminology (white-label setup)
+- Create/publish a new season with cast import, rule pack, and lock schedule
+- Clone a season for next cycle
+- Finalize/archive a season (read-only behavior for player submissions)
+- Load/switch active seasons without code changes
+
+### One-time migration from legacy `games` state
+
+Run:
+
+`POCKETBASE_URL=https://api.traitorsfantasydraft.online POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/migrate-legacy-to-season-shell.mjs`
+
+Optional env:
+
+- `SHOW_SLUG` (default: `default`)
+- `SEASON_ID` (default: `season-legacy`)
+- `SEASON_LABEL` (default: `Season Legacy`)
+
+### Recover merged records into `submissions`
+If historical merged entries exist in `games.state.weeklySubmissionHistory` but are missing from `submissions`, run:
+`POCKETBASE_URL=https://api.traitorsfantasydraft.online POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/recover-weekly-submissions-from-history.mjs`
 
 ### Restore game state from backup
 `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`

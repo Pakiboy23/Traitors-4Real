@@ -1,6 +1,13 @@
-import type { GameState, PlayerEntry } from "../../types";
+import type {
+  GameState,
+  PlayerEntry,
+  RulePack,
+  ScoreAdjustment,
+  SeasonState,
+} from "../../types";
 import { normalizeWeekId } from "../../types";
-import { SCORING_POINTS, MULTIPLIERS } from "./scoringConstants";
+import { TRAITORS_CLASSIC_RULE_PACK, getRulePackById } from "../config/rulePacks";
+import { MULTIPLIERS } from "./scoringConstants";
 
 export interface ScoreAchievement {
   member: string;
@@ -18,12 +25,20 @@ export interface ScoreBreakdown {
   weeklyCouncil: { label: string; result: "correct" | "incorrect" }[];
   bonusGames: { label: string; result: "correct" | "incorrect" | "partial"; points: number }[];
   finaleGauntlet: { label: string; result: "correct" | "incorrect"; points: number }[];
+  adjustments: { reason: string; points: number; weekId?: string }[];
 }
 
 export interface PlayerScore {
   total: number;
   breakdown: ScoreBreakdown;
   achievements: ScoreAchievement[];
+}
+
+export interface CalculatePlayerScoreInput {
+  seasonState: SeasonState;
+  player: PlayerEntry;
+  rulePack?: RulePack;
+  adjustments?: ScoreAdjustment[];
 }
 
 export const formatScore = (value: number) =>
@@ -164,10 +179,54 @@ export const resolveEffectiveWeeklyPredictionWeekId = (
   return null;
 };
 
+const isCalculatePlayerScoreInput = (
+  value: GameState | CalculatePlayerScoreInput,
+  maybePlayer?: PlayerEntry
+): value is CalculatePlayerScoreInput =>
+  Boolean(
+    !maybePlayer &&
+      value &&
+      typeof value === "object" &&
+      "seasonState" in value &&
+      "player" in value
+  );
+
 export const calculatePlayerScore = (
-  gameState: GameState,
-  player: PlayerEntry
+  stateOrInput: GameState | CalculatePlayerScoreInput,
+  maybePlayer?: PlayerEntry
 ): PlayerScore => {
+  const seasonState: SeasonState = isCalculatePlayerScoreInput(
+    stateOrInput,
+    maybePlayer
+  )
+    ? stateOrInput.seasonState
+    : (stateOrInput as SeasonState);
+  const player: PlayerEntry = isCalculatePlayerScoreInput(
+    stateOrInput,
+    maybePlayer
+  )
+    ? stateOrInput.player
+    : (maybePlayer as PlayerEntry);
+  const effectiveRulePack = isCalculatePlayerScoreInput(
+    stateOrInput,
+    maybePlayer
+  )
+    ? stateOrInput.rulePack ??
+      getRulePackById(
+        stateOrInput.seasonState.rulePackId ??
+          stateOrInput.seasonState.seasonConfig?.rulePackId
+      )
+    : getRulePackById(
+        seasonState.rulePackId ?? seasonState.seasonConfig?.rulePackId
+      );
+  const scoreAdjustments =
+    (isCalculatePlayerScoreInput(stateOrInput, maybePlayer)
+      ? stateOrInput.adjustments
+      : undefined) ??
+    seasonState.scoreAdjustments ??
+    [];
+  const scoringPoints = effectiveRulePack.points ?? TRAITORS_CLASSIC_RULE_PACK.points;
+
   const getWeeklyMultiplier = (entry: PlayerEntry) =>
     entry.weeklyPredictions?.bonusGames?.doubleOrNothing
       ? MULTIPLIERS.DOUBLE_OR_NOTHING
@@ -184,71 +243,83 @@ export const calculatePlayerScore = (
     weeklyCouncil: [],
     bonusGames: [],
     finaleGauntlet: [],
+    adjustments: [],
   };
 
+  const normalizeMemberKey = (name?: string | null) =>
+    typeof name === "string" ? name.trim().toLowerCase() : "";
+
+  const countedWinnerPickKeys = new Set<string>();
   player.picks.forEach((pick) => {
-    const status = gameState.castStatus[pick.member];
+    const memberKey = normalizeMemberKey(pick.member);
+    if (!memberKey || countedWinnerPickKeys.has(memberKey)) return;
+    countedWinnerPickKeys.add(memberKey);
+    const status = seasonState.castStatus[pick.member];
     if (status?.isWinner) {
-      score += SCORING_POINTS.DRAFT_WINNER;
+      score += scoringPoints.DRAFT_WINNER;
       breakdown.draftWinners.push(pick.member);
       achievements.push({
         member: pick.member,
         type: "Winner",
-        points: SCORING_POINTS.DRAFT_WINNER,
+        points: scoringPoints.DRAFT_WINNER,
         icon: "🏆",
       });
     }
   });
 
-  if (gameState.castStatus[player.predWinner]?.isWinner) {
-    score += SCORING_POINTS.PRED_WINNER;
+  if (seasonState.castStatus[player.predWinner]?.isWinner) {
+    score += scoringPoints.PRED_WINNER;
     breakdown.predWinner = true;
     achievements.push({
       member: player.predWinner,
       type: "Prophecy: Winner",
-      points: SCORING_POINTS.PRED_WINNER,
+      points: scoringPoints.PRED_WINNER,
       icon: "✨",
     });
   }
 
-  if (gameState.castStatus[player.predFirstOut]?.isFirstOut) {
-    score += SCORING_POINTS.PRED_FIRST_OUT;
+  if (seasonState.castStatus[player.predFirstOut]?.isFirstOut) {
+    score += scoringPoints.PRED_FIRST_OUT;
     breakdown.predFirstOut = true;
     achievements.push({
       member: player.predFirstOut,
       type: "Prophecy: 1st Out",
-      points: SCORING_POINTS.PRED_FIRST_OUT,
+      points: scoringPoints.PRED_FIRST_OUT,
       icon: "💀",
     });
   }
 
+  const countedTraitorGuessKeys = new Set<string>();
   player.predTraitors.forEach((guess) => {
-    if (gameState.castStatus[guess]?.isTraitor) {
-      score += SCORING_POINTS.TRAITOR_BONUS;
+    const guessKey = normalizeMemberKey(guess);
+    if (!guessKey || countedTraitorGuessKeys.has(guessKey)) return;
+    countedTraitorGuessKeys.add(guessKey);
+    if (seasonState.castStatus[guess]?.isTraitor) {
+      score += scoringPoints.TRAITOR_BONUS;
       breakdown.traitorBonus.push(guess);
       achievements.push({
         member: guess,
         type: "Unmasked Traitor",
-        points: SCORING_POINTS.TRAITOR_BONUS,
+        points: scoringPoints.TRAITOR_BONUS,
         icon: "🎭",
       });
     }
   });
 
-  if (gameState.castStatus[player.predWinner]?.isFirstOut) {
-    score += SCORING_POINTS.PROPHECY_REVERSED_PENALTY;
+  if (seasonState.castStatus[player.predWinner]?.isFirstOut) {
+    score += scoringPoints.PROPHECY_REVERSED_PENALTY;
     breakdown.penalty = true;
   }
 
-  const weeklyResults = gameState.weeklyResults;
+  const weeklyResults = seasonState.weeklyResults;
   const weeklyPredictions = player.weeklyPredictions;
   const currentWeekId =
-    normalizeWeekId(gameState.activeWeekId) ??
+    normalizeWeekId(seasonState.activeWeekId) ??
     normalizeWeekId(weeklyResults?.weekId);
   const weeklyResultWeekId =
     normalizeWeekId(weeklyResults?.weekId) ?? currentWeekId;
   const weeklyPredictionWeekId = resolveEffectiveWeeklyPredictionWeekId(
-    gameState,
+    seasonState,
     player,
     weeklyResultWeekId
   );
@@ -257,14 +328,14 @@ export const calculatePlayerScore = (
       weeklyResultWeekId &&
       weeklyPredictionWeekId === weeklyResultWeekId
   );
-  const isFinaleWeek = Boolean(gameState.finaleConfig?.enabled);
+  const isFinaleWeek = Boolean(seasonState.finaleConfig?.enabled);
   const weeklyMultiplier = isFinaleWeek ? MULTIPLIERS.NORMAL : getWeeklyMultiplier(player);
   const weeklyCorrectPoints = isFinaleWeek
-    ? SCORING_POINTS.FINALE_WEEKLY_CORRECT
-    : SCORING_POINTS.WEEKLY_CORRECT_BASE * weeklyMultiplier;
+    ? scoringPoints.FINALE_WEEKLY_CORRECT
+    : scoringPoints.WEEKLY_CORRECT_BASE * weeklyMultiplier;
   const weeklyIncorrectPoints = isFinaleWeek
-    ? SCORING_POINTS.FINALE_WEEKLY_INCORRECT
-    : SCORING_POINTS.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
+    ? scoringPoints.FINALE_WEEKLY_INCORRECT
+    : scoringPoints.WEEKLY_INCORRECT_BASE * weeklyMultiplier;
 
   if (
     hasMatchingWeeklyWeek &&
@@ -317,16 +388,16 @@ export const calculatePlayerScore = (
     finalePredictions?.finalWinner
   ) {
     if (finaleResults.finalWinner === finalePredictions.finalWinner) {
-      score += SCORING_POINTS.FINALE_FINAL_WINNER;
+      score += scoringPoints.FINALE_FINAL_WINNER;
       breakdown.finaleGauntlet.push({
         label: "Final Winner",
         result: "correct",
-        points: SCORING_POINTS.FINALE_FINAL_WINNER,
+        points: scoringPoints.FINALE_FINAL_WINNER,
       });
       achievements.push({
         member: finalePredictions.finalWinner,
         type: "Finale: Final Winner",
-        points: SCORING_POINTS.FINALE_FINAL_WINNER,
+        points: scoringPoints.FINALE_FINAL_WINNER,
         icon: "👑",
       });
     } else {
@@ -345,16 +416,16 @@ export const calculatePlayerScore = (
     finalePredictions?.lastFaithfulStanding
   ) {
     if (finaleResults.lastFaithfulStanding === finalePredictions.lastFaithfulStanding) {
-      score += SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING;
+      score += scoringPoints.FINALE_LAST_FAITHFUL_STANDING;
       breakdown.finaleGauntlet.push({
         label: "Last Faithful Standing",
         result: "correct",
-        points: SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING,
+        points: scoringPoints.FINALE_LAST_FAITHFUL_STANDING,
       });
       achievements.push({
         member: finalePredictions.lastFaithfulStanding,
         type: "Finale: Last Faithful Standing",
-        points: SCORING_POINTS.FINALE_LAST_FAITHFUL_STANDING,
+        points: scoringPoints.FINALE_LAST_FAITHFUL_STANDING,
         icon: "🕯️",
       });
     } else {
@@ -373,16 +444,16 @@ export const calculatePlayerScore = (
     finalePredictions?.lastTraitorStanding
   ) {
     if (finaleResults.lastTraitorStanding === finalePredictions.lastTraitorStanding) {
-      score += SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING;
+      score += scoringPoints.FINALE_LAST_TRAITOR_STANDING;
       breakdown.finaleGauntlet.push({
         label: "Last Traitor Standing",
         result: "correct",
-        points: SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING,
+        points: scoringPoints.FINALE_LAST_TRAITOR_STANDING,
       });
       achievements.push({
         member: finalePredictions.lastTraitorStanding,
         type: "Finale: Last Traitor Standing",
-        points: SCORING_POINTS.FINALE_LAST_TRAITOR_STANDING,
+        points: scoringPoints.FINALE_LAST_TRAITOR_STANDING,
         icon: "🎭",
       });
     } else {
@@ -405,8 +476,8 @@ export const calculatePlayerScore = (
   ) {
     if (bonusResults.redemptionRoulette === bonusPredictions.redemptionRoulette) {
       const points = isNegativeForBonus
-        ? SCORING_POINTS.REDEMPTION_ROULETTE_CORRECT_NEGATIVE
-        : SCORING_POINTS.REDEMPTION_ROULETTE_CORRECT;
+        ? scoringPoints.REDEMPTION_ROULETTE_CORRECT_NEGATIVE
+        : scoringPoints.REDEMPTION_ROULETTE_CORRECT;
       score += points;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
@@ -420,11 +491,11 @@ export const calculatePlayerScore = (
         icon: "🎲",
       });
     } else {
-      score += SCORING_POINTS.REDEMPTION_ROULETTE_INCORRECT;
+      score += scoringPoints.REDEMPTION_ROULETTE_INCORRECT;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
         result: "incorrect",
-        points: SCORING_POINTS.REDEMPTION_ROULETTE_INCORRECT,
+        points: scoringPoints.REDEMPTION_ROULETTE_INCORRECT,
       });
     }
   }
@@ -436,8 +507,8 @@ export const calculatePlayerScore = (
   ) {
     if (bonusResults.shieldGambit === bonusPredictions.shieldGambit) {
       const points = isNegativeForBonus
-        ? SCORING_POINTS.SHIELD_GAMBIT_CORRECT_NEGATIVE
-        : SCORING_POINTS.SHIELD_GAMBIT_CORRECT;
+        ? scoringPoints.SHIELD_GAMBIT_CORRECT_NEGATIVE
+        : scoringPoints.SHIELD_GAMBIT_CORRECT;
       score += points;
       breakdown.bonusGames.push({
         label: "Shield Gambit",
@@ -476,12 +547,12 @@ export const calculatePlayerScore = (
     if (correctCount > 0) {
       const points =
         correctCount === 3
-          ? SCORING_POINTS.TRAITOR_TRIO_PERFECT
-          : correctCount * SCORING_POINTS.TRAITOR_TRIO_PARTIAL;
+          ? scoringPoints.TRAITOR_TRIO_PERFECT
+          : correctCount * scoringPoints.TRAITOR_TRIO_PARTIAL;
       const perNamePoints =
         correctCount === 3
-          ? SCORING_POINTS.TRAITOR_TRIO_PERFECT_PER_MEMBER
-          : SCORING_POINTS.TRAITOR_TRIO_PARTIAL;
+          ? scoringPoints.TRAITOR_TRIO_PERFECT_PER_MEMBER
+          : scoringPoints.TRAITOR_TRIO_PARTIAL;
       score += points;
       breakdown.bonusGames.push({
         label: "Traitor Trio Challenge",
@@ -505,5 +576,31 @@ export const calculatePlayerScore = (
       });
     }
   }
+
+  scoreAdjustments
+    .filter((adjustment) => {
+      if (!adjustment.seasonId || !seasonState.seasonId) return true;
+      return adjustment.seasonId === seasonState.seasonId;
+    })
+    .filter((adjustment) => adjustment.playerId === player.id)
+    .filter((adjustment) => {
+      if (!adjustment.weekId) return true;
+      return normalizeWeekId(adjustment.weekId) === weeklyResultWeekId;
+    })
+    .forEach((adjustment) => {
+      score += adjustment.points;
+      breakdown.adjustments.push({
+        reason: adjustment.reason,
+        points: adjustment.points,
+        weekId: adjustment.weekId,
+      });
+      achievements.push({
+        member: player.name,
+        type: `Adjustment: ${adjustment.reason}`,
+        points: adjustment.points,
+        icon: adjustment.points >= 0 ? "🧾" : "⚠️",
+      });
+    });
+
   return { total: score, breakdown, achievements };
 };

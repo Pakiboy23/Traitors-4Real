@@ -1,68 +1,39 @@
+import { TRAITORS_CLASSIC_RULE_PACK } from "../config/rulePacks";
+
 /**
- * Scoring constants for the Traitors Fantasy Draft game
- * All point values are defined here for consistency and easy adjustment
+ * Backward-compatible alias for default points.
+ * Rule-pack aware scoring should prefer `RulePack.points`.
  */
 
 export const SCORING_POINTS = {
-  /** Points awarded for drafting a cast member who wins */
-  DRAFT_WINNER: 10,
-
-  /** Points awarded for correctly predicting the overall winner */
-  PRED_WINNER: 10,
-
-  /** Points awarded for correctly predicting the first eliminated player */
-  PRED_FIRST_OUT: 5,
-
-  /** Points awarded for each correctly identified traitor */
-  TRAITOR_BONUS: 3,
-
-  /** Penalty when your winner prediction is eliminated first */
-  PROPHECY_REVERSED_PENALTY: -2,
-
-  /** Base points for correct weekly council prediction (multiplied by weekly multiplier) */
-  WEEKLY_CORRECT_BASE: 1,
-
-  /** Base penalty for incorrect weekly council prediction (multiplied by weekly multiplier) */
-  WEEKLY_INCORRECT_BASE: 0.5,
-
-  /** Weekly council points in finale mode */
-  FINALE_WEEKLY_CORRECT: 4,
-
-  /** Weekly council penalty in finale mode */
-  FINALE_WEEKLY_INCORRECT: 1,
-
-  /** Finale bonus points for correct final winner */
-  FINALE_FINAL_WINNER: 15,
-
-  /** Finale bonus points for correct last faithful standing */
-  FINALE_LAST_FAITHFUL_STANDING: 8,
-
-  /** Finale bonus points for correct last traitor standing */
-  FINALE_LAST_TRAITOR_STANDING: 8,
-
-  /** Points for correct Redemption Roulette guess (normal) */
-  REDEMPTION_ROULETTE_CORRECT: 8,
-
-  /** Points for correct Redemption Roulette guess (when negative score) */
-  REDEMPTION_ROULETTE_CORRECT_NEGATIVE: 16,
-
-  /** Penalty for incorrect Redemption Roulette guess */
-  REDEMPTION_ROULETTE_INCORRECT: -1,
-
-  /** Points for correct Shield Gambit guess (normal) */
-  SHIELD_GAMBIT_CORRECT: 5,
-
-  /** Points for correct Shield Gambit guess (when negative score) */
-  SHIELD_GAMBIT_CORRECT_NEGATIVE: 8,
-
-  /** Points for each correct Traitor Trio member */
-  TRAITOR_TRIO_PARTIAL: 3,
-
-  /** Points for perfect Traitor Trio (all 3 correct) */
-  TRAITOR_TRIO_PERFECT: 15,
-
-  /** Points per member in perfect Traitor Trio (for achievement breakdown) */
-  TRAITOR_TRIO_PERFECT_PER_MEMBER: 5,
+  DRAFT_WINNER: TRAITORS_CLASSIC_RULE_PACK.points.DRAFT_WINNER,
+  PRED_WINNER: TRAITORS_CLASSIC_RULE_PACK.points.PRED_WINNER,
+  PRED_FIRST_OUT: TRAITORS_CLASSIC_RULE_PACK.points.PRED_FIRST_OUT,
+  TRAITOR_BONUS: TRAITORS_CLASSIC_RULE_PACK.points.TRAITOR_BONUS,
+  PROPHECY_REVERSED_PENALTY:
+    TRAITORS_CLASSIC_RULE_PACK.points.PROPHECY_REVERSED_PENALTY,
+  WEEKLY_CORRECT_BASE: TRAITORS_CLASSIC_RULE_PACK.points.WEEKLY_CORRECT_BASE,
+  WEEKLY_INCORRECT_BASE: TRAITORS_CLASSIC_RULE_PACK.points.WEEKLY_INCORRECT_BASE,
+  FINALE_WEEKLY_CORRECT: TRAITORS_CLASSIC_RULE_PACK.points.FINALE_WEEKLY_CORRECT,
+  FINALE_WEEKLY_INCORRECT: TRAITORS_CLASSIC_RULE_PACK.points.FINALE_WEEKLY_INCORRECT,
+  FINALE_FINAL_WINNER: TRAITORS_CLASSIC_RULE_PACK.points.FINALE_FINAL_WINNER,
+  FINALE_LAST_FAITHFUL_STANDING:
+    TRAITORS_CLASSIC_RULE_PACK.points.FINALE_LAST_FAITHFUL_STANDING,
+  FINALE_LAST_TRAITOR_STANDING:
+    TRAITORS_CLASSIC_RULE_PACK.points.FINALE_LAST_TRAITOR_STANDING,
+  REDEMPTION_ROULETTE_CORRECT:
+    TRAITORS_CLASSIC_RULE_PACK.points.REDEMPTION_ROULETTE_CORRECT,
+  REDEMPTION_ROULETTE_CORRECT_NEGATIVE:
+    TRAITORS_CLASSIC_RULE_PACK.points.REDEMPTION_ROULETTE_CORRECT_NEGATIVE,
+  REDEMPTION_ROULETTE_INCORRECT:
+    TRAITORS_CLASSIC_RULE_PACK.points.REDEMPTION_ROULETTE_INCORRECT,
+  SHIELD_GAMBIT_CORRECT: TRAITORS_CLASSIC_RULE_PACK.points.SHIELD_GAMBIT_CORRECT,
+  SHIELD_GAMBIT_CORRECT_NEGATIVE:
+    TRAITORS_CLASSIC_RULE_PACK.points.SHIELD_GAMBIT_CORRECT_NEGATIVE,
+  TRAITOR_TRIO_PARTIAL: TRAITORS_CLASSIC_RULE_PACK.points.TRAITOR_TRIO_PARTIAL,
+  TRAITOR_TRIO_PERFECT: TRAITORS_CLASSIC_RULE_PACK.points.TRAITOR_TRIO_PERFECT,
+  TRAITOR_TRIO_PERFECT_PER_MEMBER:
+    TRAITORS_CLASSIC_RULE_PACK.points.TRAITOR_TRIO_PERFECT_PER_MEMBER,
 } as const;
 
 export const MULTIPLIERS = {

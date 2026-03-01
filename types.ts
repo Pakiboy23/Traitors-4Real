@@ -78,11 +78,114 @@ export interface WeeklyScoreSnapshot {
 
 export type League = "main" | "jr";
 export type UiVariant = "classic" | "premium";
+export type SeasonStatus = "draft" | "live" | "finalized" | "archived";
+export type SubmissionStatus = "new" | "merged" | "skipped_late" | "skipped_stale";
 
 export const COUNCIL_LABELS = {
   weekly: "Weekly Council",
   jr: "Jr. Council",
 } as const;
+
+export interface ShowBranding {
+  logoUrl?: string | null;
+  wordmark?: string;
+  headerKicker?: string;
+  appTitle?: string;
+  footerCopy?: string;
+}
+
+export interface ShowTerminology {
+  weeklyCouncilLabel: string;
+  jrCouncilLabel: string;
+  draftLabel: string;
+  leaderboardLabel: string;
+  adminLabel: string;
+  finaleLabelDefault: string;
+}
+
+export interface ShowFeatureToggles {
+  draftEnabled: boolean;
+  jrLeagueEnabled: boolean;
+  finaleEnabled: boolean;
+  scoreAdjustmentsEnabled: boolean;
+  seasonArchivingEnabled: boolean;
+}
+
+export interface ShowConfig {
+  slug: string;
+  showName: string;
+  shortName: string;
+  branding: ShowBranding;
+  terminology: ShowTerminology;
+  defaultUiVariant: UiVariant;
+  featureToggles: ShowFeatureToggles;
+  castNames: string[];
+}
+
+export interface SeasonConfig {
+  seasonId: string;
+  label: string;
+  status: SeasonStatus;
+  timezone: string;
+  lockSchedule: {
+    draftLockAt?: string | null;
+    weeklyLockAt?: string | null;
+    finaleLockAt?: string | null;
+  };
+  activeWeekId?: string;
+  finaleConfig?: FinaleConfig;
+  rulePackId?: string;
+}
+
+export interface RulePackPoints {
+  DRAFT_WINNER: number;
+  PRED_WINNER: number;
+  PRED_FIRST_OUT: number;
+  TRAITOR_BONUS: number;
+  PROPHECY_REVERSED_PENALTY: number;
+  WEEKLY_CORRECT_BASE: number;
+  WEEKLY_INCORRECT_BASE: number;
+  FINALE_WEEKLY_CORRECT: number;
+  FINALE_WEEKLY_INCORRECT: number;
+  FINALE_FINAL_WINNER: number;
+  FINALE_LAST_FAITHFUL_STANDING: number;
+  FINALE_LAST_TRAITOR_STANDING: number;
+  REDEMPTION_ROULETTE_CORRECT: number;
+  REDEMPTION_ROULETTE_CORRECT_NEGATIVE: number;
+  REDEMPTION_ROULETTE_INCORRECT: number;
+  SHIELD_GAMBIT_CORRECT: number;
+  SHIELD_GAMBIT_CORRECT_NEGATIVE: number;
+  TRAITOR_TRIO_PARTIAL: number;
+  TRAITOR_TRIO_PERFECT: number;
+  TRAITOR_TRIO_PERFECT_PER_MEMBER: number;
+}
+
+export interface RulePack {
+  id: string;
+  name: string;
+  description?: string;
+  supportedEvents: string[];
+  points: RulePackPoints;
+  tieBreakStrategy: "final_pot_distance" | "none";
+  bonusModules: {
+    redemptionRoulette: boolean;
+    shieldGambit: boolean;
+    traitorTrio: boolean;
+    doubleOrNothing: boolean;
+    finaleGauntlet: boolean;
+  };
+}
+
+export interface ScoreAdjustment {
+  id: string;
+  seasonId: string;
+  playerId: string;
+  weekId?: string;
+  reason: string;
+  points: number;
+  createdBy: string;
+  createdAt: string;
+}
 
 export interface WeeklySubmissionHistoryEntry {
   id: string;
@@ -115,14 +218,21 @@ export interface PlayerEntry {
 }
 
 export interface GameState {
+  seasonId?: string;
+  rulePackId?: string;
   activeWeekId?: string;
   players: PlayerEntry[];
   castStatus: Record<string, CastMemberStatus>;
   weeklyResults?: WeeklyResults;
   finaleConfig?: FinaleConfig;
+  showConfig?: ShowConfig;
+  seasonConfig?: SeasonConfig;
+  scoreAdjustments?: ScoreAdjustment[];
   weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
   weeklyScoreHistory?: WeeklyScoreSnapshot[];
 }
+
+export type SeasonState = GameState;
 
 export const normalizeWeekId = (value?: string | null): string | null => {
   if (typeof value !== "string") return null;

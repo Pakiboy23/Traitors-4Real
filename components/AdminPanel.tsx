@@ -9,6 +9,9 @@ import {
   inferActiveWeekId,
   normalizeWeekId,
   PlayerEntry,
+  ScoreAdjustment,
+  SeasonConfig,
+  ShowConfig,
   UiVariant,
   DraftPick,
   WeeklySubmissionHistoryEntry,
@@ -17,10 +20,25 @@ import {
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { pocketbaseUrl } from "../src/lib/pocketbase";
 import { LIMITS } from "../src/utils/scoringConstants";
+import { logger } from "../src/utils/logger";
+import { RULE_PACKS } from "../src/config/rulePacks";
 import {
+  archiveSeason,
+  cloneSeason,
+  createSeason,
+  createScoreAdjustment,
+  deleteScoreAdjustment,
   deleteSubmission,
+  fetchSeasonState,
   fetchWeeklySubmissions,
+  finalizeSeason,
+  listSeasons as listSeasonRecords,
+  listScoreAdjustments,
+  markSubmissionMerged,
+  markSubmissionSkipped,
   normalizeEmail,
+  saveSeasonState,
+  saveShowConfig,
   savePlayerPortrait,
   SubmissionRecord,
   subscribeToWeeklySubmissions,
@@ -47,6 +65,11 @@ interface AdminPanelProps {
   lastSavedAt?: number | null;
   lastWriteError?: string | null;
   onSaveNow?: () => void;
+  showConfig?: ShowConfig;
+  seasonConfig?: SeasonConfig;
+  seasons?: SeasonConfig[];
+  activeSeasonId?: string | null;
+  onSeasonChange?: (seasonId: string) => void;
   uiVariant: UiVariant;
 }
 
@@ -68,12 +91,29 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   lastSavedAt,
   lastWriteError,
   onSaveNow,
+  showConfig,
+  seasonConfig,
+  seasons = [],
+  activeSeasonId,
+  onSeasonChange,
   uiVariant,
 }) => {
   const isPremiumUi = uiVariant === "premium";
-  const activeCastNames = CAST_NAMES.filter(
+  const castNames = Array.from(
+    new Set([
+      ...(showConfig?.castNames ?? []),
+      ...Object.keys(gameState.castStatus || {}),
+      ...CAST_NAMES,
+    ])
+  ).sort((a, b) => a.localeCompare(b));
+  const activeCastNames = castNames.filter(
     (name) => !gameState.castStatus[name]?.isEliminated
   );
+  const defaultFinaleLabel =
+    showConfig?.terminology?.finaleLabelDefault || "Finale Gauntlet";
+  const defaultFinaleLockAt = new Date(
+    Date.now() + 24 * 60 * 60 * 1000
+  ).toISOString();
   const BANISHED_OPTIONS = activeCastNames;
   const MURDER_OPTIONS = ["No Murder", ...activeCastNames];
   const defaultStatus = {
@@ -101,11 +141,136 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [promptDialog, setPromptDialog] = useState<PromptDialogState | null>(null);
   const [promptValue, setPromptValue] = useState("");
   const [activeSection, setActiveSection] = useState<AdminSection>("operations");
+  const [scoreAdjustments, setScoreAdjustments] = useState<ScoreAdjustment[]>(
+    Array.isArray(gameState.scoreAdjustments) ? gameState.scoreAdjustments : []
+  );
+  const [newAdjustmentPlayerId, setNewAdjustmentPlayerId] = useState("");
+  const [newAdjustmentPoints, setNewAdjustmentPoints] = useState("");
+  const [newAdjustmentReason, setNewAdjustmentReason] = useState("");
+  const [newAdjustmentWeekId, setNewAdjustmentWeekId] = useState("");
+  const [seasonRecords, setSeasonRecords] = useState<SeasonConfig[]>(seasons);
+  const [newSeasonId, setNewSeasonId] = useState("");
+  const [newSeasonLabel, setNewSeasonLabel] = useState("");
+  const [newSeasonTimezone, setNewSeasonTimezone] = useState("America/New_York");
+  const [newSeasonRulePackId, setNewSeasonRulePackId] = useState("traitors-classic");
+  const [newSeasonCastInput, setNewSeasonCastInput] = useState("");
+  const [newSeasonDraftLockAt, setNewSeasonDraftLockAt] = useState("");
+  const [newSeasonWeeklyLockAt, setNewSeasonWeeklyLockAt] = useState("");
+  const [newSeasonFinaleLockAt, setNewSeasonFinaleLockAt] = useState("");
+  const [cloneSeasonId, setCloneSeasonId] = useState("");
+  const [showNameInput, setShowNameInput] = useState(
+    showConfig?.showName || gameState.showConfig?.showName || ""
+  );
+  const [showShortNameInput, setShowShortNameInput] = useState(
+    showConfig?.shortName || gameState.showConfig?.shortName || ""
+  );
+  const [showHeaderKickerInput, setShowHeaderKickerInput] = useState(
+    showConfig?.branding?.headerKicker || gameState.showConfig?.branding?.headerKicker || ""
+  );
+  const [showAppTitleInput, setShowAppTitleInput] = useState(
+    showConfig?.branding?.appTitle || gameState.showConfig?.branding?.appTitle || ""
+  );
+  const [showFooterCopyInput, setShowFooterCopyInput] = useState(
+    showConfig?.branding?.footerCopy || gameState.showConfig?.branding?.footerCopy || ""
+  );
+  const [weeklyLabelInput, setWeeklyLabelInput] = useState(
+    showConfig?.terminology?.weeklyCouncilLabel ||
+      gameState.showConfig?.terminology?.weeklyCouncilLabel ||
+      ""
+  );
+  const [jrLabelInput, setJrLabelInput] = useState(
+    showConfig?.terminology?.jrCouncilLabel ||
+      gameState.showConfig?.terminology?.jrCouncilLabel ||
+      ""
+  );
+  const [draftLabelInput, setDraftLabelInput] = useState(
+    showConfig?.terminology?.draftLabel ||
+      gameState.showConfig?.terminology?.draftLabel ||
+      ""
+  );
+  const [leaderboardLabelInput, setLeaderboardLabelInput] = useState(
+    showConfig?.terminology?.leaderboardLabel ||
+      gameState.showConfig?.terminology?.leaderboardLabel ||
+      ""
+  );
+  const [adminLabelInput, setAdminLabelInput] = useState(
+    showConfig?.terminology?.adminLabel ||
+      gameState.showConfig?.terminology?.adminLabel ||
+      ""
+  );
+  const [finaleLabelInput, setFinaleLabelInput] = useState(
+    showConfig?.terminology?.finaleLabelDefault ||
+      gameState.showConfig?.terminology?.finaleLabelDefault ||
+      ""
+  );
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
     gameStateRef.current = gameState;
   }, [gameState]);
+
+  useEffect(() => {
+    if (Array.isArray(gameState.scoreAdjustments)) {
+      setScoreAdjustments(gameState.scoreAdjustments);
+    }
+  }, [gameState.scoreAdjustments]);
+
+  useEffect(() => {
+    setSeasonRecords(seasons);
+  }, [seasons]);
+
+  useEffect(() => {
+    const source = showConfig ?? gameState.showConfig;
+    if (!source) return;
+    setShowNameInput(source.showName || "");
+    setShowShortNameInput(source.shortName || "");
+    setShowHeaderKickerInput(source.branding?.headerKicker || "");
+    setShowAppTitleInput(source.branding?.appTitle || "");
+    setShowFooterCopyInput(source.branding?.footerCopy || "");
+    setWeeklyLabelInput(source.terminology?.weeklyCouncilLabel || "");
+    setJrLabelInput(source.terminology?.jrCouncilLabel || "");
+    setDraftLabelInput(source.terminology?.draftLabel || "");
+    setLeaderboardLabelInput(source.terminology?.leaderboardLabel || "");
+    setAdminLabelInput(source.terminology?.adminLabel || "");
+    setFinaleLabelInput(source.terminology?.finaleLabelDefault || "");
+  }, [showConfig, gameState.showConfig]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listSeasonRecords()
+      .then((records) => {
+        if (cancelled) return;
+        if (Array.isArray(records) && records.length > 0) {
+          setSeasonRecords(records);
+        }
+      })
+      .catch((error) => logger.warn("Failed to refresh season records:", error));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const seasonId = gameState.seasonId || seasonConfig?.seasonId;
+    if (!seasonId) return;
+    let cancelled = false;
+    listScoreAdjustments(seasonId)
+      .then((records) => {
+        if (cancelled) return;
+        if (!Array.isArray(records)) return;
+        setScoreAdjustments(records);
+        updateGameState((prev) => ({
+          ...prev,
+          scoreAdjustments: records,
+        }));
+      })
+      .catch((error) => {
+        logger.warn("Failed to load score adjustments:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [gameState.seasonId, seasonConfig?.seasonId, updateGameState]);
 
   const normalize = (value: string) => value.trim().toLowerCase();
   const requestConfirm = (message: string) =>
@@ -200,6 +365,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       | undefined;
     return normalizeWeekId(payload?.weekId ?? payload?.weeklyPredictions?.weekId);
   };
+  const getActiveSeasonId = () =>
+    normalizeWeekId(gameStateRef.current.seasonId) ??
+    normalizeWeekId(seasonConfig?.seasonId) ??
+    normalizeWeekId(activeSeasonId);
+  const getSubmissionSeasonId = (submission: SubmissionRecord) => {
+    const payload = submission.payload as { seasonId?: string } | undefined;
+    return normalizeWeekId(submission.seasonId ?? payload?.seasonId);
+  };
   const getCurrentWeekStartMs = () => {
     const history = Array.isArray(gameStateRef.current.weeklyScoreHistory)
       ? gameStateRef.current.weeklyScoreHistory
@@ -210,6 +383,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return Number.isNaN(createdAtMs) ? null : createdAtMs;
   };
   const isSubmissionForActiveWeek = (submission: SubmissionRecord) => {
+    const activeSeason = getActiveSeasonId();
+    const submissionSeason = getSubmissionSeasonId(submission);
+    if (activeSeason) {
+      if (submissionSeason && submissionSeason !== activeSeason) return false;
+      if (!submissionSeason && seasonRecords.length > 0) return false;
+    }
+
     const activeWeekId = getActiveWeekId();
     const submissionWeekId = getSubmissionWeekId(submission);
     if (submissionWeekId) return submissionWeekId === activeWeekId;
@@ -337,6 +517,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const isWeeklySubmissionRecord = (submission: SubmissionRecord) => {
     const kind = String(submission.kind ?? "").trim().toLowerCase();
     if (kind === "weekly") return true;
+    if (kind) return false;
     if (submission.weeklyBanished?.trim()) return true;
     if (submission.weeklyMurdered?.trim()) return true;
     if (getSubmissionBonusGames(submission)) return true;
@@ -485,11 +666,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setIsLoadingSubmissions(true);
     setSubmissionsError(null);
     try {
-      let records = await fetchWeeklySubmissions();
+      const scopedSeasonId = getActiveSeasonId();
+      let records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
       if (records.length === 0) {
         try {
+          const params = new URLSearchParams({
+            perPage: "200",
+            sort: "-created",
+          });
+          if (scopedSeasonId) {
+            params.set("filter", `seasonId="${scopedSeasonId.replace(/"/g, '\\"')}"`);
+          }
           const response = await fetch(
-            `${pocketbaseUrl}/api/collections/submissions/records?perPage=200&sort=-created`
+            `${pocketbaseUrl}/api/collections/submissions/records?${params.toString()}`
           );
           if (response.ok) {
             const data = (await response.json()) as { items?: SubmissionRecord[] };
@@ -498,7 +687,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             }
           }
         } catch (fallbackError) {
-          console.warn("Fallback submissions fetch failed:", fallbackError);
+          logger.warn("Fallback submissions fetch failed:", fallbackError);
         }
       }
       setSubmissions(records.filter((record) => isSubmissionForActiveWeek(record)));
@@ -507,7 +696,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } finally {
       setIsLoadingSubmissions(false);
     }
-  }, []);
+  }, [activeSeasonId, pocketbaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
 
   useEffect(() => {
     refreshSubmissions();
@@ -604,7 +793,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           let role: 'Faithful' | 'Traitor' = 'Faithful';
           if (lowerLine.includes("traitor") && !lowerLine.includes("faithful")) role = 'Traitor';
 
-          const matchedName = CAST_NAMES.find(c => namePart.includes(c) || c.includes(namePart));
+          const matchedName = castNames.find(c => namePart.includes(c) || c.includes(namePart));
           if (matchedName) {
             picks.push({ member: matchedName, rank, role });
           }
@@ -612,27 +801,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
         if (lowerLine.includes("first eliminated:") || lowerLine.includes("first out:")) {
           const val = line.split(":")[1]?.trim() || "";
-          predFirstOut = CAST_NAMES.find(c => val.includes(c)) || val;
+          predFirstOut = castNames.find(c => val.includes(c)) || val;
         }
         if (lowerLine.includes("winner pick:") || lowerLine.includes("sole winner:") || lowerLine.includes("winner:")) {
           const val = line.split(":")[1]?.trim() || "";
-          predWinner = CAST_NAMES.find(c => val.includes(c)) || val;
+          predWinner = castNames.find(c => val.includes(c)) || val;
         }
 
         if (lowerLine.includes("next banished:")) {
           const val = line.split(":")[1]?.trim() || "";
-          weeklyBanished = CAST_NAMES.find(c => val.includes(c)) || val;
+          weeklyBanished = castNames.find(c => val.includes(c)) || val;
         }
         if (lowerLine.includes("next murdered:")) {
           const val = line.split(":")[1]?.trim() || "";
-          weeklyMurdered = CAST_NAMES.find(c => val.includes(c)) || val;
+          weeklyMurdered = castNames.find(c => val.includes(c)) || val;
         }
 
         if (lowerLine.includes("traitor guesses") || lowerLine.includes("traitor suspects") || lowerLine.includes("the traitors")) {
           inTraitorSection = true;
         } else if (inTraitorSection) {
           const cleanedLine = line.replace(/^\d+[\.\)]/, "").replace(/^[-•*]/, "").trim();
-          const matchedTraitor = CAST_NAMES.find(c => cleanedLine.includes(c));
+          const matchedTraitor = castNames.find(c => cleanedLine.includes(c));
           if (matchedTraitor && predTraitors.length < 3) {
             predTraitors.push(matchedTraitor);
           }
@@ -681,7 +870,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       updatedStatus[name] = { ...currentStatus, [field]: value };
       if (field === 'isFirstOut' && value === true) updatedStatus[name].isWinner = false;
       if (field === 'isWinner' && value === true) updatedStatus[name].isFirstOut = false;
-      return { ...prevState, castStatus: updatedStatus };
+      const nextState = { ...prevState, castStatus: updatedStatus };
+      gameStateRef.current = nextState;
+      return nextState;
     });
   };
 
@@ -696,7 +887,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     if (targetPlayer?.email) {
       savePlayerPortrait(targetPlayer.email, targetPlayer.name, url).catch((err) => {
-        console.error("Failed to persist player portrait:", err);
+        logger.error("Failed to persist player portrait:", err);
         setMsg({ text: "Portrait saved locally. PocketBase writes failed.", type: 'error' });
       });
     }
@@ -750,13 +941,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const applySubmissionToPlayers = (
     players: PlayerEntry[],
-    submission: SubmissionRecord
+    submission: SubmissionRecord,
+    options?: { allowLate?: boolean }
   ) => {
     const activeWeekId = getActiveWeekId();
+    const allowLate = Boolean(options?.allowLate);
     if (!isSubmissionForActiveWeek(submission)) {
       return { matched: false as const, stale: true as const, players };
     }
-    if (!isSubmissionBeforeFinaleLock(submission)) {
+    if (!allowLate && !isSubmissionBeforeFinaleLock(submission)) {
       return { matched: false as const, late: true as const, players };
     }
     const league = getSubmissionLeague(submission);
@@ -885,8 +1078,30 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   ) => {
     const currentState = gameStateRef.current;
     const historyEntry = buildHistoryEntry(submission, currentState.players);
-    const result = applySubmissionToPlayers(currentState.players, submission);
+    let forcedLateMerge = false;
+    let result = applySubmissionToPlayers(currentState.players, submission);
+    if (!result.matched && result.late) {
+      const shouldForceMerge = await requestConfirm(
+        `Submission from ${submission.name} arrived after finale lock. Merge anyway?`
+      );
+      if (shouldForceMerge) {
+        result = applySubmissionToPlayers(currentState.players, submission, {
+          allowLate: true,
+        });
+        forcedLateMerge = result.matched;
+      }
+    }
     if (!result.matched) {
+      if (result.stale) {
+        void markSubmissionSkipped(submission.id, "skipped_stale").catch((error) =>
+          logger.warn("Failed to mark stale submission:", error)
+        );
+      }
+      if (result.late) {
+        void markSubmissionSkipped(submission.id, "skipped_late").catch((error) =>
+          logger.warn("Failed to mark late submission:", error)
+        );
+      }
       if (announce) {
         setMsg({
           text: result.stale
@@ -913,18 +1128,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     gameStateRef.current = nextState;
     updateGameState(nextState);
     try {
-      await deleteSubmission(submission.id);
+      await markSubmissionMerged(submission.id);
       setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
       if (announce) {
         setMsg({
-          text: `Merged weekly vote for ${submission.name}.`,
+          text: forcedLateMerge
+            ? `Merged late weekly vote for ${submission.name}.`
+            : `Merged weekly vote for ${submission.name}.`,
           type: "success",
         });
       }
     } catch (err: any) {
       if (announce) {
         setMsg({
-          text: `Merged weekly vote, but failed to clear submission: ${err?.message || err}`,
+          text: `Merged weekly vote, but failed to mark submission as merged: ${err?.message || err}`,
           type: "error",
         });
       }
@@ -938,6 +1155,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (list.length === 0) return;
     let updatedPlayers = gameStateRef.current.players;
     const mergedIds: string[] = [];
+    const lateIds: string[] = [];
+    const staleIds: string[] = [];
     const historyAdds: WeeklySubmissionHistoryEntry[] = [];
     let skipped = 0;
     let staleSkipped = 0;
@@ -952,8 +1171,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         historyAdds.push(historyEntry);
       } else if (result.stale) {
         staleSkipped += 1;
+        staleIds.push(submission.id);
       } else if (result.late) {
         lateSkipped += 1;
+        lateIds.push(submission.id);
       } else {
         skipped += 1;
       }
@@ -976,7 +1197,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     try {
-      await Promise.all(mergedIds.map((id) => deleteSubmission(id)));
+      await Promise.all([
+        ...mergedIds.map((id) => markSubmissionMerged(id)),
+        ...lateIds.map((id) => markSubmissionSkipped(id, "skipped_late")),
+        ...staleIds.map((id) => markSubmissionSkipped(id, "skipped_stale")),
+      ]);
       setSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
       if (announce) {
         setMsg({
@@ -991,7 +1216,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       if (announce) {
         setMsg({
-          text: `Merged weekly votes, but failed to clear some submissions: ${err?.message || err}`,
+          text: `Merged weekly votes, but failed to mark some submissions as merged: ${err?.message || err}`,
           type: "error",
         });
       }
@@ -1137,6 +1362,346 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setMsg({ text: "Merged history cleared.", type: "success" });
   };
 
+  const applyScoreAdjustmentsToState = (nextAdjustments: ScoreAdjustment[]) => {
+    setScoreAdjustments(nextAdjustments);
+    updateGameState((prev) => ({
+      ...prev,
+      scoreAdjustments: nextAdjustments,
+    }));
+  };
+
+  const addScoreAdjustmentEntry = async () => {
+    const seasonId = gameState.seasonId || seasonConfig?.seasonId || "season-1";
+    const playerId = newAdjustmentPlayerId.trim();
+    const reason = newAdjustmentReason.trim();
+    const points = Number(newAdjustmentPoints);
+    const weekId = normalizeWeekId(newAdjustmentWeekId);
+
+    if (!playerId) {
+      setMsg({ text: "Select a player for the score adjustment.", type: "error" });
+      return;
+    }
+    if (!reason) {
+      setMsg({ text: "Reason is required for every score adjustment.", type: "error" });
+      return;
+    }
+    if (!Number.isFinite(points) || points === 0) {
+      setMsg({ text: "Points must be a non-zero number.", type: "error" });
+      return;
+    }
+
+    try {
+      const created = await createScoreAdjustment({
+        seasonId,
+        playerId,
+        weekId: weekId ?? undefined,
+        reason,
+        points,
+        createdBy: "admin",
+      });
+      const next = [created, ...scoreAdjustments];
+      applyScoreAdjustmentsToState(next);
+      setNewAdjustmentPoints("");
+      setNewAdjustmentReason("");
+      setNewAdjustmentWeekId("");
+      setMsg({ text: "Score adjustment added.", type: "success" });
+    } catch (error) {
+      logger.warn("Failed to create score adjustment in PocketBase:", error);
+      const fallback: ScoreAdjustment = {
+        id: `local-${Date.now()}`,
+        seasonId,
+        playerId,
+        weekId: weekId ?? undefined,
+        reason,
+        points,
+        createdBy: "admin",
+        createdAt: new Date().toISOString(),
+      };
+      const next = [fallback, ...scoreAdjustments];
+      applyScoreAdjustmentsToState(next);
+      setMsg({
+        text: "Score adjustment added locally; remote write failed.",
+        type: "error",
+      });
+    }
+  };
+
+  const removeScoreAdjustmentEntry = async (adjustment: ScoreAdjustment) => {
+    if (!(await requestConfirm("Delete this score adjustment?"))) return;
+    try {
+      if (!adjustment.id.startsWith("local-")) {
+        await deleteScoreAdjustment(adjustment.id);
+      }
+    } catch (error) {
+      logger.warn("Failed to delete score adjustment in PocketBase:", error);
+    }
+    const next = scoreAdjustments.filter((item) => item.id !== adjustment.id);
+    applyScoreAdjustmentsToState(next);
+    setMsg({ text: "Score adjustment removed.", type: "success" });
+  };
+
+  const parseSeasonCastNames = () => {
+    const entries = newSeasonCastInput
+      .split(/\n|,/g)
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return Array.from<string>(new Set(entries)).sort((a, b) => a.localeCompare(b));
+  };
+  const normalizeDateTimeInput = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const parsed = Date.parse(trimmed);
+    if (Number.isNaN(parsed)) return null;
+    return new Date(parsed).toISOString();
+  };
+  const handleSaveShowConfiguration = async () => {
+    const base = showConfig ?? gameState.showConfig;
+    if (!base) {
+      setMsg({ text: "Show config is not loaded yet.", type: "error" });
+      return;
+    }
+
+    const nextConfig: ShowConfig = {
+      ...base,
+      showName: showNameInput.trim() || base.showName,
+      shortName: showShortNameInput.trim() || base.shortName,
+      branding: {
+        ...base.branding,
+        headerKicker: showHeaderKickerInput.trim() || base.branding?.headerKicker || "",
+        appTitle: showAppTitleInput.trim() || base.branding?.appTitle || "",
+        footerCopy: showFooterCopyInput.trim() || base.branding?.footerCopy || "",
+      },
+      terminology: {
+        ...base.terminology,
+        weeklyCouncilLabel: weeklyLabelInput.trim() || base.terminology.weeklyCouncilLabel,
+        jrCouncilLabel: jrLabelInput.trim() || base.terminology.jrCouncilLabel,
+        draftLabel: draftLabelInput.trim() || base.terminology.draftLabel,
+        leaderboardLabel:
+          leaderboardLabelInput.trim() || base.terminology.leaderboardLabel,
+        adminLabel: adminLabelInput.trim() || base.terminology.adminLabel,
+        finaleLabelDefault:
+          finaleLabelInput.trim() || base.terminology.finaleLabelDefault,
+      },
+    };
+
+    try {
+      await saveShowConfig(nextConfig, nextConfig.slug);
+      updateGameState((prev) => ({
+        ...prev,
+        showConfig: nextConfig,
+      }));
+      setMsg({ text: "Show configuration saved.", type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to save show config: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleCreateSeason = async () => {
+    const seasonId = newSeasonId.trim();
+    const label = newSeasonLabel.trim();
+    if (!seasonId) {
+      setMsg({ text: "Season ID is required.", type: "error" });
+      return;
+    }
+    if (!label) {
+      setMsg({ text: "Season label is required.", type: "error" });
+      return;
+    }
+
+    const castNames = parseSeasonCastNames();
+    const stateCastNames =
+      castNames.length > 0
+        ? castNames
+        : Object.keys(gameState.castStatus || {}).sort((a, b) => a.localeCompare(b));
+    const nextCastStatus = Object.fromEntries(
+      stateCastNames.map((name) => [
+        name,
+        {
+          isWinner: false,
+          isFirstOut: false,
+          isTraitor: false,
+          isEliminated: false,
+          portraitUrl: null,
+        },
+      ])
+    );
+
+    try {
+      const nextSeason: SeasonConfig = {
+        seasonId,
+        label,
+        status: "live",
+        timezone: newSeasonTimezone || "America/New_York",
+        lockSchedule: {
+          draftLockAt: normalizeDateTimeInput(newSeasonDraftLockAt),
+          weeklyLockAt: normalizeDateTimeInput(newSeasonWeeklyLockAt),
+          finaleLockAt: normalizeDateTimeInput(newSeasonFinaleLockAt),
+        },
+        activeWeekId: "week-1",
+        finaleConfig: {
+          enabled: false,
+          label: showConfig?.terminology?.finaleLabelDefault || "Finale Gauntlet",
+          lockAt:
+            normalizeDateTimeInput(newSeasonFinaleLockAt) ||
+            new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+        rulePackId: newSeasonRulePackId || "traitors-classic",
+      };
+      await createSeason(nextSeason);
+      await saveSeasonState(seasonId, {
+        seasonId,
+        rulePackId: nextSeason.rulePackId,
+        showConfig: {
+          ...(showConfig ?? gameState.showConfig),
+          castNames: stateCastNames,
+        },
+        seasonConfig: nextSeason,
+        activeWeekId: "week-1",
+        players: [],
+        castStatus: nextCastStatus,
+        weeklyResults: createEmptyWeeklyResults("week-1"),
+        finaleConfig: nextSeason.finaleConfig,
+        scoreAdjustments: [],
+        weeklySubmissionHistory: [],
+        weeklyScoreHistory: [],
+      });
+      const refreshed = await listSeasonRecords();
+      setSeasonRecords(refreshed);
+      onSeasonChange?.(seasonId);
+      setNewSeasonId("");
+      setNewSeasonLabel("");
+      setNewSeasonCastInput("");
+      setNewSeasonDraftLockAt("");
+      setNewSeasonWeeklyLockAt("");
+      setNewSeasonFinaleLockAt("");
+      setMsg({ text: "Season created and published.", type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to create season: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleLoadSeason = async (seasonId: string) => {
+    try {
+      const seasonState = await fetchSeasonState(seasonId);
+      if (!seasonState) {
+        setMsg({ text: "No saved state found for this season.", type: "error" });
+        return;
+      }
+      updateGameState(seasonState);
+      onSeasonChange?.(seasonId);
+      setMsg({ text: `Loaded ${seasonId}.`, type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to load season: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleArchiveSeason = async (seasonId: string) => {
+    if (!(await requestConfirm(`Archive season ${seasonId}?`))) return;
+    try {
+      await archiveSeason(seasonId);
+      const refreshed = await listSeasonRecords();
+      setSeasonRecords(refreshed);
+      setMsg({ text: `Season ${seasonId} archived.`, type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to archive season: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleFinalizeSeason = async (seasonId: string) => {
+    if (!(await requestConfirm(`Finalize season ${seasonId}?`))) return;
+    try {
+      await finalizeSeason(seasonId);
+      const refreshed = await listSeasonRecords();
+      setSeasonRecords(refreshed);
+      if (
+        (activeSeasonId && activeSeasonId === seasonId) ||
+        gameState.seasonId === seasonId
+      ) {
+        updateGameState((prev) => ({
+          ...prev,
+          seasonConfig: {
+            ...(prev.seasonConfig ?? {
+              seasonId,
+              label: seasonId,
+              status: "finalized",
+              timezone: "UTC",
+              lockSchedule: {},
+            }),
+            status: "finalized",
+          },
+        }));
+      }
+      setMsg({ text: `Season ${seasonId} finalized.`, type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to finalize season: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
+  const handleCloneSeason = async () => {
+    const sourceSeasonId = cloneSeasonId || activeSeasonId || gameState.seasonId;
+    if (!sourceSeasonId) {
+      setMsg({ text: "Select a source season to clone.", type: "error" });
+      return;
+    }
+    const targetSeasonId = newSeasonId.trim();
+    const targetLabel = newSeasonLabel.trim();
+    if (!targetSeasonId || !targetLabel) {
+      setMsg({
+        text: "Provide new season ID and label before cloning.",
+        type: "error",
+      });
+      return;
+    }
+    try {
+      await cloneSeason({
+        sourceSeasonId,
+        targetSeason: {
+          seasonId: targetSeasonId,
+          label: targetLabel,
+          status: "draft",
+          timezone: newSeasonTimezone || "America/New_York",
+          lockSchedule: {
+            draftLockAt: normalizeDateTimeInput(newSeasonDraftLockAt),
+            weeklyLockAt: normalizeDateTimeInput(newSeasonWeeklyLockAt),
+            finaleLockAt: normalizeDateTimeInput(newSeasonFinaleLockAt),
+          },
+          activeWeekId: "week-1",
+          finaleConfig: {
+            enabled: false,
+            label: showConfig?.terminology?.finaleLabelDefault || "Finale Gauntlet",
+            lockAt:
+              normalizeDateTimeInput(newSeasonFinaleLockAt) ||
+              new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          },
+          rulePackId: newSeasonRulePackId || "traitors-classic",
+        },
+      });
+      const refreshed = await listSeasonRecords();
+      setSeasonRecords(refreshed);
+      setMsg({ text: "Season cloned.", type: "success" });
+    } catch (error: any) {
+      setMsg({
+        text: `Failed to clone season: ${error?.message || error}`,
+        type: "error",
+      });
+    }
+  };
+
   const history = Array.isArray(gameState.weeklySubmissionHistory)
     ? gameState.weeklySubmissionHistory
     : [];
@@ -1226,8 +1791,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const bonusResults = gameState.weeklyResults?.bonusGames ?? {};
   const finaleConfig = gameState.finaleConfig ?? {
     enabled: false,
-    label: "Season 4 Finale Gauntlet",
-    lockAt: "2026-02-26T21:00:00-05:00",
+    label: defaultFinaleLabel,
+    lockAt: defaultFinaleLockAt,
   };
   const finaleResults = gameState.weeklyResults?.finaleResults ?? {
     finalWinner: "",
@@ -1298,6 +1863,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const sectionTabs: AdminSectionTab[] = [
     { id: "operations", label: "Operations", summary: "Weekly outcomes and score archives" },
+    { id: "seasons", label: "Seasons", summary: "Season wizard, lifecycle, and switching" },
+    { id: "adjustments", label: "Adjustments", summary: "Manual score ledger and audit trail" },
     { id: "submissions", label: "Submissions", summary: "Incoming weekly votes and merge history" },
     { id: "roster", label: "Roster", summary: "Players, edits, and manual intake" },
     { id: "cast", label: "Cast", summary: "Status and portrait controls" },
@@ -1349,8 +1916,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ...prevState,
           finaleConfig: {
             enabled,
-            label: prevState.finaleConfig?.label || "Season 4 Finale Gauntlet",
-            lockAt: prevState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00",
+            label: prevState.finaleConfig?.label || defaultFinaleLabel,
+            lockAt: prevState.finaleConfig?.lockAt || defaultFinaleLockAt,
           },
         }))
       }
@@ -1360,7 +1927,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           finaleConfig: {
             enabled: Boolean(prevState.finaleConfig?.enabled),
             label: value,
-            lockAt: prevState.finaleConfig?.lockAt || "2026-02-26T21:00:00-05:00",
+            lockAt: prevState.finaleConfig?.lockAt || defaultFinaleLockAt,
           },
         }))
       }
@@ -1369,7 +1936,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           ...prevState,
           finaleConfig: {
             enabled: Boolean(prevState.finaleConfig?.enabled),
-            label: prevState.finaleConfig?.label || "Season 4 Finale Gauntlet",
+            label: prevState.finaleConfig?.label || defaultFinaleLabel,
             lockAt: value,
           },
         }))
@@ -1421,6 +1988,383 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     />
   );
 
+  const renderAdjustmentsSection = () => (
+    <section className="soft-card rounded-3xl p-5 md:p-6 space-y-5">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+          Score Ledger
+        </p>
+        <h3 className="headline text-2xl">Manual Score Adjustments</h3>
+        <p className="text-sm text-[color:var(--text-muted)]">
+          Add or remove point corrections with an auditable reason.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <select
+          value={newAdjustmentPlayerId}
+          onChange={(e) => setNewAdjustmentPlayerId(e.target.value)}
+          className="field-soft p-3 text-sm"
+        >
+          <option value="">Select player...</option>
+          {gameState.players
+            .slice()
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((player) => (
+              <option key={player.id} value={player.id}>
+                {player.name}
+              </option>
+            ))}
+        </select>
+        <input
+          type="number"
+          step="0.5"
+          value={newAdjustmentPoints}
+          onChange={(e) => setNewAdjustmentPoints(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Points (+/-)"
+        />
+        <input
+          type="text"
+          value={newAdjustmentWeekId}
+          onChange={(e) => setNewAdjustmentWeekId(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Week ID (optional)"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            void addScoreAdjustmentEntry();
+          }}
+          className="btn-primary px-4 text-[11px]"
+        >
+          Add Adjustment
+        </button>
+      </div>
+
+      <input
+        type="text"
+        value={newAdjustmentReason}
+        onChange={(e) => setNewAdjustmentReason(e.target.value)}
+        className="field-soft p-3 text-sm w-full"
+        placeholder="Reason (required)"
+      />
+
+      <div className="space-y-2">
+        {scoreAdjustments.length === 0 ? (
+          <p className="text-sm text-[color:var(--text-muted)]">
+            No manual score adjustments recorded for this season.
+          </p>
+        ) : (
+          scoreAdjustments.map((adjustment) => {
+            const player = gameState.players.find((entry) => entry.id === adjustment.playerId);
+            return (
+              <article
+                key={adjustment.id}
+                className="soft-card soft-card-subtle rounded-2xl p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[color:var(--text)] truncate">
+                    {player?.name || adjustment.playerId}
+                  </p>
+                  <p className="text-xs text-[color:var(--text-muted)] truncate">
+                    {adjustment.reason}
+                    {adjustment.weekId ? ` · ${adjustment.weekId}` : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`text-sm font-semibold ${
+                      adjustment.points >= 0 ? "text-emerald-400" : "text-rose-400"
+                    }`}
+                  >
+                    {adjustment.points > 0 ? "+" : ""}
+                    {adjustment.points}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void removeScoreAdjustmentEntry(adjustment);
+                    }}
+                    className="btn-secondary px-3 text-[11px]"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
+    </section>
+  );
+
+  const renderSeasonsSection = () => (
+    <section className="soft-card rounded-3xl p-5 md:p-6 space-y-5">
+      <div className="flex flex-col gap-1">
+        <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+          Season Shell
+        </p>
+        <h3 className="headline text-2xl">New Season Wizard</h3>
+        <p className="text-sm text-[color:var(--text-muted)]">
+          Create, clone, archive, and switch seasons without code changes.
+        </p>
+      </div>
+
+      <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-3">
+        <div className="flex flex-col gap-1">
+          <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">
+            Show Setup
+          </p>
+          <p className="text-sm text-[color:var(--text-muted)]">
+            White-label branding and terminology used across the app shell.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input
+            type="text"
+            value={showNameInput}
+            onChange={(e) => setShowNameInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Show name"
+          />
+          <input
+            type="text"
+            value={showShortNameInput}
+            onChange={(e) => setShowShortNameInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Short name"
+          />
+          <input
+            type="text"
+            value={showHeaderKickerInput}
+            onChange={(e) => setShowHeaderKickerInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Header kicker"
+          />
+          <input
+            type="text"
+            value={showAppTitleInput}
+            onChange={(e) => setShowAppTitleInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="App title"
+          />
+          <input
+            type="text"
+            value={showFooterCopyInput}
+            onChange={(e) => setShowFooterCopyInput(e.target.value)}
+            className="field-soft p-3 text-sm md:col-span-2"
+            placeholder="Footer copy"
+          />
+          <input
+            type="text"
+            value={weeklyLabelInput}
+            onChange={(e) => setWeeklyLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Weekly label"
+          />
+          <input
+            type="text"
+            value={jrLabelInput}
+            onChange={(e) => setJrLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="JR label"
+          />
+          <input
+            type="text"
+            value={draftLabelInput}
+            onChange={(e) => setDraftLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Draft label"
+          />
+          <input
+            type="text"
+            value={leaderboardLabelInput}
+            onChange={(e) => setLeaderboardLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Leaderboard label"
+          />
+          <input
+            type="text"
+            value={adminLabelInput}
+            onChange={(e) => setAdminLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Admin label"
+          />
+          <input
+            type="text"
+            value={finaleLabelInput}
+            onChange={(e) => setFinaleLabelInput(e.target.value)}
+            className="field-soft p-3 text-sm"
+            placeholder="Finale label"
+          />
+        </div>
+        <button
+          type="button"
+          className="btn-secondary px-4 text-[11px]"
+          onClick={() => {
+            void handleSaveShowConfiguration();
+          }}
+        >
+          Save Show Config
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input
+          type="text"
+          value={newSeasonId}
+          onChange={(e) => setNewSeasonId(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Season ID (e.g. traitors-s5)"
+        />
+        <input
+          type="text"
+          value={newSeasonLabel}
+          onChange={(e) => setNewSeasonLabel(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Season label"
+        />
+        <input
+          type="text"
+          value={newSeasonTimezone}
+          onChange={(e) => setNewSeasonTimezone(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Timezone (e.g. America/New_York)"
+        />
+        <select
+          value={newSeasonRulePackId}
+          onChange={(e) => setNewSeasonRulePackId(e.target.value)}
+          className="field-soft p-3 text-sm"
+          >
+          {RULE_PACKS.map((rulePack) => (
+            <option key={rulePack.id} value={rulePack.id}>
+              {rulePack.name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="datetime-local"
+          value={newSeasonDraftLockAt}
+          onChange={(e) => setNewSeasonDraftLockAt(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Draft lock"
+        />
+        <input
+          type="datetime-local"
+          value={newSeasonWeeklyLockAt}
+          onChange={(e) => setNewSeasonWeeklyLockAt(e.target.value)}
+          className="field-soft p-3 text-sm"
+          placeholder="Weekly lock"
+        />
+        <input
+          type="datetime-local"
+          value={newSeasonFinaleLockAt}
+          onChange={(e) => setNewSeasonFinaleLockAt(e.target.value)}
+          className="field-soft p-3 text-sm md:col-span-2"
+          placeholder="Finale lock"
+        />
+      </div>
+
+      <textarea
+        value={newSeasonCastInput}
+        onChange={(e) => setNewSeasonCastInput(e.target.value)}
+        className="field-soft p-3 text-sm w-full min-h-[110px]"
+        placeholder="Cast import (one per line or comma-separated). Leave blank to reuse current cast."
+      />
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-primary px-4 text-[11px]"
+          onClick={() => {
+            void handleCreateSeason();
+          }}
+        >
+          Publish New Season
+        </button>
+        <select
+          value={cloneSeasonId}
+          onChange={(e) => setCloneSeasonId(e.target.value)}
+          className="field-soft p-2.5 text-sm"
+        >
+          <option value="">Clone source season...</option>
+          {seasonRecords.map((season) => (
+            <option key={season.seasonId} value={season.seasonId}>
+              {season.label} ({season.seasonId})
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="btn-secondary px-4 text-[11px]"
+          onClick={() => {
+            void handleCloneSeason();
+          }}
+        >
+          Clone to New Season
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {seasonRecords.length === 0 ? (
+          <p className="text-sm text-[color:var(--text-muted)]">
+            No seasons found in shell collections yet.
+          </p>
+        ) : (
+          seasonRecords.map((season) => (
+            <article
+              key={season.seasonId}
+              className="soft-card soft-card-subtle rounded-2xl p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[color:var(--text)] truncate">
+                  {season.label}
+                </p>
+                <p className="text-xs text-[color:var(--text-muted)] truncate">
+                  {season.seasonId} · {season.status.toUpperCase()} · {season.rulePackId || "traitors-classic"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 text-[11px]"
+                  onClick={() => {
+                    void handleLoadSeason(season.seasonId);
+                  }}
+                >
+                  {activeSeasonId === season.seasonId ? "Loaded" : "Load"}
+                </button>
+                {season.status === "live" || season.status === "draft" ? (
+                  <button
+                    type="button"
+                    className="btn-secondary px-3 text-[11px]"
+                    onClick={() => {
+                      void handleFinalizeSeason(season.seasonId);
+                    }}
+                  >
+                    Finalize
+                  </button>
+                ) : null}
+                {season.status !== "archived" && (
+                  <button
+                    type="button"
+                    className="btn-secondary px-3 text-[11px]"
+                    onClick={() => {
+                      void handleArchiveSeason(season.seasonId);
+                    }}
+                  >
+                    Archive
+                  </button>
+                )}
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+
   const renderRosterSection = () => (
     <RosterSection
       players={gameState.players}
@@ -1468,7 +2412,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const renderCastSection = () => (
     <CastSection
-      castNames={CAST_NAMES}
+      castNames={castNames}
       castStatus={gameState.castStatus}
       defaultStatus={defaultStatus}
       onSetCastPortrait={(name) => {
@@ -1498,6 +2442,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     switch (activeSection) {
       case "operations":
         return renderOperationsSection();
+      case "seasons":
+        return renderSeasonsSection();
+      case "adjustments":
+        return renderAdjustmentsSection();
       case "submissions":
         return renderSubmissionsSection();
       case "roster":
@@ -1578,7 +2526,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="premium-row-item">
                 <p className="premium-row-title">Active Cast</p>
                 <p className="premium-row-value">
-                  {activeCastNames.length}/{CAST_NAMES.length}
+                  {activeCastNames.length}/{castNames.length}
                 </p>
               </div>
               <div className="premium-row-item">

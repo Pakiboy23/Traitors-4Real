@@ -174,7 +174,10 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Incoming Votes</p>
-            <h3 className="headline text-2xl">Weekly submissions</h3>
+            <h3 className="headline text-2xl">Weekly submissions (active week)</h3>
+            <p className="text-sm text-[color:var(--text-muted)]">
+              Queue shows unmerged votes for the current active week.
+            </p>
             <p className="text-sm text-[color:var(--text-muted)]">API endpoint: {pocketbaseUrl}</p>
           </div>
           <div className="flex gap-2">
@@ -210,7 +213,7 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
             const bonusScore = getSubmissionBonusScore(submission);
             const match = findPlayerMatch(players, submission, league);
             const isLate = isSubmissionLateForFinale(submission);
-            const canMerge = (Boolean(match) || league === "jr") && !isLate;
+            const canMerge = Boolean(match) || league === "jr";
             const createdLabel = submission.created ? new Date(submission.created).toLocaleString() : "";
             return (
               <article key={submission.id} className="soft-card soft-card-subtle rounded-2xl p-4">
@@ -242,11 +245,13 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                       disabled={!canMerge}
                       className={`px-4 py-2 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
                         canMerge
-                          ? "bg-[color:var(--success)] text-black"
+                          ? isLate
+                            ? "bg-[color:var(--warning)] text-black"
+                            : "bg-[color:var(--success)] text-black"
                           : "border border-[color:var(--panel-border)] text-[color:var(--text-muted)] cursor-not-allowed"
                       }`}
                     >
-                      {isLate ? "Locked" : "Merge"}
+                      {isLate ? "Merge Late" : "Merge"}
                     </button>
                     <button
                       type="button"
