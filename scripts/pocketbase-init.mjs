@@ -13,6 +13,37 @@ if (!adminEmail || !adminPassword) {
 
 const pb = new PocketBase(url);
 
+const formatError = (error) => {
+  const status = error?.status ?? error?.response?.code ?? "unknown";
+  const message =
+    error?.response?.message || error?.message || "Unknown PocketBase error";
+  const data = error?.response?.data;
+  const dataSummary =
+    data && Object.keys(data).length > 0 ? ` data=${JSON.stringify(data)}` : "";
+  return `[status=${status}] ${message}${dataSummary}`;
+};
+
+const authAsSuperuser = async () => {
+  try {
+    await pb.admins.authWithPassword(adminEmail, adminPassword);
+    return;
+  } catch (adminsError) {
+    try {
+      await pb.collection("_superusers").authWithPassword(adminEmail, adminPassword);
+      console.log(
+        "Authenticated via _superusers endpoint (fallback from admins endpoint)."
+      );
+      return;
+    } catch (superusersError) {
+      throw new Error(
+        `Superuser authentication failed. admins endpoint: ${formatError(
+          adminsError
+        )}; _superusers endpoint: ${formatError(superusersError)}`
+      );
+    }
+  }
+};
+
 const ensureCollection = async (name, definition) => {
   const collections = await pb.collections.getFullList();
   const existing = collections.find((c) => c.name === name);
@@ -26,7 +57,7 @@ const ensureCollection = async (name, definition) => {
 };
 
 try {
-  await pb.admins.authWithPassword(adminEmail, adminPassword);
+  await authAsSuperuser();
 
   await ensureCollection("admins", {
     name: "admins",
@@ -382,6 +413,9 @@ try {
 
   console.log("PocketBase schema ready.");
 } catch (error) {
-  console.error("PocketBase init failed:", error?.message || error);
+  console.error("PocketBase init failed:", formatError(error));
+  console.error(
+    "Hint: this script requires PocketBase superuser credentials (not app admin credentials)."
+  );
   process.exit(1);
 }

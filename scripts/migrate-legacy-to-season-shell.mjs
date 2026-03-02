@@ -14,6 +14,37 @@ if (!adminEmail || !adminPassword) {
 
 const pb = new PocketBase(url);
 
+const formatError = (error) => {
+  const status = error?.status ?? error?.response?.code ?? "unknown";
+  const message =
+    error?.response?.message || error?.message || "Unknown PocketBase error";
+  const data = error?.response?.data;
+  const dataSummary =
+    data && Object.keys(data).length > 0 ? ` data=${JSON.stringify(data)}` : "";
+  return `[status=${status}] ${message}${dataSummary}`;
+};
+
+const authAsSuperuser = async () => {
+  try {
+    await pb.admins.authWithPassword(adminEmail, adminPassword);
+    return;
+  } catch (adminsError) {
+    try {
+      await pb.collection("_superusers").authWithPassword(adminEmail, adminPassword);
+      console.log(
+        "Authenticated via _superusers endpoint (fallback from admins endpoint)."
+      );
+      return;
+    } catch (superusersError) {
+      throw new Error(
+        `Superuser authentication failed. admins endpoint: ${formatError(
+          adminsError
+        )}; _superusers endpoint: ${formatError(superusersError)}`
+      );
+    }
+  }
+};
+
 const isNotFound = (error) =>
   error?.status === 404 || error?.response?.code === 404;
 
@@ -47,8 +78,29 @@ const getAll = async (collection, perPage = 200) => {
   return items;
 };
 
+const ensureRequiredCollections = async () => {
+  const required = [
+    "games",
+    "showConfigs",
+    "seasons",
+    "seasonStates",
+    "scoreAdjustments",
+    "submissions",
+  ];
+  const existing = await pb.collections.getFullList();
+  const existingNames = new Set(existing.map((collection) => collection.name));
+  const missing = required.filter((name) => !existingNames.has(name));
+  if (missing.length === 0) return;
+  throw new Error(
+    `Missing required PocketBase collections: ${missing.join(
+      ", "
+    )}. Run 'node scripts/pocketbase-init.mjs' first.`
+  );
+};
+
 try {
-  await pb.admins.authWithPassword(adminEmail, adminPassword);
+  await authAsSuperuser();
+  await ensureRequiredCollections();
 
   const game = await pb
     .collection("games")
@@ -171,6 +223,9 @@ try {
     `Migration complete for show=${showSlug}, season=${seasonId}. Updated submissions: ${updatedSubmissions}.`
   );
 } catch (error) {
-  console.error("Migration failed:", error?.message || error);
+  console.error("Migration failed:", formatError(error));
+  console.error(
+    "Hint: use PocketBase superuser credentials (not app admin credentials) and run scripts/pocketbase-init.mjs before migrating."
+  );
   process.exit(1);
 }
