@@ -24,7 +24,16 @@
       ]
     },
     "allowImportingTsExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+    "strict": false,
+    "incremental": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ]
   },
   "include": [
     "App.tsx",
@@ -35,7 +44,9 @@
     "src/**/*.tsx",
     "components/**/*.ts",
     "components/**/*.tsx",
-    "services/**/*.ts"
+    "services/**/*.ts",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

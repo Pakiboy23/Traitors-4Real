@@ -70,7 +70,7 @@ const Layout: React.FC<LayoutProps> = ({
     { id: "admin", label: terminology?.adminLabel || "Admin" },
   ];
 
-  const envLabel = import.meta.env.DEV ? "Development" : "Production";
+  const envLabel = process.env.NODE_ENV === "development" ? "Development" : "Production";
 
   return (
     <motion.div

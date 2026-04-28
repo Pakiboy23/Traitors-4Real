@@ -18,7 +18,7 @@ import {
   PremiumSelect,
   PremiumStatusBadge,
 } from "../src/ui/premium";
-import { submitDraftEntry } from "../services/pocketbase";
+import { submitDraftEntry } from "../services/supabase";
 
 interface DraftFormProps {
   gameState: GameState;
@@ -35,7 +35,7 @@ function shuffleArray<T>(array: T[]): T[] {
   return result;
 }
 
-const DRAFT_CLOSED = String(import.meta.env.VITE_DRAFT_CLOSED ?? "true").toLowerCase() !== "false";
+const DRAFT_CLOSED = String(process.env.NEXT_PUBLIC_DRAFT_CLOSED ?? "true").toLowerCase() !== "false";
 const DRAFT_SIZE = 10;
 const createEmptyPick = (): DraftPick => ({ member: "", rank: 1, role: "Faithful" });
 const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);

@@ -1,6 +1,10 @@
 import path from 'path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const pocketbasePackage = require.resolve('pocketbase');
 
 export default defineConfig(() => {
     return {
@@ -27,6 +31,7 @@ export default defineConfig(() => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          pocketbase: pocketbasePackage,
         }
       }
     };

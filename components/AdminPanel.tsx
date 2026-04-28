@@ -18,7 +18,7 @@ import {
   WeeklyScoreSnapshot,
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
-import { pocketbaseUrl } from "../src/lib/pocketbase";
+import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
 import { RULE_PACKS } from "../src/config/rulePacks";
@@ -42,7 +42,7 @@ import {
   savePlayerPortrait,
   SubmissionRecord,
   subscribeToWeeklySubmissions,
-} from "../services/pocketbase";
+} from "../services/supabase";
 import {
   PremiumCard,
   PremiumPanelHeader,
@@ -667,36 +667,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSubmissionsError(null);
     try {
       const scopedSeasonId = getActiveSeasonId();
-      let records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
-      if (records.length === 0) {
-        try {
-          const params = new URLSearchParams({
-            perPage: "200",
-            sort: "-created",
-          });
-          if (scopedSeasonId) {
-            params.set("filter", `seasonId="${scopedSeasonId.replace(/"/g, '\\"')}"`);
-          }
-          const response = await fetch(
-            `${pocketbaseUrl}/api/collections/submissions/records?${params.toString()}`
-          );
-          if (response.ok) {
-            const data = (await response.json()) as { items?: SubmissionRecord[] };
-            if (Array.isArray(data.items)) {
-              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
-            }
-          }
-        } catch (fallbackError) {
-          logger.warn("Fallback submissions fetch failed:", fallbackError);
-        }
-      }
+      const records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
       setSubmissions(records.filter((record) => isSubmissionForActiveWeek(record)));
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
       setIsLoadingSubmissions(false);
     }
-  }, [activeSeasonId, pocketbaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
+  }, [activeSeasonId, supabaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
 
   useEffect(() => {
     refreshSubmissions();
@@ -1955,7 +1933,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const renderSubmissionsSection = () => (
     <SubmissionsSection
-      pocketbaseUrl={pocketbaseUrl}
+      supabaseUrl={supabaseUrl}
       players={gameState.players}
       submissions={submissions}
       isLoadingSubmissions={isLoadingSubmissions}

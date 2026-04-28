@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.next
 dist
 dist-ssr
 *.local
@@ -26,6 +27,7 @@ dist-ssr
 /.env
 
 # PocketBase
+/pocketbase
 pb_data
 pb_public
 bin
@@ -38,3 +40,5 @@ firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*
 backups/
+.env.local
+.vercel

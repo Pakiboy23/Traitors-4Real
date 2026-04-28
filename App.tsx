@@ -17,6 +17,7 @@ import {
   GameState,
   inferActiveWeekId,
   normalizeWeekId,
+  League,
   PlayerEntry,
   ScoreAdjustment,
   SeasonConfig,
@@ -46,7 +47,7 @@ import {
   submitGrowthEvent,
   subscribeToGameState,
   fetchWeeklySubmissions,
-} from "./services/pocketbase";
+} from "./services/supabase";
 
 const STORAGE_KEY = "traitors_db_v4";
 const buildDefaultFinaleLockAt = () =>
@@ -744,7 +745,7 @@ const App: React.FC = () => {
       {
         ...entry,
         weeklyPredictions: normalizedWeeklyPredictions,
-        league: entry.league === "jr" ? "jr" : "main",
+        league: (entry.league === "jr" ? "jr" : "main") as League,
       },
     ];
     updateGameState({ ...gameState, players: updatedPlayers });
