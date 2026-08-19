@@ -42,3 +42,10 @@ ui-debug.log*
 backups/
 .env.local
 .vercel
+
+# Next.js static export + Capacitor bundled web assets
+/out
+/native-web
+
+# TypeScript incremental build cache
+*.tsbuildinfo

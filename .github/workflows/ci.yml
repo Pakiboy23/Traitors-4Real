@@ -9,6 +9,9 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -28,15 +31,27 @@ jobs:
         run: npm ci
 
       - name: Typecheck
-        run: npm run typecheck --if-present
+        run: npm run typecheck
 
-      - name: Lint
-        run: npm run lint --if-present
-
+      # No test runner is configured yet, so this is a deliberate no-op today.
+      # It is wired up now so that adding a "test" script to package.json is
+      # enough to make scoring tests gate every PR, with no workflow change.
       - name: Test
         run: npm test --if-present
 
-      - name: Build (frontend)
+      - name: Build (Next.js)
         env:
-          VITE_POCKETBASE_URL: https://api.traitorsfantasydraft.online
+          # Next.js inlines NEXT_PUBLIC_* at build time. Real values come from
+          # repository secrets when available; the fallbacks keep CI meaningful
+          # on forks by exercising the same code path with placeholder config.
+          # The anon key is safe to expose either way — it ships in the client
+          # bundle by design and is governed by row-level security.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
         run: npm run build
+
+      - name: Build (Capacitor bundled web assets)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+        run: npm run native:web:build

@@ -1,9 +1,16 @@
-name: Deploy (Fly)
+# RETIRED — this pipeline deploys the pre-April 2026 architecture.
+#
+# Production now runs the Next.js app on Vercel against Supabase. This workflow
+# still deploys the PocketBase backend to Fly.io and the old Vite frontend, and
+# smoke-checks api.traitorsfantasydraft.online, which is no longer the API.
+#
+# The automatic push trigger has been removed so that merging to main can no
+# longer resurrect the retired stack. It is kept behind manual dispatch only as
+# a rollback path; delete this file once the Fly apps are decommissioned.
+name: Deploy (Fly, retired)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 concurrency:
   group: deploy-production
