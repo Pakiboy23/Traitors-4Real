@@ -33,6 +33,17 @@ function fail(message) {
   process.exit(1);
 }
 
+// `next build` loads .env.local itself, but that happens in the child process
+// below — after the preflight check. Load the same files here first so a
+// standard Next.js setup isn't rejected for config that is in fact present.
+try {
+  const { loadEnvConfig } = (await import("@next/env")).default;
+  loadEnvConfig(repoRoot);
+} catch {
+  // @next/env ships with Next.js. If it can't be resolved, fall through and
+  // check the ambient environment — explicitly exported variables still work.
+}
+
 // Next.js inlines NEXT_PUBLIC_* at build time. A bundled shell cannot pick these
 // up later from the server, so an incomplete environment silently produces an
 // app that can never reach Supabase — caught here rather than in App Review.
@@ -71,7 +82,14 @@ if (!existsSync(exportDir)) {
 console.log("[native:web:build] Publishing export to native-web/...");
 cpSync(exportDir, nativeWebDir, { recursive: true });
 
+// CAPACITOR_BUNDLED must stay set for the sync too. Without it,
+// capacitor.config.ts resolves webDir back to `public` and re-adds the live-site
+// server.url — shipping a shell that loads the website over the network, which
+// is the Guideline 4.2 rejection this build exists to avoid.
 console.log(
   "\n[native:web:build] Done. native-web/ is ready.\n" +
-    "Next: npx cap sync ios   (or: npm run ios:sync:bundled)\n"
+    "Next: npm run ios:sync:bundled\n" +
+    "  (equivalently: CAPACITOR_BUNDLED=1 npx cap sync ios)\n" +
+    "Do not run a bare `npx cap sync ios` — that syncs public/ against the\n" +
+    "live site instead of this bundle.\n"
 );
