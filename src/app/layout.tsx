@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import "../index.css";
 
 export const metadata: Metadata = {
-  title: "Traitors Fantasy Draft",
-  description: "Fantasy draft companion for The Traitors.",
-  applicationName: "Traitors Fantasy Draft",
+  title: "Round Table Draft",
+  description: "Fantasy draft and weekly scoring for a private reality-TV league.",
+  applicationName: "Round Table Draft",
   manifest: "/manifest.webmanifest",
   // Generated from design/app-icon.svg by scripts/build-icons.mjs.
   icons: {
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "Traitors Draft",
+    title: "Round Table Draft",
     // The app is dark, so a light status bar over it would be unreadable.
     statusBarStyle: "black-translucent",
   },

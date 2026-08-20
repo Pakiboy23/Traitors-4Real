@@ -8,12 +8,13 @@ export const DEFAULT_SHOW_SLUG = "default";
 
 export const DEFAULT_SHOW_CONFIG: ShowConfig = {
   slug: DEFAULT_SHOW_SLUG,
-  showName: "Traitors Fantasy Draft",
-  shortName: "Traitors Fantasy",
+  showName: "Round Table Draft",
+  shortName: "Round Table",
+  leagueName: "Private League",
   branding: {
-    headerKicker: "Traitors Fantasy Draft",
+    headerKicker: "Round Table Draft",
     appTitle: "Round Table Command Desk",
-    footerCopy: "Traitors Fantasy Draft: Titanic Swim Team Edition workspace.",
+    footerCopy: "Round Table Draft workspace.",
   },
   terminology: {
     weeklyCouncilLabel: COUNCIL_LABELS.weekly,

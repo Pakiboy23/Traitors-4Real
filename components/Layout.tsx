@@ -116,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({
           <motion.div className="premium-header-title-row" variants={cardRevealVariants}>
             <div>
               <p className="premium-kicker">
-                {showConfig?.branding?.headerKicker || showConfig?.showName || "Traitors Fantasy Draft"}
+                {showConfig?.branding?.headerKicker || showConfig?.showName || "Round Table Draft"}
               </p>
               <h1 className="premium-app-title">
                 {showConfig?.branding?.appTitle || "Round Table Command Desk"}
@@ -138,7 +138,7 @@ const Layout: React.FC<LayoutProps> = ({
         </motion.main>
 
         <footer className="premium-footer">
-          {showConfig?.branding?.footerCopy || "Traitors Fantasy Draft workspace."}
+          {showConfig?.branding?.footerCopy || "Round Table Draft workspace."}
         </footer>
       </div>
     </motion.div>

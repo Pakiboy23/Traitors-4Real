@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Support — Traitors Fantasy Draft",
-  description: "Help with the Traitors Fantasy Draft app: entries, scoring, notifications, and data removal.",
+  title: "Support — Round Table Draft",
+  description: "Help with Round Table Draft: entries, scoring, notifications, and data removal.",
 };
 
 /**
@@ -18,10 +18,11 @@ export default function Support() {
       <h1>Support</h1>
 
       <p>
-        Traitors Fantasy Draft is a companion app for a private fantasy league
-        built around <em>The Traitors</em>. It is not affiliated with,
-        endorsed by, or connected to NBCUniversal, Peacock, or the producers of
-        the programme.
+        Round Table Draft runs a private fantasy league built around a reality
+        competition series. It is an independent app: it is not affiliated with,
+        endorsed by, or connected to any television network, studio, or
+        production company, and it is not an official companion to any
+        programme.
       </p>
 
       <h2>Contact</h2>
@@ -73,7 +74,7 @@ export default function Support() {
 
       <h3>How do I turn notifications off?</h3>
       <p>
-        iOS Settings, then Notifications, then Traitors Fantasy Draft. Turning
+        iOS Settings, then Notifications, then Round Table Draft. Turning
         them off stops reminders immediately.
       </p>
 

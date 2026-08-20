@@ -4,7 +4,7 @@ const isBundledBuild = process.env.CAPACITOR_BUNDLED === "1";
 
 const config: CapacitorConfig = {
   appId: "online.traitorsfantasydraft.app",
-  appName: "Traitors Fantasy Draft",
+  appName: "Round Table Draft",
   webDir: isBundledBuild ? "native-web" : "public",
   ...(isBundledBuild
     ? {}

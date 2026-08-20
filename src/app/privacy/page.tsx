@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Traitors Fantasy Draft",
-  description: "What the Traitors Fantasy Draft app collects, why, and how to have it removed.",
+  title: "Privacy Policy — Round Table Draft",
+  description: "What Round Table Draft collects, why, and how to have it removed.",
 };
 
 const UPDATED = "20 August 2026";
@@ -22,10 +22,11 @@ export default function PrivacyPolicy() {
       <p className="legal-meta">Last updated {UPDATED}</p>
 
       <p>
-        Traitors Fantasy Draft is a companion app for a private fantasy league
-        built around the television series <em>The Traitors</em>. It is not
-        affiliated with, endorsed by, or connected to NBCUniversal, Peacock, or
-        the producers of the programme.
+        Round Table Draft runs a private fantasy league built around a reality
+        competition series. It is an independent app: it is not affiliated with,
+        endorsed by, or connected to any television network, studio, or
+        production company, and it is not an official companion to any
+        programme.
       </p>
 
       <h2>What we collect</h2>

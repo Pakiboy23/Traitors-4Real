@@ -447,12 +447,12 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({
     const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     const shareText = `${
       name || "A league member"
-    } submitted picks in ${showConfig?.shortName || "Traitors Fantasy"}. Lock yours in now.`;
+    } submitted picks in ${showConfig?.shortName || "Round Table"}. Lock yours in now.`;
 
     try {
       if (navigator.share) {
         await navigator.share({
-          title: `${showConfig?.shortName || "Traitors Fantasy"}: Weekly Picks`,
+          title: `${showConfig?.shortName || "Round Table"}: Weekly Picks`,
           text: shareText,
           url: shareUrl,
         });

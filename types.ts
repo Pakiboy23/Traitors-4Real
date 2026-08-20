@@ -124,6 +124,13 @@ export interface ShowConfig {
   slug: string;
   showName: string;
   shortName: string;
+  /**
+   * What this particular group of players calls itself.
+   *
+   * Separate from showName on purpose: the storefront name and the league name
+   * answer to different audiences, and only one of them is public.
+   */
+  leagueName: string;
   branding: ShowBranding;
   terminology: ShowTerminology;
   defaultUiVariant: UiVariant;

@@ -30,6 +30,7 @@ export const sanitizeShowConfig = (input: unknown): ShowConfig => {
     slug: readString(source?.slug, DEFAULT_SHOW_CONFIG.slug),
     showName: readString(source?.showName, DEFAULT_SHOW_CONFIG.showName),
     shortName: readString(source?.shortName, DEFAULT_SHOW_CONFIG.shortName),
+    leagueName: readString(source?.leagueName, DEFAULT_SHOW_CONFIG.leagueName),
     branding: {
       logoUrl:
         typeof branding?.logoUrl === "string" && branding.logoUrl.trim()
