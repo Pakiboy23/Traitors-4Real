@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Source art for the app icon.
+
+    The mark is the game in one shape: a shield split down the middle, gold on
+    one side and crimson on the other, with a keyhole across the seam. Which
+    half you are on is the whole question, and the keyhole is what nobody can
+    see through until the reveal.
+
+    Palette is taken from the app's own tokens in src/index.css: the base
+    background, the gold accent, and the traitor crimson. Rendered by
+    scripts/build-icons.mjs.
+  -->
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2231"/>
+      <stop offset="1" stop-color="#080b11"/>
+    </linearGradient>
+
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3d8a2"/>
+      <stop offset="1" stop-color="#c9a765"/>
+    </linearGradient>
+
+    <linearGradient id="crimson" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b23446"/>
+      <stop offset="1" stop-color="#7d1f2a"/>
+    </linearGradient>
+
+    <!-- The shield outline, reused as both a clip and a stroked edge. -->
+    <path id="shield" d="
+      M 300 258
+      L 724 258
+      Q 754 258 754 288
+      L 754 520
+      C 754 676 650 786 512 838
+      C 374 786 270 676 270 520
+      L 270 288
+      Q 270 258 300 258
+      Z"/>
+
+    <clipPath id="shieldClip">
+      <use href="#shield"/>
+    </clipPath>
+
+    <!-- Keyhole: a bow over a tapered stem. -->
+    <path id="keyhole" d="
+      M 512 386
+      A 74 74 0 0 1 561 515
+      L 590 660
+      L 434 660
+      L 463 515
+      A 74 74 0 0 1 512 386
+      Z"/>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#field)"/>
+
+  <!-- Scales the mark up to fill the icon grid and recentres it. -->
+  <g transform="translate(512 512) scale(1.24) translate(-512 -548)">
+
+  <g clip-path="url(#shieldClip)">
+    <rect x="270" y="250" width="242" height="600" fill="url(#gold)"/>
+    <rect x="512" y="250" width="242" height="600" fill="url(#crimson)"/>
+  </g>
+
+  <!-- Seam and outer edge, drawn dark so the two halves stay distinct. -->
+  <g clip-path="url(#shieldClip)">
+    <rect x="505" y="250" width="14" height="600" fill="#0d1118"/>
+  </g>
+  <use href="#shield" fill="none" stroke="#0d1118" stroke-width="34"/>
+  <use href="#shield" fill="none" stroke="url(#gold)" stroke-width="14"/>
+
+  <!--
+    The keyhole sits across the seam, so it needs a gold halo: dark on gold
+    reads instantly, dark on crimson does not, and the ring carries it.
+  -->
+  <use href="#keyhole" fill="none" stroke="url(#gold)" stroke-width="30" stroke-linejoin="round"/>
+  <use href="#keyhole" fill="#0d1118"/>
+
+  </g>
+</svg>

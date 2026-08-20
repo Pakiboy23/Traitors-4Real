@@ -113,6 +113,19 @@ to `public/` and re-adds the live-site `server.url`, producing a shell that
 loads a website over the network — which is what App Store Review Guideline 4.2
 rejects.
 
+### Icons and the launch screen
+
+All of it comes from one file, `design/app-icon.svg`:
+
+```bash
+npm run icons:build
+```
+
+That writes the App Store icon, the three launch-screen images, and the web
+favicons and touch icon. Edit the source art, re-run it, commit the output — do
+not hand-edit the PNGs, or the platforms drift apart. The App Store icon is
+written without an alpha channel, which App Store Connect requires.
+
 ## Push notifications
 
 Devices register themselves on launch (`src/native/push.ts`) and tokens land in
