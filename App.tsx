@@ -6,6 +6,7 @@ import Welcome, {
   type TopMoverEntry,
 } from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
+import RulesGuide from "./components/RulesGuide";
 import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
@@ -971,6 +972,8 @@ const App: React.FC = () => {
             uiVariant={uiVariant}
           />
         );
+      case "rules":
+        return <RulesGuide gameState={gameState} uiVariant={uiVariant} />;
       case "weekly":
         return (
           <WeeklyCouncil
