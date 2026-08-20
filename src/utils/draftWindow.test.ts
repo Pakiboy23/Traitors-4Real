@@ -65,6 +65,18 @@ describe("resolveDraftWindow", () => {
     });
   });
 
+  it("flips from open to closed as the clock advances past the lock", () => {
+    // This is the contract DraftForm's lock timer relies on: re-resolving with
+    // a later `now` is what closes a form that was opened before the lock.
+    const lockAt = new Date(NOW + 60_000).toISOString();
+    const state = { seasonConfig: seasonConfig("live", lockAt), showConfig: showConfig(true) };
+
+    expect(resolveDraftWindow(state, { now: NOW }).isOpen).toBe(true);
+    expect(resolveDraftWindow(state, { now: NOW + 59_999 }).isOpen).toBe(true);
+    expect(resolveDraftWindow(state, { now: NOW + 60_000 }).isOpen).toBe(false);
+    expect(resolveDraftWindow(state, { now: NOW + 60_001 }).reason).toBe("past-lock-time");
+  });
+
   it("closes when an admin turns the draft off", () => {
     expect(resolve({ showConfig: showConfig(false) })).toMatchObject({
       isOpen: false,

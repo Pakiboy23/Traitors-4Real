@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
@@ -60,11 +60,37 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const [isSubmitting, setIsSubmitting] = useState(false);
   // The season record is the authority on whether the draft accepts entries,
   // so opening it on premiere night is an admin action rather than a redeploy.
+  //
+  // `now` is state rather than a bare Date.now() so that a form left open
+  // across the scheduled lock actually closes: without it the memo would hold
+  // the timestamp from first render and keep reporting the draft as open.
+  const [now, setNow] = useState(() => Date.now());
   const draftWindow = useMemo(
-    () => resolveDraftWindow(gameState, { forceClosed: readForceClosedFromEnv() }),
-    [gameState]
+    () =>
+      resolveDraftWindow(gameState, {
+        forceClosed: readForceClosedFromEnv(),
+        now,
+      }),
+    [gameState, now]
   );
   const isDraftClosed = !draftWindow.isOpen;
+
+  useEffect(() => {
+    if (!draftWindow.isOpen || !draftWindow.lockAt) return;
+
+    const msUntilLock = Date.parse(draftWindow.lockAt) - Date.now();
+    if (msUntilLock <= 0) {
+      setNow(Date.now());
+      return;
+    }
+
+    // setTimeout truncates delays beyond a signed 32-bit int, which would fire
+    // immediately and spin. Clamp instead; the effect re-arms on each tick and
+    // converges on the real lock time.
+    const delay = Math.min(msUntilLock + 250, 2_147_483_647);
+    const timer = setTimeout(() => setNow(Date.now()), delay);
+    return () => clearTimeout(timer);
+  }, [draftWindow.isOpen, draftWindow.lockAt]);
   const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
     a.localeCompare(b)
   );
@@ -126,10 +152,17 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isDraftClosed) {
+    // Re-resolve against the clock at submit time rather than trusting the
+    // rendered snapshot, so a tab opened before the lock cannot submit after it.
+    const liveWindow = resolveDraftWindow(gameState, {
+      forceClosed: readForceClosedFromEnv(),
+    });
+
+    if (!liveWindow.isOpen) {
+      setNow(Date.now());
       showToast(
         describeDraftWindow(
-          draftWindow,
+          liveWindow,
           gameState.showConfig?.terminology?.draftLabel || "Draft"
         ),
         "warning"

@@ -241,6 +241,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setLeaderboardLabelInput(source.terminology?.leaderboardLabel || "");
     setAdminLabelInput(source.terminology?.adminLabel || "");
     setFinaleLabelInput(source.terminology?.finaleLabelDefault || "");
+    // Must resync too: the panel can mount before fetchShowConfig() resolves,
+    // and without this a stored draftEnabled:false would be overwritten back to
+    // true by the next save, silently reopening the draft.
+    setDraftEnabledInput((source.featureToggles?.draftEnabled ?? true) !== false);
   }, [showConfig, gameState.showConfig]);
 
   useEffect(() => {
