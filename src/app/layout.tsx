@@ -6,6 +6,22 @@ export const metadata: Metadata = {
   title: "Traitors Fantasy Draft",
   description: "Fantasy draft companion for The Traitors.",
   applicationName: "Traitors Fantasy Draft",
+  manifest: "/manifest.webmanifest",
+  // Generated from design/app-icon.svg by scripts/build-icons.mjs.
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Traitors Draft",
+    // The app is dark, so a light status bar over it would be unreadable.
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -14,6 +30,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#0d1118",
 };
 
 export default function RootLayout({

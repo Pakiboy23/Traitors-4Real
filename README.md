@@ -113,6 +113,49 @@ to `public/` and re-adds the live-site `server.url`, producing a shell that
 loads a website over the network — which is what App Store Review Guideline 4.2
 rejects.
 
+### Icons and the launch screen
+
+All of it comes from one file, `design/app-icon.svg`:
+
+```bash
+npm run icons:build
+```
+
+That writes the App Store icon, the three launch-screen images, and the web
+favicons and touch icon. Edit the source art, re-run it, commit the output — do
+not hand-edit the PNGs, or the platforms drift apart. The App Store icon is
+written without an alpha channel, which App Store Connect requires.
+
+## Push notifications
+
+Devices register themselves on launch (`src/native/push.ts`) and tokens land in
+`public.push_tokens`, which is insert-only for anon and readable by admins.
+
+Reminders are sent by the `send-lock-reminder` Edge Function. It resolves the
+live season, collects that season's iOS tokens, sends through APNs, and prunes
+tokens Apple reports as gone.
+
+```bash
+# Resolve the audience and render the message without contacting Apple.
+curl -X POST "$SUPABASE_URL/functions/v1/send-lock-reminder" \
+  -H "Authorization: Bearer $ANON_KEY" -H "Content-Type: application/json" \
+  -d '{"dryRun": true}'
+```
+
+Sending for real needs four function secrets, taken from an APNs auth key in
+the Apple Developer portal:
+
+| Secret | Where it comes from |
+| --- | --- |
+| `APNS_KEY_ID` | Key ID shown when the `.p8` is created |
+| `APNS_TEAM_ID` | Membership details in the developer portal |
+| `APNS_PRIVATE_KEY` | Full `.p8` contents, including the BEGIN and END lines |
+| `APNS_ENV` | `sandbox` for TestFlight builds, `production` for the App Store |
+
+Without them the function returns 503 and names what is missing, rather than
+reporting success and sending nothing — a reminder that quietly fails is only
+discovered after the lock has passed.
+
 ## Deployment
 
 Production is Vercel, deployed from `main`. Set `NEXT_PUBLIC_SUPABASE_URL` and
