@@ -1,4 +1,17 @@
-# Investor/Influencer Ad Concept — Traitors Fantasy Draft
+> **ARCHIVED — written for the previous season, and factually wrong about the stack.**
+>
+> Kept because the video it describes exists in `media/sora/`. Do not use it as
+> a source of truth about the app. Corrections as of August 2026:
+>
+> | This document says | Actually |
+> |---|---|
+> | PocketBase + Fly.io | **Supabase** (Postgres, Auth, Realtime, Edge Functions) on **Vercel** |
+> | Traitors Fantasy Draft | **Round Table Draft** |
+> | Season 4 celebrity cast | 22-person all-civilian cast, season `traitors-new-blood-s1` |
+>
+> See `CLAUDE.md` for the current architecture.
+
+# Investor/Influencer Ad Concept — Traitors Fantasy Draft (archived)
 
 ## Skill note
 Requested `$sora` skill path (`/Users/syedshariff/.codex/skills/sora/SKILL.md`) was not available in this environment, so this concept was created using direct repository analysis.
