@@ -127,7 +127,10 @@ Deno.serve(async (req: Request) => {
   const { data: tokens, error } = await query;
 
   if (error) {
-    return json(500, { error: `Reading tokens failed: ${error.message}` });
+    // Logged, not returned: Postgres error text can describe the schema, and
+    // the anon key is public so anyone can reach this endpoint.
+    console.error("Reading push tokens failed:", error.message);
+    return json(500, { error: "Could not read the device list." });
   }
 
   const title = payload.title ?? "Council closes soon";
@@ -168,9 +171,12 @@ Deno.serve(async (req: Request) => {
   try {
     providerToken = await buildProviderToken(privateKey!, keyId!, teamId!);
   } catch (cause) {
+    // The cause goes to the function logs rather than the response, for the
+    // same reason. The hint is our own text and says everything a caller
+    // actually needs to fix it.
+    console.error("Signing the APNs provider token failed:", cause);
     return json(500, {
       error: "Could not sign the APNs provider token.",
-      detail: String(cause),
       hint: "APNS_PRIVATE_KEY must be the full .p8 contents including the BEGIN and END lines.",
     });
   }
