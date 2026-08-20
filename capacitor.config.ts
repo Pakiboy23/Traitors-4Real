@@ -3,7 +3,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 const isBundledBuild = process.env.CAPACITOR_BUNDLED === "1";
 
 const config: CapacitorConfig = {
-  appId: "online.traitorsfantasydraft.app",
+  appId: "com.roundtabledraft.app",
   appName: "Round Table Draft",
   webDir: isBundledBuild ? "native-web" : "public",
   ...(isBundledBuild
