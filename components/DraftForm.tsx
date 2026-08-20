@@ -3,6 +3,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
 import { getCastPortraitSrc } from "../src/castPortraits";
+import CastPicker from "./CastPicker";
+import { toCastOptions } from "../src/utils/castProfiles";
 import { useToast } from "./Toast";
 import { logger } from "../src/utils/logger";
 import {
@@ -20,7 +22,6 @@ import {
   PremiumCard,
   PremiumField,
   PremiumPanelHeader,
-  PremiumSelect,
   PremiumStatusBadge,
 } from "../src/ui/premium";
 import { submitDraftEntry } from "../services/supabase";
@@ -95,9 +96,19 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
     a.localeCompare(b)
   );
 
+  const castOptions = useMemo(
+    () => toCastOptions(gameState.castStatus || {}),
+    [gameState.castStatus]
+  );
+
+  const activeCastOptions = useMemo(
+    () => castOptions.filter((option) => !option.isEliminated),
+    [castOptions]
+  );
+
   const activeCastNames = useMemo(
-    () => castNames.filter((name) => !gameState.castStatus[name]?.isEliminated),
-    [castNames, gameState.castStatus]
+    () => activeCastOptions.map((option) => option.name),
+    [activeCastOptions]
   );
 
   const duplicateNames = useMemo(() => {
@@ -308,19 +319,15 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
                               </span>
                             )}
                           </div>
-                          <PremiumSelect
+                          <CastPicker
                             disabled={isSealed}
                             value={pick.member}
-                            onChange={(e) => updatePick(index, "member", e.target.value)}
-                            className="premium-input-table"
-                          >
-                            <option value="">Choose player...</option>
-                            {activeCastNames.map((name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            ))}
-                          </PremiumSelect>
+                            onChange={(name) => updatePick(index, "member", name)}
+                            options={activeCastOptions}
+                            takenNames={picks
+                              .map((entry) => entry.member)
+                              .filter(Boolean)}
+                          />
                         </div>
 
                         <PremiumField
@@ -425,48 +432,31 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
 
               <section className="space-y-2.5">
                 <h3 className="premium-section-title">Consistency Panel</h3>
-                <PremiumSelect
+                <CastPicker
                   value={predFirstOut}
-                  onChange={(e) => setPredFirstOut(e.target.value)}
-                  className="premium-input-compact"
-                >
-                  <option value="">First Out</option>
-                  {activeCastNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </PremiumSelect>
-                <PremiumSelect
+                  onChange={setPredFirstOut}
+                  options={activeCastOptions}
+                  placeholder="First Out"
+                />
+                <CastPicker
                   value={predWinner}
-                  onChange={(e) => setPredWinner(e.target.value)}
-                  className="premium-input-compact"
-                >
-                  <option value="">Winner</option>
-                  {activeCastNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </PremiumSelect>
+                  onChange={setPredWinner}
+                  options={activeCastOptions}
+                  placeholder="Winner"
+                />
                 {traitors.map((value, index) => (
-                  <PremiumSelect
+                  <CastPicker
                     key={index}
                     value={value}
-                    onChange={(e) => {
+                    onChange={(name) => {
                       const next = [...traitors];
-                      next[index] = e.target.value;
+                      next[index] = name;
                       setTraitors(next);
                     }}
-                    className="premium-input-compact"
-                  >
-                    <option value="">Traitor guess #{index + 1}</option>
-                    {activeCastNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </PremiumSelect>
+                    options={activeCastOptions}
+                    placeholder={`Traitor guess #${index + 1}`}
+                    takenNames={traitors.filter(Boolean)}
+                  />
                 ))}
 
                 <PremiumButton

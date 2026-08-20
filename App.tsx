@@ -33,6 +33,10 @@ import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
 import { logger } from "./src/utils/logger";
 import {
+  normalizeCastMemberStatus,
+  resolveCastNames,
+} from "./src/utils/castProfiles";
+import {
   fetchShowConfig,
   fetchSeasonState,
   fetchGameState,
@@ -146,26 +150,15 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
     input?.castStatus ?? {};
-  const castNames = Array.from(
-    new Set([
-      ...showConfig.castNames,
-      ...CAST_NAMES,
-      ...Object.keys(incomingCast),
-    ])
-  ).sort((a, b) => a.localeCompare(b));
+  const castNames = resolveCastNames(
+    showConfig.castNames,
+    Object.keys(incomingCast),
+    CAST_NAMES
+  );
 
   castNames.forEach((name) => {
     const current = incomingCast[name] ?? {};
-    castStatus[name] = {
-      isWinner: Boolean(current.isWinner),
-      isFirstOut: Boolean(current.isFirstOut),
-      isTraitor: Boolean(current.isTraitor),
-      isEliminated: Boolean(current.isEliminated),
-      portraitUrl:
-        typeof current.portraitUrl === "string" && current.portraitUrl.trim()
-          ? current.portraitUrl
-          : null,
-    };
+    castStatus[name] = normalizeCastMemberStatus(current);
   });
 
   const players = Array.isArray(input?.players) ? input!.players : [];
