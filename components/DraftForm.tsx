@@ -1,10 +1,25 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { COUNCIL_LABELS, DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
+import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
 import { getCastPortraitSrc } from "../src/castPortraits";
+import CastPicker from "./CastPicker";
+import { toCastOptions } from "../src/utils/castProfiles";
 import { useToast } from "./Toast";
 import { logger } from "../src/utils/logger";
+import {
+  describeDraftWindow,
+  readForceClosedFromEnv,
+  resolveDraftWindow,
+} from "../src/utils/draftWindow";
+import {
+  DRAFT_PROGRESS_KEY,
+  createDraftProgress,
+  describeSavedAt,
+  fitToDraftSize,
+  isDraftProgressEmpty,
+  parseDraftProgress,
+} from "../src/utils/draftProgress";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -15,10 +30,9 @@ import {
   PremiumCard,
   PremiumField,
   PremiumPanelHeader,
-  PremiumSelect,
   PremiumStatusBadge,
 } from "../src/ui/premium";
-import { submitDraftEntry } from "../services/pocketbase";
+import { submitDraftEntry } from "../services/supabase";
 
 interface DraftFormProps {
   gameState: GameState;
@@ -35,7 +49,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return result;
 }
 
-const DRAFT_CLOSED = String(import.meta.env.VITE_DRAFT_CLOSED ?? "true").toLowerCase() !== "false";
 const DRAFT_SIZE = 10;
 const createEmptyPick = (): DraftPick => ({ member: "", rank: 1, role: "Faithful" });
 const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);
@@ -54,20 +67,140 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const [traitors, setTraitors] = useState(["", "", ""]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const seasonStatus = gameState.seasonConfig?.status;
-  const isSeasonLocked =
-    seasonStatus === "finalized" || seasonStatus === "archived";
-  const isDraftClosed =
-    DRAFT_CLOSED ||
-    gameState.showConfig?.featureToggles?.draftEnabled === false ||
-    isSeasonLocked;
+  // The season record is the authority on whether the draft accepts entries,
+  // so opening it on premiere night is an admin action rather than a redeploy.
+  //
+  // `now` is state rather than a bare Date.now() so that a form left open
+  // across the scheduled lock actually closes: without it the memo would hold
+  // the timestamp from first render and keep reporting the draft as open.
+  const [now, setNow] = useState(() => Date.now());
+  const draftWindow = useMemo(
+    () =>
+      resolveDraftWindow(gameState, {
+        forceClosed: readForceClosedFromEnv(),
+        now,
+      }),
+    [gameState, now]
+  );
+  const isDraftClosed = !draftWindow.isOpen;
+
+  useEffect(() => {
+    if (!draftWindow.isOpen || !draftWindow.lockAt) return;
+
+    const msUntilLock = Date.parse(draftWindow.lockAt) - Date.now();
+    if (msUntilLock <= 0) {
+      setNow(Date.now());
+      return;
+    }
+
+    // setTimeout truncates delays beyond a signed 32-bit int, which would fire
+    // immediately and spin. Clamp instead; the effect re-arms on each tick and
+    // converges on the real lock time.
+    const delay = Math.min(msUntilLock + 250, 2_147_483_647);
+    const timer = setTimeout(() => setNow(Date.now()), delay);
+    return () => clearTimeout(timer);
+  }, [draftWindow.isOpen, draftWindow.lockAt]);
+  // Saved progress. A draft is roughly twenty-six decisions, and holding all of
+  // it in component state meant a refresh wiped the lot — which is where people
+  // gave up rather than start again.
+  const seasonIdForProgress =
+    gameState.seasonConfig?.seasonId ?? gameState.seasonId ?? null;
+  const [restoredFrom, setRestoredFrom] = useState<number | null>(null);
+  const restoredForSeason = useRef<string | null | undefined>(undefined);
+
+  const currentProgress = useMemo(
+    () => ({
+      seasonId: seasonIdForProgress,
+      step: 0,
+      playerName,
+      playerEmail,
+      picks,
+      sealedPicks,
+      predFirstOut,
+      predWinner,
+      traitors,
+    }),
+    [
+      seasonIdForProgress,
+      playerName,
+      playerEmail,
+      picks,
+      sealedPicks,
+      predFirstOut,
+      predWinner,
+      traitors,
+    ]
+  );
+
+  useEffect(() => {
+    // The season id arrives asynchronously, so this re-attempts when it
+    // resolves. It only ever fills an untouched form, so a late-arriving season
+    // can never overwrite something already being typed.
+    if (restoredForSeason.current === seasonIdForProgress) return;
+    restoredForSeason.current = seasonIdForProgress;
+    if (typeof window === "undefined") return;
+    if (!isDraftProgressEmpty(currentProgress)) return;
+
+    const saved = parseDraftProgress(
+      window.localStorage.getItem(DRAFT_PROGRESS_KEY),
+      { seasonId: seasonIdForProgress }
+    );
+    if (!saved || isDraftProgressEmpty(saved)) return;
+
+    setPlayerName(saved.playerName);
+    setPlayerEmail(saved.playerEmail);
+    setPicks(fitToDraftSize(saved.picks, DRAFT_SIZE, createEmptyPick));
+    setSealedPicks(fitToDraftSize(saved.sealedPicks, DRAFT_SIZE, () => false));
+    setPredFirstOut(saved.predFirstOut);
+    setPredWinner(saved.predWinner);
+    setTraitors(fitToDraftSize(saved.traitors, 3, () => ""));
+    setRestoredFrom(saved.savedAt);
+  }, [seasonIdForProgress, currentProgress]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isSubmitted) return;
+    if (isDraftProgressEmpty(currentProgress)) {
+      window.localStorage.removeItem(DRAFT_PROGRESS_KEY);
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        DRAFT_PROGRESS_KEY,
+        JSON.stringify(createDraftProgress(currentProgress))
+      );
+    } catch {
+      // Private browsing and full quotas both throw here. Losing the safety net
+      // is not a reason to break the form it is protecting.
+    }
+  }, [currentProgress, isSubmitted]);
+
+  const clearSavedProgress = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(DRAFT_PROGRESS_KEY);
+    } catch {
+      // Nothing useful to do if storage is unavailable.
+    }
+    setRestoredFrom(null);
+  };
+
   const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
     a.localeCompare(b)
   );
 
+  const castOptions = useMemo(
+    () => toCastOptions(gameState.castStatus || {}),
+    [gameState.castStatus]
+  );
+
+  const activeCastOptions = useMemo(
+    () => castOptions.filter((option) => !option.isEliminated),
+    [castOptions]
+  );
+
   const activeCastNames = useMemo(
-    () => castNames.filter((name) => !gameState.castStatus[name]?.isEliminated),
-    [castNames, gameState.castStatus]
+    () => activeCastOptions.map((option) => option.name),
+    [activeCastOptions]
   );
 
   const duplicateNames = useMemo(() => {
@@ -122,12 +255,21 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (isDraftClosed) {
-      if (isSeasonLocked) {
-        showToast("This season is locked and no longer accepts draft submissions.", "warning");
-      } else {
-        showToast(`Draft submissions are closed. Use the ${COUNCIL_LABELS.weekly} tab for weekly picks.`, "warning");
-      }
+    // Re-resolve against the clock at submit time rather than trusting the
+    // rendered snapshot, so a tab opened before the lock cannot submit after it.
+    const liveWindow = resolveDraftWindow(gameState, {
+      forceClosed: readForceClosedFromEnv(),
+    });
+
+    if (!liveWindow.isOpen) {
+      setNow(Date.now());
+      showToast(
+        describeDraftWindow(
+          liveWindow,
+          gameState.showConfig?.terminology?.draftLabel || "Draft"
+        ),
+        "warning"
+      );
       return;
     }
 
@@ -168,6 +310,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
       showToast("Submission to server failed. Your entry is still saved locally.", "warning");
     }
 
+    clearSavedProgress();
     setIsSubmitting(false);
     setIsSubmitted(true);
   };
@@ -215,9 +358,35 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
           />
           {isDraftClosed && (
             <div className="premium-inline-alert premium-inline-alert-warning">
-              {isSeasonLocked
-                ? "This season is finalized or archived. Draft submissions are closed."
-                : `Draft submissions are currently closed. Continue with weekly picks in ${COUNCIL_LABELS.weekly}.`}
+              {describeDraftWindow(
+                draftWindow,
+                gameState.showConfig?.terminology?.draftLabel || "Draft"
+              )}
+            </div>
+          )}
+          {restoredFrom !== null && !isDraftClosed && (
+            <div className="premium-inline-alert premium-restore-alert">
+              <span>
+                Picked up where you left off — saved{" "}
+                {describeSavedAt(restoredFrom, Date.now())}. Your progress is
+                kept on this device until you submit.
+              </span>
+              <PremiumButton
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setPlayerName("");
+                  setPlayerEmail("");
+                  setPicks(createEmptyPicks());
+                  setSealedPicks(Array(DRAFT_SIZE).fill(false));
+                  setPredFirstOut("");
+                  setPredWinner("");
+                  setTraitors(["", "", ""]);
+                  clearSavedProgress();
+                }}
+              >
+                Start over
+              </PremiumButton>
             </div>
           )}
         </PremiumCard>
@@ -268,19 +437,15 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
                               </span>
                             )}
                           </div>
-                          <PremiumSelect
+                          <CastPicker
                             disabled={isSealed}
                             value={pick.member}
-                            onChange={(e) => updatePick(index, "member", e.target.value)}
-                            className="premium-input-table"
-                          >
-                            <option value="">Choose player...</option>
-                            {activeCastNames.map((name) => (
-                              <option key={name} value={name}>
-                                {name}
-                              </option>
-                            ))}
-                          </PremiumSelect>
+                            onChange={(name) => updatePick(index, "member", name)}
+                            options={activeCastOptions}
+                            takenNames={picks
+                              .map((entry) => entry.member)
+                              .filter(Boolean)}
+                          />
                         </div>
 
                         <PremiumField
@@ -385,59 +550,42 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
 
               <section className="space-y-2.5">
                 <h3 className="premium-section-title">Consistency Panel</h3>
-                <PremiumSelect
+                <CastPicker
                   value={predFirstOut}
-                  onChange={(e) => setPredFirstOut(e.target.value)}
-                  className="premium-input-compact"
-                >
-                  <option value="">First Out</option>
-                  {activeCastNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </PremiumSelect>
-                <PremiumSelect
+                  onChange={setPredFirstOut}
+                  options={activeCastOptions}
+                  placeholder="First Out"
+                />
+                <CastPicker
                   value={predWinner}
-                  onChange={(e) => setPredWinner(e.target.value)}
-                  className="premium-input-compact"
-                >
-                  <option value="">Winner</option>
-                  {activeCastNames.map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </PremiumSelect>
+                  onChange={setPredWinner}
+                  options={activeCastOptions}
+                  placeholder="Winner"
+                />
                 {traitors.map((value, index) => (
-                  <PremiumSelect
+                  <CastPicker
                     key={index}
                     value={value}
-                    onChange={(e) => {
+                    onChange={(name) => {
                       const next = [...traitors];
-                      next[index] = e.target.value;
+                      next[index] = name;
                       setTraitors(next);
                     }}
-                    className="premium-input-compact"
-                  >
-                    <option value="">Traitor guess #{index + 1}</option>
-                    {activeCastNames.map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </PremiumSelect>
+                    options={activeCastOptions}
+                    placeholder={`Traitor guess #${index + 1}`}
+                    takenNames={traitors.filter(Boolean)}
+                  />
                 ))}
 
                 <PremiumButton
                   type="submit"
                   variant="primary"
-                  disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
+                  disabled={isDraftClosed || hasDuplicates || !allPicksSealed || isSubmitting}
                   className="w-full"
                 >
                   {isSubmitting
                     ? "Submitting..."
-                    : DRAFT_CLOSED
+                    : isDraftClosed
                     ? "Draft Closed"
                     : hasDuplicates
                     ? "Fix Duplicate Picks"

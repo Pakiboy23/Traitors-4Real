@@ -1,7 +1,4 @@
 {
-  "name": "The Traitors: Titanic Swim Team Draft",
-  "description": "A high-stakes fantasy draft application for The Traitors Season 4, featuring real-time leaderboards, an admin panel for league managers, and AI-powered image generation.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "name": "The Traitors: New Blood Fantasy Draft",
+  "description": "Fantasy draft companion for The Traitors: New Blood. Draft a roster, make weekly banishment and murder calls, and follow a live leaderboard."
 }

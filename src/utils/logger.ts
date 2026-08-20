@@ -1,5 +1,5 @@
 const isDebugLogsEnabled = () => {
-  const value = String(import.meta.env.VITE_DEBUG_LOGS ?? "").toLowerCase();
+  const value = String(process.env.NEXT_PUBLIC_DEBUG_LOGS ?? "").toLowerCase();
   return value === "1" || value === "true" || value === "yes";
 };
 

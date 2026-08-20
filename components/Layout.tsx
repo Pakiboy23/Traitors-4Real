@@ -67,10 +67,13 @@ const Layout: React.FC<LayoutProps> = ({
       : [{ id: "draft", label: terminology?.draftLabel || "Draft" }]),
     { id: "weekly", label: weeklyLabel },
     { id: "leaderboard", label: terminology?.leaderboardLabel || "Leaderboard" },
+    // Always available: a player needs the scoring rules most while a form is
+    // closed to them, so this is never gated behind the draft being open.
+    { id: "rules", label: "Rules" },
     { id: "admin", label: terminology?.adminLabel || "Admin" },
   ];
 
-  const envLabel = import.meta.env.DEV ? "Development" : "Production";
+  const envLabel = process.env.NODE_ENV === "development" ? "Development" : "Production";
 
   return (
     <motion.div

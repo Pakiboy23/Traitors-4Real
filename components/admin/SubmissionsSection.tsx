@@ -6,7 +6,7 @@ import {
   PlayerEntry,
   WeeklySubmissionHistoryEntry,
 } from "../../types";
-import { SubmissionRecord } from "../../services/pocketbase";
+import { SubmissionRecord } from "../../services/supabase";
 
 type SubmissionBonusScore = {
   hasResults: boolean;
@@ -15,7 +15,7 @@ type SubmissionBonusScore = {
 };
 
 interface SubmissionsSectionProps {
-  pocketbaseUrl: string;
+  supabaseUrl: string;
   players: PlayerEntry[];
   submissions: SubmissionRecord[];
   isLoadingSubmissions: boolean;
@@ -145,7 +145,7 @@ const renderHistoryBonusPoints = (entry: WeeklySubmissionHistoryEntry) => {
 };
 
 const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
-  pocketbaseUrl,
+  supabaseUrl,
   players,
   submissions,
   isLoadingSubmissions,
@@ -178,7 +178,7 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
             <p className="text-sm text-[color:var(--text-muted)]">
               Queue shows unmerged votes for the current active week.
             </p>
-            <p className="text-sm text-[color:var(--text-muted)]">API endpoint: {pocketbaseUrl}</p>
+            <p className="text-sm text-[color:var(--text-muted)]">API endpoint: {supabaseUrl}</p>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={onRefreshSubmissions} className="btn-secondary px-4 text-[11px]">

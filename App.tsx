@@ -6,6 +6,7 @@ import Welcome, {
   type TopMoverEntry,
 } from "./components/Welcome";
 import DraftForm from "./components/DraftForm";
+import RulesGuide from "./components/RulesGuide";
 import WeeklyCouncil from "./components/WeeklyCouncil";
 import AdminPanel from "./components/AdminPanel";
 import Leaderboard from "./components/Leaderboard";
@@ -17,6 +18,7 @@ import {
   GameState,
   inferActiveWeekId,
   normalizeWeekId,
+  League,
   PlayerEntry,
   ScoreAdjustment,
   SeasonConfig,
@@ -30,6 +32,11 @@ import { TIMING } from "./src/utils/scoringConstants";
 import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
 import { logger } from "./src/utils/logger";
+import {
+  normalizeCastMemberStatus,
+  resolveCastNames,
+} from "./src/utils/castProfiles";
+import { registerForPush } from "./src/native/push";
 import {
   fetchShowConfig,
   fetchSeasonState,
@@ -46,7 +53,7 @@ import {
   submitGrowthEvent,
   subscribeToGameState,
   fetchWeeklySubmissions,
-} from "./services/pocketbase";
+} from "./services/supabase";
 
 const STORAGE_KEY = "traitors_db_v4";
 const buildDefaultFinaleLockAt = () =>
@@ -144,26 +151,15 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const castStatus: GameState["castStatus"] = {};
   const incomingCast: Record<string, Partial<CastMemberStatus>> =
     input?.castStatus ?? {};
-  const castNames = Array.from(
-    new Set([
-      ...showConfig.castNames,
-      ...CAST_NAMES,
-      ...Object.keys(incomingCast),
-    ])
-  ).sort((a, b) => a.localeCompare(b));
+  const castNames = resolveCastNames(
+    showConfig.castNames,
+    Object.keys(incomingCast),
+    CAST_NAMES
+  );
 
   castNames.forEach((name) => {
     const current = incomingCast[name] ?? {};
-    castStatus[name] = {
-      isWinner: Boolean(current.isWinner),
-      isFirstOut: Boolean(current.isFirstOut),
-      isTraitor: Boolean(current.isTraitor),
-      isEliminated: Boolean(current.isEliminated),
-      portraitUrl:
-        typeof current.portraitUrl === "string" && current.portraitUrl.trim()
-          ? current.portraitUrl
-          : null,
-    };
+    castStatus[name] = normalizeCastMemberStatus(current);
   });
 
   const players = Array.isArray(input?.players) ? input!.players : [];
@@ -417,6 +413,12 @@ const App: React.FC = () => {
       unsubscribe?.();
     };
   }, []);
+
+  // Register the device for lock reminders. No-ops on the web, so this is safe
+  // in the browser build; only the native shells reach the notification APIs.
+  useEffect(() => {
+    void registerForPush({ seasonId: activeSeasonId ?? gameState.seasonId ?? null });
+  }, [activeSeasonId, gameState.seasonId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -744,7 +746,7 @@ const App: React.FC = () => {
       {
         ...entry,
         weeklyPredictions: normalizedWeeklyPredictions,
-        league: entry.league === "jr" ? "jr" : "main",
+        league: (entry.league === "jr" ? "jr" : "main") as League,
       },
     ];
     updateGameState({ ...gameState, players: updatedPlayers });
@@ -970,6 +972,8 @@ const App: React.FC = () => {
             uiVariant={uiVariant}
           />
         );
+      case "rules":
+        return <RulesGuide gameState={gameState} uiVariant={uiVariant} />;
       case "weekly":
         return (
           <WeeklyCouncil

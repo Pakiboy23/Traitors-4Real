@@ -18,7 +18,7 @@ import {
   WeeklyScoreSnapshot,
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
-import { pocketbaseUrl } from "../src/lib/pocketbase";
+import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
 import { RULE_PACKS } from "../src/config/rulePacks";
@@ -42,7 +42,7 @@ import {
   savePlayerPortrait,
   SubmissionRecord,
   subscribeToWeeklySubmissions,
-} from "../services/pocketbase";
+} from "../services/supabase";
 import {
   PremiumCard,
   PremiumPanelHeader,
@@ -203,6 +203,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       gameState.showConfig?.terminology?.finaleLabelDefault ||
       ""
   );
+  // Immediate open/close switch for the draft, independent of the season's
+  // scheduled lock. Defaults to enabled so an unset config does not read as
+  // "off" and silently hide the draft.
+  const [draftEnabledInput, setDraftEnabledInput] = useState(
+    (showConfig?.featureToggles?.draftEnabled ??
+      gameState.showConfig?.featureToggles?.draftEnabled ??
+      true) !== false
+  );
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
@@ -233,6 +241,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setLeaderboardLabelInput(source.terminology?.leaderboardLabel || "");
     setAdminLabelInput(source.terminology?.adminLabel || "");
     setFinaleLabelInput(source.terminology?.finaleLabelDefault || "");
+    // Must resync too: the panel can mount before fetchShowConfig() resolves,
+    // and without this a stored draftEnabled:false would be overwritten back to
+    // true by the next save, silently reopening the draft.
+    setDraftEnabledInput((source.featureToggles?.draftEnabled ?? true) !== false);
   }, [showConfig, gameState.showConfig]);
 
   useEffect(() => {
@@ -667,36 +679,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setSubmissionsError(null);
     try {
       const scopedSeasonId = getActiveSeasonId();
-      let records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
-      if (records.length === 0) {
-        try {
-          const params = new URLSearchParams({
-            perPage: "200",
-            sort: "-created",
-          });
-          if (scopedSeasonId) {
-            params.set("filter", `seasonId="${scopedSeasonId.replace(/"/g, '\\"')}"`);
-          }
-          const response = await fetch(
-            `${pocketbaseUrl}/api/collections/submissions/records?${params.toString()}`
-          );
-          if (response.ok) {
-            const data = (await response.json()) as { items?: SubmissionRecord[] };
-            if (Array.isArray(data.items)) {
-              records = data.items.filter((submission) => isWeeklySubmissionRecord(submission));
-            }
-          }
-        } catch (fallbackError) {
-          logger.warn("Fallback submissions fetch failed:", fallbackError);
-        }
-      }
+      const records = await fetchWeeklySubmissions({ seasonId: scopedSeasonId });
       setSubmissions(records.filter((record) => isSubmissionForActiveWeek(record)));
     } catch (error: any) {
       setSubmissionsError(error?.message || String(error));
     } finally {
       setIsLoadingSubmissions(false);
     }
-  }, [activeSeasonId, pocketbaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
+  }, [activeSeasonId, supabaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
 
   useEffect(() => {
     refreshSubmissions();
@@ -1482,6 +1472,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         finaleLabelDefault:
           finaleLabelInput.trim() || base.terminology.finaleLabelDefault,
       },
+      featureToggles: {
+        ...base.featureToggles,
+        draftEnabled: draftEnabledInput,
+      },
     };
 
     try {
@@ -1955,7 +1949,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const renderSubmissionsSection = () => (
     <SubmissionsSection
-      pocketbaseUrl={pocketbaseUrl}
+      supabaseUrl={supabaseUrl}
       players={gameState.players}
       submissions={submissions}
       isLoadingSubmissions={isLoadingSubmissions}
@@ -2199,6 +2193,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             placeholder="Finale label"
           />
         </div>
+        <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+          <input
+            type="checkbox"
+            checked={draftEnabledInput}
+            onChange={(e) => setDraftEnabledInput(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span className="text-[11px] leading-relaxed">
+            <span className="block font-semibold">Draft open</span>
+            <span className="block opacity-70">
+              Turn off to close the draft immediately and hide its tab, without
+              finalizing the season. The season&rsquo;s scheduled draft lock still
+              applies on its own.
+            </span>
+          </span>
+        </label>
         <button
           type="button"
           className="btn-secondary px-4 text-[11px]"

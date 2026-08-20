@@ -3484,3 +3484,146 @@ body.premium-ui .rounded-xl {
     animation: none !important;
   }
 }
+
+/* ---- Cast picker -------------------------------------------------------- */
+/* A searchable roster control. The civilian cast carries no recognition, so
+   the option list has to show who each person is, not just their name. */
+
+.premium-cast-picker {
+  position: relative;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.premium-cast-picker-trigger {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.premium-cast-picker-trigger:disabled {
+  cursor: not-allowed;
+}
+
+.premium-cast-picker-popover {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 16rem;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-radius: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  background: var(--surface, #14161a);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.7);
+}
+
+.premium-cast-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 15rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.premium-cast-picker-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.premium-cast-picker-option.is-active {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+.premium-cast-picker-option.is-selected {
+  background: color-mix(in srgb, var(--accent, #c9a227) 22%, transparent);
+}
+
+.premium-cast-picker-option.is-eliminated {
+  opacity: 0.45;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.premium-cast-picker-option:focus-visible {
+  outline: 2px solid var(--accent, #c9a227);
+  outline-offset: -2px;
+}
+
+/* ---- Legal / support pages --------------------------------------------- */
+/* Standalone routes App Review opens directly, so they are readable on their
+   own rather than inheriting the game's dark workspace chrome. */
+
+.legal-page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+  line-height: 1.65;
+  color: var(--text, #e7e9ed);
+}
+
+.legal-page h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.legal-page h2 {
+  font-size: 1.15rem;
+  margin: 2rem 0 0.6rem;
+}
+
+.legal-page h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.35rem;
+}
+
+.legal-page p,
+.legal-page li {
+  opacity: 0.85;
+}
+
+.legal-page ul {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.legal-page .legal-meta {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+}
+
+.legal-page a {
+  color: var(--accent, #c9a227);
+  text-underline-offset: 2px;
+}
+
+/* Restored-progress notice: an explicit affordance, because silently
+   repopulating a long form is disorienting if you expected a blank one. */
+.premium-restore-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}

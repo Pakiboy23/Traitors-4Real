@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.next
 dist
 dist-ssr
 *.local
@@ -25,16 +26,14 @@ dist-ssr
 *.sw?
 /.env
 
-# PocketBase
-pb_data
-pb_public
-bin
-bin/pocketbase
-bin/pocketbase.exe
 
-# Legacy Firebase local artifacts (kept ignored after PocketBase migration)
-.firebase/
-firebase-debug.log*
-firestore-debug.log*
-ui-debug.log*
 backups/
+.env.local
+.vercel
+
+# Next.js static export + Capacitor bundled web assets
+/out
+/native-web
+
+# TypeScript incremental build cache
+*.tsbuildinfo

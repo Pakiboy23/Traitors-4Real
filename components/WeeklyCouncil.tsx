@@ -24,7 +24,7 @@ import {
   PremiumStatusBadge,
   PremiumToggle,
 } from "../src/ui/premium";
-import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/pocketbase";
+import { submitGrowthEvent, submitWeeklyCouncilVote } from "../services/supabase";
 
 interface WeeklyCouncilProps {
   gameState: GameState;
