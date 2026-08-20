@@ -1,6 +1,6 @@
 import React from "react";
 import { PlayerEntry } from "../../types";
-import { getCastPortraitSrc } from "../../src/castPortraits";
+import CastPortrait from "../CastPortrait";
 import { InlineEditMap } from "./types";
 
 interface RosterSectionProps {
@@ -297,22 +297,21 @@ const RosterSection: React.FC<RosterSectionProps> = ({
               <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)] mb-3">Draft picks</p>
               <div className="grid grid-cols-1 gap-2">
                 {selectedPlayer.picks.map((pick, index) => {
-                  const pickPortrait = getCastPortraitSrc(
-                    pick.member,
-                    castStatus[pick.member]?.portraitUrl
-                  );
                   return (
                     <div key={`${pick.member}-${index}`} className="soft-card soft-card-subtle rounded-2xl p-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="text-xs font-semibold text-[color:var(--text-muted)]">#{index + 1}</span>
                         <div className="w-6 h-6 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0">
-                          {pickPortrait ? (
-                            <img src={pickPortrait} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-[color:var(--text-muted)]">
-                              {pick.member.charAt(0)}
-                            </div>
-                          )}
+                          <CastPortrait
+                            name={pick.member}
+                            portraitUrl={castStatus[pick.member]?.portraitUrl}
+                            imgClassName="w-full h-full object-cover"
+                            fallback={
+                              <div className="w-full h-full flex items-center justify-center text-[10px] text-[color:var(--text-muted)]">
+                                {pick.member.charAt(0)}
+                              </div>
+                            }
+                          />
                         </div>
                         <span className="text-sm text-[color:var(--text)] truncate">{pick.member}</span>
                       </div>

@@ -316,7 +316,7 @@ const Welcome: React.FC<WelcomeProps> = ({
               <div className="premium-overview-hero-inner">
                 <div className="premium-overview-hero-copy space-y-4">
                   <p className="premium-kicker">
-                    {showConfig?.showName || "Traitors Fantasy Draft"} | Private Estate League
+                    {showConfig?.showName || "Round Table Draft"} | {showConfig?.leagueName || "Private League"}
                   </p>
                   <h2
                     className={`premium-overview-title ${

@@ -9,7 +9,7 @@ import {
   UiVariant,
   WeeklyScoreSnapshot,
 } from "../types";
-import { getCastPortraitSrc } from "../src/castPortraits";
+import CastPortrait from "./CastPortrait";
 import {
   calculatePlayerScore,
   formatScore,
@@ -896,7 +896,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-1.5">
             {castNames.map((name) => {
               const status = gameState.castStatus[name];
-              const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
 
               const tag = status?.isWinner
                 ? "Winner"
@@ -923,13 +922,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
                   <div className="premium-cast-row">
                     <div className="premium-cast-main">
                       <div className="premium-avatar-cast-icon rounded-full overflow-hidden bg-black/35 flex-shrink-0">
-                        {portraitSrc ? (
-                          <img src={portraitSrc} alt={name} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-[9px] font-bold text-[color:var(--text-muted)]">
-                            {name.charAt(0)}
-                          </div>
-                        )}
+                        <CastPortrait
+                          name={name}
+                          portraitUrl={status?.portraitUrl}
+                          imgClassName="h-full w-full object-cover"
+                          fallback={
+                            <div className="h-full w-full flex items-center justify-center text-[9px] font-bold text-[color:var(--text-muted)]">
+                              {name.charAt(0)}
+                            </div>
+                          }
+                        />
                       </div>
                       <p className="premium-cast-name">{name}</p>
                     </div>

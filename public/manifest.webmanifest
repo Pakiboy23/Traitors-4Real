@@ -1,7 +1,7 @@
 {
-  "name": "Traitors Fantasy Draft",
-  "short_name": "Traitors Draft",
-  "description": "Fantasy draft companion for The Traitors.",
+  "name": "Round Table Draft",
+  "short_name": "Round Table",
+  "description": "Fantasy draft and weekly scoring for a private reality-TV league.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

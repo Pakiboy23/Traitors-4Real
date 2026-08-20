@@ -1,3 +1,4 @@
+import { NEW_BLOOD_CAST, type CastProfile } from "../config/newBloodCast";
 import type { CastMemberStatus } from "../../types";
 
 export interface CastOption {
@@ -81,28 +82,47 @@ export const filterCastOptions = (
  * dropped on every load. Profile data went missing exactly that way, so this
  * lives here where it can be tested.
  */
+/**
+ * Bundled profiles, by name.
+ *
+ * Stored state is the authority, but before the first sync there is no stored
+ * state — and a roster of bare names is the exact problem the redesigned picker
+ * exists to solve. Seeding from the bundled cast means a cold or offline start
+ * still shows who these twenty-two strangers are.
+ */
+const BUNDLED_PROFILES: Record<string, CastProfile> = Object.fromEntries(
+  NEW_BLOOD_CAST.map((member) => [member.name, member])
+);
+
 export const normalizeCastMemberStatus = (
-  input?: Partial<CastMemberStatus> | null
-): CastMemberStatus => ({
-  isWinner: Boolean(input?.isWinner),
-  isFirstOut: Boolean(input?.isFirstOut),
-  isTraitor: Boolean(input?.isTraitor),
-  isEliminated: Boolean(input?.isEliminated),
-  portraitUrl:
-    typeof input?.portraitUrl === "string" && input.portraitUrl.trim()
-      ? input.portraitUrl
-      : null,
-  age:
-    typeof input?.age === "number" && Number.isFinite(input.age) ? input.age : null,
-  occupation:
-    typeof input?.occupation === "string" && input.occupation.trim()
-      ? input.occupation
-      : null,
-  hometown:
-    typeof input?.hometown === "string" && input.hometown.trim()
-      ? input.hometown
-      : null,
-});
+  input?: Partial<CastMemberStatus> | null,
+  /** Used to fill age, occupation and hometown when state carries none. */
+  name?: string
+): CastMemberStatus => {
+  const bundled = name ? BUNDLED_PROFILES[name] : undefined;
+  return {
+    isWinner: Boolean(input?.isWinner),
+    isFirstOut: Boolean(input?.isFirstOut),
+    isTraitor: Boolean(input?.isTraitor),
+    isEliminated: Boolean(input?.isEliminated),
+    portraitUrl:
+      typeof input?.portraitUrl === "string" && input.portraitUrl.trim()
+        ? input.portraitUrl
+        : null,
+    age:
+      typeof input?.age === "number" && Number.isFinite(input.age)
+        ? input.age
+        : bundled?.age ?? null,
+    occupation:
+      typeof input?.occupation === "string" && input.occupation.trim()
+        ? input.occupation
+        : bundled?.occupation ?? null,
+    hometown:
+      typeof input?.hometown === "string" && input.hometown.trim()
+        ? input.hometown
+        : bundled?.hometown ?? null,
+  };
+};
 
 /**
  * Works out which names make up a season's roster.
