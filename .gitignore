@@ -26,19 +26,7 @@ dist-ssr
 *.sw?
 /.env
 
-# PocketBase
-/pocketbase
-pb_data
-pb_public
-bin
-bin/pocketbase
-bin/pocketbase.exe
 
-# Legacy Firebase local artifacts (kept ignored after PocketBase migration)
-.firebase/
-firebase-debug.log*
-firestore-debug.log*
-ui-debug.log*
 backups/
 .env.local
 .vercel
