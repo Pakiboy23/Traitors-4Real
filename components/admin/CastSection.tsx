@@ -1,5 +1,5 @@
 import React from "react";
-import { getCastPortraitSrc } from "../../src/castPortraits";
+import CastPortrait from "../CastPortrait";
 
 interface CastStatus {
   isWinner: boolean;
@@ -37,7 +37,6 @@ const CastSection: React.FC<CastSectionProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {castNames.map((name) => {
           const status = castStatus[name] ?? defaultStatus;
-          const portraitSrc = getCastPortraitSrc(name, status?.portraitUrl);
           const cardClass = status.isWinner
             ? "border-[color:var(--success)]/55"
             : status.isFirstOut
@@ -77,13 +76,16 @@ const CastSection: React.FC<CastSectionProps> = ({
                   className="w-8 h-8 rounded-full overflow-hidden border border-[color:var(--panel-border)] bg-black/30 flex-shrink-0"
                   title="Set cast portrait"
                 >
-                  {portraitSrc ? (
-                    <img src={portraitSrc} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-xs text-[color:var(--text-muted)] font-semibold">
-                      {name.charAt(0)}
-                    </div>
-                  )}
+                  <CastPortrait
+                    name={name}
+                    portraitUrl={status?.portraitUrl}
+                    imgClassName="w-full h-full object-cover"
+                    fallback={
+                      <div className="w-full h-full flex items-center justify-center text-xs text-[color:var(--text-muted)] font-semibold">
+                        {name.charAt(0)}
+                      </div>
+                    }
+                  />
                 </button>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[color:var(--text)] truncate">{name}</p>

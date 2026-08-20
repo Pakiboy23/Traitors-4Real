@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
-import { getCastPortraitSrc } from "../src/castPortraits";
+import CastPortrait from "./CastPortrait";
 import CastPicker from "./CastPicker";
 import { toCastOptions } from "../src/utils/castProfiles";
 import { useToast } from "./Toast";
@@ -414,9 +414,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
                   {picks.map((pick, index) => {
                     const isDuplicate = pick.member !== "" && duplicateNames.includes(pick.member);
                     const isSealed = sealedPicks[index];
-                    const castPortrait = pick.member
-                      ? getCastPortraitSrc(pick.member, gameState.castStatus[pick.member]?.portraitUrl)
-                      : undefined;
 
                     return (
                       <article
@@ -429,13 +426,16 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
 
                         <div className="premium-draft-member-cell">
                           <div className="avatar-ring premium-avatar-xs rounded-full overflow-hidden border border-transparent bg-black/20 flex-shrink-0">
-                            {castPortrait ? (
-                              <img src={castPortrait} alt={pick.member} className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-xs font-semibold text-[color:var(--text)]">
-                                {pick.member ? pick.member.charAt(0) : index + 1}
-                              </span>
-                            )}
+                            <CastPortrait
+                              name={pick.member}
+                              portraitUrl={gameState.castStatus[pick.member]?.portraitUrl}
+                              imgClassName="h-full w-full object-cover"
+                              fallback={
+                                <span className="text-xs font-semibold text-[color:var(--text)]">
+                                  {pick.member ? pick.member.charAt(0) : index + 1}
+                                </span>
+                              }
+                            />
                           </div>
                           <CastPicker
                             disabled={isSealed}

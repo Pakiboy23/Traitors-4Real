@@ -1,3 +1,4 @@
+import { NEW_BLOOD_CAST_NAMES } from "./src/config/newBloodCast";
 
 export interface CastMemberStatus {
   isWinner: boolean;
@@ -260,13 +261,13 @@ export const inferActiveWeekId = (input?: {
   return `week-${historyLength + 1}`;
 };
 
-export const CAST_NAMES = [
-  "Candiace Dillard Bassett (RHOP)", "Caroline Stanbury (RHODubai)", "Dorinda Medley (RHONY)", 
-  "Lisa Rinna (RHOBH)", "Porsha Williams (RHOA)", "Maura Higgins (Love Island UK)", 
-  "Rob Rausch (Love Island USA)", "Rob Cesternino (Survivor)", "Yam Yam Arocho (Survivor)", 
-  "Natalie Anderson (Survivor/Amazing Race)", "Ian Terry (Big Brother)", "Tiffany Mitchell (Big Brother)", 
-  "Colton Underwood (The Bachelor)", "Johnny Weir (Olympian)", "Tara Lipinski (Olympian)", 
-  "Mark Ballas (DWTS)", "Kristen Kish (Top Chef)", "Eric Nam (Singer/Host)", 
-  "Monet X Change (Drag Race)", "Ron Funches (Comedian)", "Michael Rapaport (Actor)", 
-  "Stephen Colletti (One Tree Hill)", "Donna Kelce (Travis' Mom)"
-].sort();
+/**
+ * Fallback roster, used only when no season has been loaded.
+ *
+ * Every real season stores its own cast, so this is what the app shows before
+ * the first sync — on a cold start, offline, or in a fresh install. It used to
+ * hold the previous celebrity season, which meant an offline launch displayed
+ * twenty-three people who are not in the show any more, and reported them as
+ * "suspects in play". It tracks the current cast now.
+ */
+export const CAST_NAMES = [...NEW_BLOOD_CAST_NAMES];

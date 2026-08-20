@@ -245,3 +245,38 @@ describe("resolveCastNames", () => {
     expect(resolveCastNames(["Alice", "", "   "], [], LAST_SEASON)).toEqual(["Alice"]);
   });
 });
+
+describe("normalizeCastMemberStatus bundled fallback", () => {
+  it("fills age, occupation and hometown for a known name when state has none", () => {
+    // Before the first sync there is no stored profile, and a roster of bare
+    // names is the problem the picker redesign exists to solve.
+    expect(normalizeCastMemberStatus({}, "Abbey Benjamin")).toMatchObject({
+      age: 37,
+      occupation: "Nurse",
+      hometown: "Mangham, LA",
+    });
+  });
+
+  it("lets stored state win over the bundled profile", () => {
+    // The bundled list is a starting point, not an override: an admin who
+    // corrects an age must not have it silently reverted on the next load.
+    expect(
+      normalizeCastMemberStatus(
+        { age: 38, occupation: "Nurse Practitioner", hometown: "Monroe, LA" },
+        "Abbey Benjamin"
+      )
+    ).toMatchObject({ age: 38, occupation: "Nurse Practitioner", hometown: "Monroe, LA" });
+  });
+
+  it("leaves an unknown name empty rather than inventing a profile", () => {
+    expect(normalizeCastMemberStatus({}, "Lisa Rinna (RHOBH)")).toMatchObject({
+      age: null,
+      occupation: null,
+      hometown: null,
+    });
+  });
+
+  it("still works without a name, as callers on legacy state pass none", () => {
+    expect(normalizeCastMemberStatus({})).toMatchObject({ age: null, occupation: null });
+  });
+});

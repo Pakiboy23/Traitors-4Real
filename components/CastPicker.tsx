@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { getCastPortraitSrc } from "../src/castPortraits";
+import CastPortrait from "./CastPortrait";
 import {
   describeCastMember,
   filterCastOptions,
@@ -24,16 +24,18 @@ const Avatar: React.FC<{ name: string; portraitUrl?: string | null; fallback?: s
   portraitUrl,
   fallback,
 }) => {
-  const src = name ? getCastPortraitSrc(name, portraitUrl) : "";
   return (
     <span className="avatar-ring premium-avatar-xs rounded-full overflow-hidden border border-transparent bg-black/20 flex items-center justify-center flex-shrink-0">
-      {src ? (
-        <img src={src} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <span className="text-xs font-semibold text-[color:var(--text)]">
-          {name ? name.charAt(0) : fallback ?? "?"}
-        </span>
-      )}
+      <CastPortrait
+        name={name}
+        portraitUrl={portraitUrl}
+        imgClassName="h-full w-full object-cover"
+        fallback={
+          <span className="text-xs font-semibold text-[color:var(--text)]">
+            {name ? name.charAt(0) : fallback ?? "?"}
+          </span>
+        }
+      />
     </span>
   );
 };

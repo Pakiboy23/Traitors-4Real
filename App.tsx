@@ -159,7 +159,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 
   castNames.forEach((name) => {
     const current = incomingCast[name] ?? {};
-    castStatus[name] = normalizeCastMemberStatus(current);
+    castStatus[name] = normalizeCastMemberStatus(current, name);
   });
 
   const players = Array.isArray(input?.players) ? input!.players : [];
