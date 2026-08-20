@@ -3566,3 +3566,54 @@ body.premium-ui .rounded-xl {
   outline: 2px solid var(--accent, #c9a227);
   outline-offset: -2px;
 }
+
+/* ---- Legal / support pages --------------------------------------------- */
+/* Standalone routes App Review opens directly, so they are readable on their
+   own rather than inheriting the game's dark workspace chrome. */
+
+.legal-page {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+  line-height: 1.65;
+  color: var(--text, #e7e9ed);
+}
+
+.legal-page h1 {
+  font-size: 1.9rem;
+  margin: 0 0 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.legal-page h2 {
+  font-size: 1.15rem;
+  margin: 2rem 0 0.6rem;
+}
+
+.legal-page h3 {
+  font-size: 1rem;
+  margin: 1.5rem 0 0.35rem;
+}
+
+.legal-page p,
+.legal-page li {
+  opacity: 0.85;
+}
+
+.legal-page ul {
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.legal-page .legal-meta {
+  font-size: 0.85rem;
+  opacity: 0.6;
+  margin-bottom: 1.5rem;
+}
+
+.legal-page a {
+  color: var(--accent, #c9a227);
+  text-underline-offset: 2px;
+}
