@@ -36,6 +36,7 @@ import {
   normalizeCastMemberStatus,
   resolveCastNames,
 } from "./src/utils/castProfiles";
+import { registerForPush } from "./src/native/push";
 import {
   fetchShowConfig,
   fetchSeasonState,
@@ -412,6 +413,12 @@ const App: React.FC = () => {
       unsubscribe?.();
     };
   }, []);
+
+  // Register the device for lock reminders. No-ops on the web, so this is safe
+  // in the browser build; only the native shells reach the notification APIs.
+  useEffect(() => {
+    void registerForPush({ seasonId: activeSeasonId ?? gameState.seasonId ?? null });
+  }, [activeSeasonId, gameState.seasonId]);
 
   useEffect(() => {
     let cancelled = false;
