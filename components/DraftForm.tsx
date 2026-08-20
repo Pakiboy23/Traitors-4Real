@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
@@ -12,6 +12,14 @@ import {
   readForceClosedFromEnv,
   resolveDraftWindow,
 } from "../src/utils/draftWindow";
+import {
+  DRAFT_PROGRESS_KEY,
+  createDraftProgress,
+  describeSavedAt,
+  fitToDraftSize,
+  isDraftProgressEmpty,
+  parseDraftProgress,
+} from "../src/utils/draftProgress";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -92,6 +100,90 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
     const timer = setTimeout(() => setNow(Date.now()), delay);
     return () => clearTimeout(timer);
   }, [draftWindow.isOpen, draftWindow.lockAt]);
+  // Saved progress. A draft is roughly twenty-six decisions, and holding all of
+  // it in component state meant a refresh wiped the lot — which is where people
+  // gave up rather than start again.
+  const seasonIdForProgress =
+    gameState.seasonConfig?.seasonId ?? gameState.seasonId ?? null;
+  const [restoredFrom, setRestoredFrom] = useState<number | null>(null);
+  const restoredForSeason = useRef<string | null | undefined>(undefined);
+
+  const currentProgress = useMemo(
+    () => ({
+      seasonId: seasonIdForProgress,
+      step: 0,
+      playerName,
+      playerEmail,
+      picks,
+      sealedPicks,
+      predFirstOut,
+      predWinner,
+      traitors,
+    }),
+    [
+      seasonIdForProgress,
+      playerName,
+      playerEmail,
+      picks,
+      sealedPicks,
+      predFirstOut,
+      predWinner,
+      traitors,
+    ]
+  );
+
+  useEffect(() => {
+    // The season id arrives asynchronously, so this re-attempts when it
+    // resolves. It only ever fills an untouched form, so a late-arriving season
+    // can never overwrite something already being typed.
+    if (restoredForSeason.current === seasonIdForProgress) return;
+    restoredForSeason.current = seasonIdForProgress;
+    if (typeof window === "undefined") return;
+    if (!isDraftProgressEmpty(currentProgress)) return;
+
+    const saved = parseDraftProgress(
+      window.localStorage.getItem(DRAFT_PROGRESS_KEY),
+      { seasonId: seasonIdForProgress }
+    );
+    if (!saved || isDraftProgressEmpty(saved)) return;
+
+    setPlayerName(saved.playerName);
+    setPlayerEmail(saved.playerEmail);
+    setPicks(fitToDraftSize(saved.picks, DRAFT_SIZE, createEmptyPick));
+    setSealedPicks(fitToDraftSize(saved.sealedPicks, DRAFT_SIZE, () => false));
+    setPredFirstOut(saved.predFirstOut);
+    setPredWinner(saved.predWinner);
+    setTraitors(fitToDraftSize(saved.traitors, 3, () => ""));
+    setRestoredFrom(saved.savedAt);
+  }, [seasonIdForProgress, currentProgress]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || isSubmitted) return;
+    if (isDraftProgressEmpty(currentProgress)) {
+      window.localStorage.removeItem(DRAFT_PROGRESS_KEY);
+      return;
+    }
+    try {
+      window.localStorage.setItem(
+        DRAFT_PROGRESS_KEY,
+        JSON.stringify(createDraftProgress(currentProgress))
+      );
+    } catch {
+      // Private browsing and full quotas both throw here. Losing the safety net
+      // is not a reason to break the form it is protecting.
+    }
+  }, [currentProgress, isSubmitted]);
+
+  const clearSavedProgress = () => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(DRAFT_PROGRESS_KEY);
+    } catch {
+      // Nothing useful to do if storage is unavailable.
+    }
+    setRestoredFrom(null);
+  };
+
   const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
     a.localeCompare(b)
   );
@@ -218,6 +310,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
       showToast("Submission to server failed. Your entry is still saved locally.", "warning");
     }
 
+    clearSavedProgress();
     setIsSubmitting(false);
     setIsSubmitted(true);
   };
@@ -269,6 +362,31 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
                 draftWindow,
                 gameState.showConfig?.terminology?.draftLabel || "Draft"
               )}
+            </div>
+          )}
+          {restoredFrom !== null && !isDraftClosed && (
+            <div className="premium-inline-alert premium-restore-alert">
+              <span>
+                Picked up where you left off — saved{" "}
+                {describeSavedAt(restoredFrom, Date.now())}. Your progress is
+                kept on this device until you submit.
+              </span>
+              <PremiumButton
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setPlayerName("");
+                  setPlayerEmail("");
+                  setPicks(createEmptyPicks());
+                  setSealedPicks(Array(DRAFT_SIZE).fill(false));
+                  setPredFirstOut("");
+                  setPredWinner("");
+                  setTraitors(["", "", ""]);
+                  clearSavedProgress();
+                }}
+              >
+                Start over
+              </PremiumButton>
             </div>
           )}
         </PremiumCard>

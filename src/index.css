@@ -3617,3 +3617,13 @@ body.premium-ui .rounded-xl {
   color: var(--accent, #c9a227);
   text-underline-offset: 2px;
 }
+
+/* Restored-progress notice: an explicit affordance, because silently
+   repopulating a long form is disorienting if you expected a blank one. */
+.premium-restore-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
