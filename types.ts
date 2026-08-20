@@ -5,6 +5,14 @@ export interface CastMemberStatus {
   isTraitor: boolean;
   isEliminated: boolean;
   portraitUrl?: string | null;
+  /**
+   * Profile details shown when picking. A civilian cast carries no public
+   * recognition, so these are what let a player tell one name from another.
+   * All optional: a season may be published before its cast is fleshed out.
+   */
+  age?: number | null;
+  occupation?: string | null;
+  hometown?: string | null;
 }
 
 export interface DraftPick {
