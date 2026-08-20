@@ -11,7 +11,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *   APNS_KEY_ID       Key ID of the APNs auth key
  *   APNS_TEAM_ID      Apple Developer team ID
  *   APNS_PRIVATE_KEY  Contents of the .p8 file, PEM including header/footer
- *   APNS_BUNDLE_ID    Defaults to online.traitorsfantasydraft.app
+ *   APNS_BUNDLE_ID    Defaults to com.roundtabledraft.app
  *   APNS_ENV          "sandbox" (default) or "production"
  *
  * Call with {"dryRun": true} to resolve the audience and render the message
@@ -19,7 +19,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  * which makes the audience logic verifiable before any key exists.
  */
 
-const BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "online.traitorsfantasydraft.app";
+const BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "com.roundtabledraft.app";
 const APNS_HOST =
   Deno.env.get("APNS_ENV") === "production"
     ? "api.push.apple.com"
