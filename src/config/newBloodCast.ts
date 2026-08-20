@@ -9,8 +9,10 @@
  *
  * Provenance, so this is easy to correct:
  * - Names and hometowns come from NBC's published cast page.
- * - Ages and occupations come from press coverage of the cast announcement and
- *   have not been checked against NBC directly. Treat them as correctable.
+ * - Ages and occupations were checked on 2026-08-20 against press coverage of
+ *   the cast announcement and all twenty-two matched. The one value worth a
+ *   second look is Morgan Cook's age: the article reporting the full cast says
+ *   39, which is what is recorded here, but one aggregator said 30.
  */
 
 export interface CastProfile {

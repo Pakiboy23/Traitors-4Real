@@ -18,6 +18,7 @@ import {
   WeeklyScoreSnapshot,
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
+import { resolveCastNames } from "../src/utils/castProfiles";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -99,13 +100,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   uiVariant,
 }) => {
   const isPremiumUi = uiVariant === "premium";
-  const castNames = Array.from(
-    new Set([
-      ...(showConfig?.castNames ?? []),
-      ...Object.keys(gameState.castStatus || {}),
-      ...CAST_NAMES,
-    ])
-  ).sort((a, b) => a.localeCompare(b));
+  // The roster comes from the game state, which has already resolved it for the
+  // active season. Merging showConfig.castNames back in here re-created the bug
+  // it was meant to fix: that record is the *global* default, so on a New Blood
+  // season the banish and murder menus listed twenty-two civilians alongside
+  // twenty-three celebrities from the season before.
+  const castNames = resolveCastNames(
+    [],
+    Object.keys(gameState.castStatus || {}),
+    CAST_NAMES
+  );
   const activeCastNames = castNames.filter(
     (name) => !gameState.castStatus[name]?.isEliminated
   );

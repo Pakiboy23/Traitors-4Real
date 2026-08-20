@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Push Notifications capability.
+
+	  "development" is what Xcode writes when the capability is ticked. Xcode
+	  substitutes "production" automatically when exporting for the App Store,
+	  so this value is correct for both TestFlight and release builds.
+	-->
+	<key>aps-environment</key>
+	<string>development</string>
+</dict>
+</plist>
