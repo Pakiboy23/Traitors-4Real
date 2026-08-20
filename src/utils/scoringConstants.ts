@@ -45,7 +45,7 @@ export const MULTIPLIERS = {
 } as const;
 
 export const TIMING = {
-  /** Debounce delay (ms) before saving game state to PocketBase */
+  /** Debounce delay (ms) before saving game state to Supabase */
   SAVE_DEBOUNCE_MS: 500,
 
   /** Duration (ms) of the sync animation pulse */

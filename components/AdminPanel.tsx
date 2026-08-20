@@ -882,7 +882,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (targetPlayer?.email) {
       savePlayerPortrait(targetPlayer.email, targetPlayer.name, url).catch((err) => {
         logger.error("Failed to persist player portrait:", err);
-        setMsg({ text: "Portrait saved locally. PocketBase writes failed.", type: 'error' });
+        setMsg({ text: "Portrait saved locally. Saving to the server failed.", type: 'error' });
       });
     }
   };
@@ -1400,7 +1400,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setNewAdjustmentWeekId("");
       setMsg({ text: "Score adjustment added.", type: "success" });
     } catch (error) {
-      logger.warn("Failed to create score adjustment in PocketBase:", error);
+      logger.warn("Failed to create score adjustment in Supabase:", error);
       const fallback: ScoreAdjustment = {
         id: `local-${Date.now()}`,
         seasonId,
@@ -1427,7 +1427,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         await deleteScoreAdjustment(adjustment.id);
       }
     } catch (error) {
-      logger.warn("Failed to delete score adjustment in PocketBase:", error);
+      logger.warn("Failed to delete score adjustment in Supabase:", error);
     }
     const next = scoreAdjustments.filter((item) => item.id !== adjustment.id);
     applyScoreAdjustmentsToState(next);

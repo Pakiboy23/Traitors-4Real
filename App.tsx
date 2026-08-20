@@ -623,7 +623,7 @@ const App: React.FC = () => {
           hasRemoteSnapshotRef.current = true;
           remoteExistsRef.current = false;
         }
-        logger.warn("PocketBase sync failed:", error);
+        logger.warn("Supabase sync failed:", error);
       }
     };
     void loadRemote();
@@ -692,7 +692,7 @@ const App: React.FC = () => {
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );
-          logger.warn("PocketBase write failed:", error);
+          logger.warn("Supabase write failed:", error);
         });
     }, TIMING.SAVE_DEBOUNCE_MS);
     return () => {
