@@ -1,10 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { COUNCIL_LABELS, DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
+import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
 import { getCastPortraitSrc } from "../src/castPortraits";
 import { useToast } from "./Toast";
 import { logger } from "../src/utils/logger";
+import {
+  describeDraftWindow,
+  readForceClosedFromEnv,
+  resolveDraftWindow,
+} from "../src/utils/draftWindow";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -35,7 +40,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return result;
 }
 
-const DRAFT_CLOSED = String(process.env.NEXT_PUBLIC_DRAFT_CLOSED ?? "true").toLowerCase() !== "false";
 const DRAFT_SIZE = 10;
 const createEmptyPick = (): DraftPick => ({ member: "", rank: 1, role: "Faithful" });
 const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);
@@ -54,13 +58,13 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
   const [traitors, setTraitors] = useState(["", "", ""]);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const seasonStatus = gameState.seasonConfig?.status;
-  const isSeasonLocked =
-    seasonStatus === "finalized" || seasonStatus === "archived";
-  const isDraftClosed =
-    DRAFT_CLOSED ||
-    gameState.showConfig?.featureToggles?.draftEnabled === false ||
-    isSeasonLocked;
+  // The season record is the authority on whether the draft accepts entries,
+  // so opening it on premiere night is an admin action rather than a redeploy.
+  const draftWindow = useMemo(
+    () => resolveDraftWindow(gameState, { forceClosed: readForceClosedFromEnv() }),
+    [gameState]
+  );
+  const isDraftClosed = !draftWindow.isOpen;
   const castNames = Object.keys(gameState.castStatus || {}).sort((a, b) =>
     a.localeCompare(b)
   );
@@ -123,11 +127,13 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
     e.preventDefault();
 
     if (isDraftClosed) {
-      if (isSeasonLocked) {
-        showToast("This season is locked and no longer accepts draft submissions.", "warning");
-      } else {
-        showToast(`Draft submissions are closed. Use the ${COUNCIL_LABELS.weekly} tab for weekly picks.`, "warning");
-      }
+      showToast(
+        describeDraftWindow(
+          draftWindow,
+          gameState.showConfig?.terminology?.draftLabel || "Draft"
+        ),
+        "warning"
+      );
       return;
     }
 
@@ -215,9 +221,10 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
           />
           {isDraftClosed && (
             <div className="premium-inline-alert premium-inline-alert-warning">
-              {isSeasonLocked
-                ? "This season is finalized or archived. Draft submissions are closed."
-                : `Draft submissions are currently closed. Continue with weekly picks in ${COUNCIL_LABELS.weekly}.`}
+              {describeDraftWindow(
+                draftWindow,
+                gameState.showConfig?.terminology?.draftLabel || "Draft"
+              )}
             </div>
           )}
         </PremiumCard>
@@ -432,12 +439,12 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
                 <PremiumButton
                   type="submit"
                   variant="primary"
-                  disabled={DRAFT_CLOSED || hasDuplicates || !allPicksSealed || isSubmitting}
+                  disabled={isDraftClosed || hasDuplicates || !allPicksSealed || isSubmitting}
                   className="w-full"
                 >
                   {isSubmitting
                     ? "Submitting..."
-                    : DRAFT_CLOSED
+                    : isDraftClosed
                     ? "Draft Closed"
                     : hasDuplicates
                     ? "Fix Duplicate Picks"

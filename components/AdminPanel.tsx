@@ -203,6 +203,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       gameState.showConfig?.terminology?.finaleLabelDefault ||
       ""
   );
+  // Immediate open/close switch for the draft, independent of the season's
+  // scheduled lock. Defaults to enabled so an unset config does not read as
+  // "off" and silently hide the draft.
+  const [draftEnabledInput, setDraftEnabledInput] = useState(
+    (showConfig?.featureToggles?.draftEnabled ??
+      gameState.showConfig?.featureToggles?.draftEnabled ??
+      true) !== false
+  );
   const gameStateRef = useRef(gameState);
 
   useEffect(() => {
@@ -1460,6 +1468,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         finaleLabelDefault:
           finaleLabelInput.trim() || base.terminology.finaleLabelDefault,
       },
+      featureToggles: {
+        ...base.featureToggles,
+        draftEnabled: draftEnabledInput,
+      },
     };
 
     try {
@@ -2177,6 +2189,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             placeholder="Finale label"
           />
         </div>
+        <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+          <input
+            type="checkbox"
+            checked={draftEnabledInput}
+            onChange={(e) => setDraftEnabledInput(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span className="text-[11px] leading-relaxed">
+            <span className="block font-semibold">Draft open</span>
+            <span className="block opacity-70">
+              Turn off to close the draft immediately and hide its tab, without
+              finalizing the season. The season&rsquo;s scheduled draft lock still
+              applies on its own.
+            </span>
+          </span>
+        </label>
         <button
           type="button"
           className="btn-secondary px-4 text-[11px]"
