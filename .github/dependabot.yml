@@ -4,10 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-  - package-ecosystem: "npm"
-    directory: "/hello-fly"
-    schedule:
-      interval: "weekly"
   - package-ecosystem: "docker"
     directory: "/"
     schedule:

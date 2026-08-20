@@ -37,9 +37,7 @@
   },
   "include": [
     "App.tsx",
-    "index.tsx",
     "types.ts",
-    "vite-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     "components/**/*.ts",
@@ -50,9 +48,8 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "pb_migrations",
-    "pb_data",
-    "Traitors-4Real"
+    "Traitors-4Real",
+    "native-web",
+    "out"
   ]
 }

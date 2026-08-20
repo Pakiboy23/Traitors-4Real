@@ -2,108 +2,125 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Traitors Fantasy Draft (PocketBase + Fly.io)
+# Traitors Fantasy Draft
 
-This repository hosts the Traitors Season 4 fantasy draft app.
+Fantasy draft companion for **The Traitors**. Players draft a roster before the
+season, make weekly banishment and murder calls, play optional bonus games, and
+follow a live leaderboard.
+
+**Stack:** Next.js on Vercel, Supabase for Postgres, Auth, Realtime and Storage,
+Capacitor for the iOS and Android shells.
 
 ## Run locally
 
-**Prerequisites:** Node.js
+Requires Node 20 or newer.
 
-1. Install dependencies:
-   `npm install`
-2. Set `VITE_POCKETBASE_URL` in [.env.local](.env.local) if you’re not using the default (`http://127.0.0.1:8090`).
-3. Run the frontend:
-   `npm run dev`
+```bash
+npm install
+cp .env.example .env.local   # then fill in the Supabase values
+npm run dev
+```
 
-## PocketBase (auth + realtime + DB)
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are required.
+Next.js inlines them at build time, so changing one needs a rebuild. The anon
+key is public by design — it ships in the client bundle and access is governed
+by row-level security.
 
-1. Download PocketBase from https://pocketbase.io/docs/ and unzip it in the repo root.
-2. Start PocketBase:
-   `./pocketbase serve --http=127.0.0.1:8090`
-3. Create the PocketBase superuser in the admin UI (first run).
-4. Initialize collections + rules:
-   `POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/pocketbase-init.mjs`
-   - Optional: set `POCKETBASE_APP_ADMIN_EMAIL` + `POCKETBASE_APP_ADMIN_PASSWORD` to seed an app admin login.
-5. Set `VITE_POCKETBASE_URL` in `.env.local` (default `http://127.0.0.1:8090`).
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server |
+| `npm run build` | Production build |
+| `npm test` | Vitest suite |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run native:web:build` | Static export for the Capacitor shells |
 
-## Deploy on Fly.io
+## Supabase
 
-### Backend (PocketBase)
-- Uses `fly.toml` + `Dockerfile`
-- Deploy:
-  `flyctl deploy -a traitorsfantasydraft-pb`
+Schema lives in [`supabase/0001_traitors_core.sql`](supabase/0001_traitors_core.sql)
+— eight tables with row-level security on every one, realtime on the tables the
+app subscribes to, and a public storage bucket for portraits.
 
-### Frontend (Vite)
-- Uses `fly.frontend.toml` + `Dockerfile.frontend`
-- The frontend image bakes `VITE_POCKETBASE_URL` at build time.
-- Deploy:
-  `flyctl deploy -c fly.frontend.toml -a traitorsfantasydraft-web`
+Admin access is granted by row in `public.admin_users`, checked through the
+`is_traitors_admin()` security-definer function. To grant it:
 
-### Domains
-- Frontend:
-  - `traitorsfantasydraft.online` (A + AAAA)
-  - `www.traitorsfantasydraft.online` (CNAME)
-- Backend API:
-  - `api.traitorsfantasydraft.online` (CNAME → `traitorsfantasydraft-pb.fly.dev`)
+```sql
+insert into public.admin_users (user_id, email, display_name)
+select id, email, raw_user_meta_data->>'name'
+from auth.users
+where lower(email) = lower('you@example.com')
+on conflict (user_id) do update set email = excluded.email;
+```
 
-## Weekly Council submissions
+## Seasons
 
-Weekly Council votes are stored in the `submissions` collection (public create, admin-only read).
-Admins can merge Weekly Council votes into the main `games` record from the Admin panel.
-Merged votes are retained in `submissions` with `kind="weekly_merged"` for audit/recovery.
+The app is season-scoped and white-label capable. Each season owns its cast,
+rules and lifecycle, so a new season does not inherit the previous one.
 
-## Plug-and-Play Season Shell (MVP)
+- `show_configs` — branding and terminology
+- `seasons` — lifecycle metadata and lock schedule
+- `season_states` — the full game state for one season, including its own cast
+  and its own embedded show config
+- `submissions` — player entries, admin-read only
+- `score_adjustments` — manual point changes, each with a reason
 
-The app now supports shell collections for reusable show/season operations:
+A season's status drives what players can do: `draft` (set up, not accepting
+entries), `live` (in play), `finalized` and `archived` (read-only).
 
-- `showConfigs` (white-label branding + terminology + cast list)
-- `seasons` (season lifecycle metadata)
-- `seasonStates` (state payload scoped by `seasonId`)
-- `scoreAdjustments` (manual point adjustments ledger with audit reason)
-- `submissions` now supports `seasonId`, `weekId`, `submissionStatus`, and `rulePackId`
+### Opening and closing the draft
 
-### Admin shell workflow
+The season record is the authority. In order of precedence:
 
-In the Admin panel, use the **Seasons** section to:
+1. `NEXT_PUBLIC_DRAFT_CLOSED=true` — emergency override, normally unset
+2. Season status — `finalized` and `archived` are closed; anything other than
+   `live` is closed
+3. **Draft open** switch in Admin → Show Config — immediate close
+4. `lockSchedule.draftLockAt` — scheduled lock
 
-- Edit and save show branding/terminology (white-label setup)
-- Create/publish a new season with cast import, rule pack, and lock schedule
-- Clone a season for next cycle
-- Finalize/archive a season (read-only behavior for player submissions)
-- Load/switch active seasons without code changes
+All of 2–4 are changeable at runtime with no redeploy. The logic is a pure
+function in [`src/utils/draftWindow.ts`](src/utils/draftWindow.ts) with tests.
 
-### One-time migration from legacy `games` state
+## Scoring
 
-Run:
+The engine lives in [`src/utils/scoring.ts`](src/utils/scoring.ts) and is driven
+by a rule pack from [`src/config/rulePacks.ts`](src/config/rulePacks.ts), so
+point values are data rather than code.
 
-`POCKETBASE_URL=https://api.traitorsfantasydraft.online POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/migrate-legacy-to-season-shell.mjs`
+The in-app Rules tab is **generated** from the active rule pack.
+`RULE_EXPLANATIONS` is typed as a total record over `RulePackPoints`, so adding
+a scoring constant fails to compile until it is explained — the guide cannot
+drift from the engine that awards the points.
 
-Optional env:
+Two conventions worth knowing before changing anything here:
 
-- `SHOW_SLUG` (default: `default`)
-- `SEASON_ID` (default: `season-legacy`)
-- `SEASON_LABEL` (default: `Season Legacy`)
+- Weekly penalties are stored **positive** and subtracted; bonus penalties are
+  stored **negative** and added.
+- The below-zero bonus check is snapshotted **once** before both bonus games, so
+  the pair is order-independent.
 
-### Recover merged records into `submissions`
-If historical merged entries exist in `games.state.weeklySubmissionHistory` but are missing from `submissions`, run:
-`POCKETBASE_URL=https://api.traitorsfantasydraft.online POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/recover-weekly-submissions-from-history.mjs`
+Both are covered by tests. Run `npm test` before touching scoring.
 
-### Restore game state from backup
-`POCKETBASE_ADMIN_EMAIL=you@example.com POCKETBASE_ADMIN_PASSWORD=... node scripts/restore-backup-pocketbase.mjs /path/to/backup.json`
+## Native apps
 
-## Legacy Firebase note
+```bash
+npm run native:web:build   # static export into native-web/
+npx cap add ios            # first time only
+npm run ios:sync:bundled
+npm run ios:open
+```
 
-The production stack now runs on PocketBase + Fly.io. The old Firebase/Firestore implementation is legacy and should not be used for current deployment workflows.
+Always sync through the bundled scripts. A bare `npx cap sync` resolves `webDir`
+to `public/` and re-adds the live-site `server.url`, producing a shell that
+loads a website over the network — which is what App Store Review Guideline 4.2
+rejects.
 
-- Legacy Firebase code is retained under `functions/` for historical reference only.
-- Local Firebase CLI/cache files are intentionally git-ignored to prevent merge conflicts with the current Fly/PocketBase deployment setup.
-### PR #32 conflict-resolution decision
+## Deployment
 
-When reconciling old Firebase-to-Fly migration branches, keep the current PocketBase-first deployment model as the source of truth:
+Production is Vercel, deployed from `main`. Set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` in both the Vercel project and the repository
+secrets, so CI builds match what ships.
 
-- Keep `Dockerfile`, `fly.toml`, and app code aligned to PocketBase backend + Fly.io deployment.
-- Do **not** restore legacy Firebase Hosting cache/artifacts (for example `.firebase/hosting.*`).
-- Keep `firebase.json` / `firestore.rules` out of the active deployment path unless a separate, explicit Firebase backend migration is planned.
+## History
 
-This avoids re-introducing stale Firebase hosting assumptions into the current production topology.
+The app previously ran on Firebase, then PocketBase on Fly.io, before moving to
+Supabase and Vercel in April 2026. Those code paths have been removed rather
+than left to rot; recover them from git history if ever needed.
