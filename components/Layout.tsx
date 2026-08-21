@@ -11,6 +11,7 @@ import {
   PremiumStatusBadge,
   PremiumTabs,
 } from "../src/ui/premium";
+import { shouldShowAdminTab } from "../src/utils/adminEntry";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ interface LayoutProps {
   lastSync?: number;
   showConfig?: ShowConfig;
   uiVariant: UiVariant;
+  isAdminAuthenticated?: boolean;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -28,6 +30,7 @@ const Layout: React.FC<LayoutProps> = ({
   lastSync,
   showConfig,
   uiVariant,
+  isAdminAuthenticated = false,
 }) => {
   const reduceMotion = useReducedMotion();
   const isPremiumUi = uiVariant === "premium";
@@ -54,10 +57,27 @@ const Layout: React.FC<LayoutProps> = ({
     localStorage.setItem("traitors_theme", "dark");
   }, [isLightMode, isPremiumUi]);
 
-  const syncLabel = useMemo(() => {
-    if (!lastSync) return "No sync yet";
-    return `Synced ${new Date(lastSync).toLocaleTimeString()}`;
-  }, [lastSync]);
+  // Null until there is something to report. "No sync yet" told a player
+  // nothing and was the first thing in frame on a cold load.
+  const syncLabel = useMemo(
+    () => (lastSync ? `Synced ${new Date(lastSync).toLocaleTimeString()}` : null),
+    [lastSync]
+  );
+  const isDevBuild = process.env.NODE_ENV === "development";
+
+  const [showAdminTab, setShowAdminTab] = useState(false);
+  useEffect(() => {
+    // Read on the client only: the URL is not known during prerender, and a
+    // mismatch between server and client markup would hydrate wrong.
+    setShowAdminTab(
+      shouldShowAdminTab({
+        isAuthenticated: isAdminAuthenticated,
+        search: window.location.search,
+        hash: window.location.hash,
+      })
+    );
+  }, [isAdminAuthenticated]);
+
   const terminology = showConfig?.terminology;
   const weeklyLabel = terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
   const navItems: Array<{ id: string; label: string }> = [
@@ -70,10 +90,13 @@ const Layout: React.FC<LayoutProps> = ({
     // Always available: a player needs the scoring rules most while a form is
     // closed to them, so this is never gated behind the draft being open.
     { id: "rules", label: "Rules" },
-    { id: "admin", label: terminology?.adminLabel || "Admin" },
+    // Hidden unless asked for by URL or already signed in — see
+    // src/utils/adminEntry.ts for why, and for the two URLs that reveal it.
+    ...(showAdminTab
+      ? [{ id: "admin", label: terminology?.adminLabel || "Admin" }]
+      : []),
   ];
 
-  const envLabel = process.env.NODE_ENV === "development" ? "Development" : "Production";
 
   return (
     <motion.div
@@ -86,8 +109,10 @@ const Layout: React.FC<LayoutProps> = ({
         <motion.header className="premium-shell-header" variants={sectionStaggerVariants}>
           <motion.div className="premium-utility-bar" variants={cardRevealVariants}>
             <div className="premium-utility-left">
-              <PremiumStatusBadge tone="accent">{envLabel}</PremiumStatusBadge>
-              <PremiumStatusBadge>{syncLabel}</PremiumStatusBadge>
+              {isDevBuild && (
+                <PremiumStatusBadge tone="accent">Development</PremiumStatusBadge>
+              )}
+              {syncLabel && <PremiumStatusBadge>{syncLabel}</PremiumStatusBadge>}
             </div>
 
             <div className="premium-utility-right">

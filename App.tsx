@@ -1069,6 +1069,7 @@ const App: React.FC = () => {
         lastSync={lastSavedAt ?? undefined}
         showConfig={gameState.showConfig}
         uiVariant={uiVariant}
+        isAdminAuthenticated={isAdminAuthenticated}
       >
         {content}
       </Layout>
