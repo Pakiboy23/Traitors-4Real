@@ -37,3 +37,6 @@ backups/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# App Store screenshot output (regenerate with scripts/screenshots/capture.mjs)
+/screenshots/
