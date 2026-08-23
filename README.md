@@ -2,14 +2,14 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Traitors Fantasy Draft
+# Round Table Draft
 
-Fantasy draft companion for **The Traitors**. Players draft a roster before the
+Fantasy draft companion for a sealed reality-competition season. Players draft a roster before the
 season, make weekly banishment and murder calls, play optional bonus games, and
 follow a live leaderboard.
 
 **Stack:** Next.js on Vercel, Supabase for Postgres, Auth, Realtime and Storage,
-Capacitor for the iOS and Android shells.
+Capacitor for the iOS shell.
 
 ## Run locally
 

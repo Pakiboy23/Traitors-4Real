@@ -11,7 +11,7 @@ If older context mentions PocketBase, Fly.io, Firebase, or Vite — discard it.
 
 ## Positioning
 
-Public name: **Round Table Draft**. The TV show is season flavor, not the product name. `metadata.json` still says "The Traitors: New Blood Fantasy Draft" — do not put that on an App Store title. Privacy/support routes already disclaim affiliation.
+Public name: **Round Table Draft**. The TV show is season flavor, not the product name. `metadata.json` and the README must stay on that name — never "The Traitors: New Blood Fantasy Draft" on an App Store title. Privacy/support routes already disclaim affiliation.
 
 This is a sealed league, not a growth app. Do not spend App Store cycles while H.I.M. is in a live growth week.
 
