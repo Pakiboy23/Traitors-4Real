@@ -135,6 +135,11 @@ old stack in its body — it carries a correction header.
   delivery is untested — it needs four secrets that are not set yet:
   `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_ENV`.
 
-**Not done:** App Store Connect record, App ID registration, screenshots (the
-`DEVELOPMENT` badge, `NO SYNC YET` chip and Admin tab render in frame), cast
-photos.
+**Not done:** App Store Connect record, App ID registration, cast photos.
+
+Screenshots are unblocked as of #118. The `DEVELOPMENT` badge is gated on
+`NODE_ENV` and is dead-code-eliminated from a production build; the `NO SYNC YET`
+chip no longer exists (`syncLabel` is null until there is a real sync); the Admin
+tab is hidden unless `?admin=1`/`#admin` or already signed in. Verified 2026-08-24
+by rendering a production build: the nav is exactly Overview / Draft / Weekly
+Council / Leaderboard / Rules and the utility bar is empty.
