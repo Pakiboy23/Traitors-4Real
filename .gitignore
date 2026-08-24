@@ -40,3 +40,6 @@ backups/
 
 # App Store screenshot output (regenerate with scripts/screenshots/capture.mjs)
 /screenshots/
+
+# Claude Code session memory (local only)
+/MEMORY.md
