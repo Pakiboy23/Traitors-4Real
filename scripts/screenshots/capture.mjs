@@ -7,6 +7,19 @@
  *   npx next build && npx next start -p 3222
  *   node scripts/screenshots/capture.mjs http://127.0.0.1:3222
  *
+ * The build needs NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
+ * They are inlined at build time, so an unset pair reaches createClient() as ""
+ * and the app dies on load with "Application error: a client-side exception".
+ * Nothing here notices — you get six screenshots of the error page. Either keep
+ * them in .env.local, or use the placeholders CI builds with:
+ *
+ *   NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co \
+ *   NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key \
+ *   npx next build
+ *
+ * Placeholders are fine: the season is injected into localStorage and no
+ * request needs to succeed.
+ *
  * Playwright is not a dependency of the app — install it only when capturing.
  * Output lands in ./screenshots (override with SHOT_DIR).
  *
@@ -118,9 +131,31 @@ const page = await ctx.newPage();
 const errors = [];
 page.on("pageerror", (e) => errors.push(e.message.slice(0, 200)));
 
+/**
+ * A build with no Supabase env vars throws on load and renders Next's error
+ * boundary. Every shot after that is a screenshot of that message, and the
+ * pageerror log at the bottom is too late to save the run — so stop on the
+ * first one instead of producing six unusable PNGs.
+ */
+const assertAppRendered = async () => {
+  const body = await page.locator("body").innerText();
+  if (/Application error:/i.test(body)) {
+    throw new Error(
+      "The app failed to boot — see the env note at the top of this file. " +
+        "Rebuild with NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY set."
+    );
+  }
+};
+
+let checked = false;
 for (const shot of SHOTS) {
   await page.goto(BASE, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(2500);
+
+  if (!checked) {
+    await assertAppRendered();
+    checked = true;
+  }
 
   if (shot.tab) {
     const tab = page.locator("nav.premium-tabs button", { hasText: shot.tab }).first();
