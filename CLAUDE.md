@@ -19,7 +19,7 @@ a Capacitor wrapper for iOS.
 | Hosting | **Vercel** — production is `traitorsfantasydraft.online` |
 | Backend | **Supabase** project `tpjiqegneohtbcxapqnq` — Postgres 17, Auth, Realtime, Edge Functions (Deno) |
 | Native | **Capacitor 8**, iOS only. Swift Package Manager, not CocoaPods |
-| Tests | **Vitest** — 158 tests across 9 files |
+| Tests | **Vitest** — 177 tests across 10 files |
 | Styling | Tailwind 4 + a hand-written design system in `src/index.css` |
 
 There is no separate API server. The browser talks to Supabase directly with
@@ -132,8 +132,14 @@ old stack in its body — it carries a correction header.
 - iOS target has the push entitlement, the `remote-notification` background
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
 - `send-lock-reminder` Edge Function is deployed (v3) and exercised. Real APNs
-  delivery is untested — it needs four secrets that are not set yet:
-  `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`, `APNS_ENV`.
+  delivery is untested. It needs three secrets that are not set yet:
+  `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. `APNS_ENV` defaults to
+  `sandbox` and `APNS_BUNDLE_ID` defaults to the correct bundle id, so neither
+  is required — but **set `APNS_ENV=production` before the first TestFlight
+  send**. On a sandbox/production mismatch Apple returns `BadDeviceToken`, which
+  the function treats as a stale token and deletes; it cannot tell a mismatch
+  from a dead device. `push_tokens` is currently empty, so secrets alone will
+  not deliver anything — a physical device has to register first.
 
 **Not done:** App Store Connect record, App ID registration, cast photos.
 
