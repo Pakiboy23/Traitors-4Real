@@ -157,7 +157,19 @@ old stack in its body — it carries a correction header.
   from a dead device. `push_tokens` is currently empty, so secrets alone will
   not deliver anything — a physical device has to register first.
 
-**Not done:** App Store Connect record, App ID registration, cast photos.
+**Shipping already.** App Store Connect record, App ID, and signing are all
+done — do not describe them as outstanding. As of 2026-08-27 three builds are
+uploaded under version 1.0: build 1 in internal Testing, build 2 Expired, build
+3 Waiting for Review. TestFlight groups `DrafTers` (internal) and `DrafTers2`
+(external) exist, and Xcode Cloud is wired to the App target.
+
+**Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
+iOS 26+ (no UIScene adoption — UIKit calls
+`_UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption` and traps).
+That is the most likely cause and the timing fits, but it is not confirmed
+against the crash logs. Build 3 was created after #133 merged.
+
+**Not done:** cast photos.
 
 Screenshots are unblocked as of #118. The `DEVELOPMENT` badge is gated on
 `NODE_ENV` and is dead-code-eliminated from a production build; the `NO SYNC YET`

@@ -18,12 +18,11 @@
 # So: install Node, build the static export, and run `cap sync` before Xcode
 # opens the project.
 #
-# Required Xcode Cloud environment variables (Workflow > Environment):
-#   NEXT_PUBLIC_SUPABASE_URL
-#   NEXT_PUBLIC_SUPABASE_ANON_KEY
-# Both are inlined into the bundle at build time. The anon key is public by
-# design — it ships in the client bundle and RLS is the access control — so it
-# is an ordinary environment variable, not a secret.
+# NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are required.
+# They now come from the committed .env.production, so a fresh clone builds with
+# no Xcode Cloud configuration. Setting them in Workflow > Environment still
+# works and still wins. Both are inlined into the bundle at build time and the
+# anon key is public by design — RLS is the access control, not secrecy.
 
 set -e
 
@@ -31,21 +30,21 @@ set -e
 # every path below is resolved from the repository root explicitly.
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-# Node 22 is a hard requirement, not a preference. @capacitor/cli has declared
-# engines >=22.0.0 since 8.1.0 and enforces it itself, so `cap sync` below dies
-# outright on anything older:
+# Node 22, matching .github/workflows/ci.yml. Not a preference: @capacitor/cli
+# has declared engines >=22.0.0 since 8.1.0 and enforces it itself, so `cap sync`
+# below dies outright on anything older —
 #
 #   [fatal] The Capacitor CLI requires NodeJS >=22.0.0
 #
-# This script previously installed node@20, on the grounds that npm 11 (Node
-# 22+) rejected the lockfile with ~90 "Missing: @tailwindcss/oxide-*" errors.
-# That lockfile has since been rewritten with npm 11, and now installs cleanly
-# under npm 10 and npm 11 alike, so the constraint that motivated node@20 no
-# longer holds — while the CLI's requirement always did. Homebrew has also
-# deprecated node@20; it is disabled on 2026-10-28.
+# npm only warns (EBADENGINE on every Xcode Cloud build); the CLI does not.
+# This was pinned to 20 for a lockfile that npm 11 rejected with ~90
+# "Missing: @tailwindcss/oxide-*" errors; that lockfile has since been
+# regenerated and `npm ci` is clean on npm 10 and 11 alike, so the constraint
+# that motivated node@20 no longer holds while the CLI's always did. Homebrew
+# has also deprecated node@20 and disables it on 2026-10-28.
 #
-# Node 22 ships npm 10.9.x, which keeps npm on the 10.x line `npm ci` is
-# verified against.
+# Node 22 ships npm 10.9.x, keeping npm on the 10.x line `npm ci` is verified
+# against.
 echo "[ci_post_clone] Installing Node 22..."
 brew install node@22
 export PATH="$(brew --prefix node@22)/bin:$PATH"
@@ -57,14 +56,23 @@ npm ci
 
 # Fail loudly here rather than letting build-native-web.mjs discover it further
 # in, so the reason is the first thing in the Xcode Cloud log.
-for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
-  eval "value=\$$var"
-  if [ -z "$value" ]; then
-    echo "[ci_post_clone] Missing required environment variable: $var" >&2
-    echo "[ci_post_clone] Set it in the Xcode Cloud workflow's Environment tab." >&2
-    exit 1
-  fi
-done
+#
+# Resolved the way the build resolves it, not from the shell alone. These may
+# come from Workflow > Environment *or* from the committed .env.production,
+# which Next.js loads via @next/env and the shell never sees. A shell-only
+# check rejects a clone that would build perfectly well from the committed
+# defaults — which is the whole point of committing them.
+node -e '
+const { loadEnvConfig } = require("@next/env");
+loadEnvConfig(process.cwd());
+const missing = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+  .filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  console.error("[ci_post_clone] Missing required environment: " + missing.join(", "));
+  console.error("[ci_post_clone] Set them in Workflow > Environment, or restore .env.production.");
+  process.exit(1);
+}
+'
 
 echo "[ci_post_clone] Building bundled web assets and syncing iOS..."
 npm run ios:sync:bundled
