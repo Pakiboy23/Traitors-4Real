@@ -3627,3 +3627,68 @@ body.premium-ui .rounded-xl {
   justify-content: space-between;
   gap: 0.75rem;
 }
+
+/* "More detail" disclosure on the home screen.
+   The Overview used to stack thirteen cards, so the weekly action sat below
+   ten analytics panels a player scrolled past every visit. The reference cards
+   now collapse behind this; the status card, the standings snapshot, and the
+   call to action stay above it. Uses a native <details> so keyboard and screen
+   reader behaviour comes for free. */
+.premium-more {
+  border-top: 1px solid var(--line-muted, rgba(204, 177, 135, 0.11));
+  margin-top: 0.85rem;
+  padding-top: 0.2rem;
+}
+
+.premium-more-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--accent, #d4b272);
+}
+
+/* Safari renders a disclosure triangle through a pseudo-element the standard
+   list-style rule does not reach. */
+.premium-more-summary::-webkit-details-marker {
+  display: none;
+}
+
+.premium-more-summary::after {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 0.18s ease;
+}
+
+.premium-more[open] .premium-more-summary::after {
+  transform: rotate(-135deg) translate(-1px, -1px);
+}
+
+.premium-more-summary:focus-visible {
+  outline: 2px solid var(--accent-strong, #f0d6a2);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+.premium-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.35rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .premium-more-summary::after {
+    transition: none;
+  }
+}

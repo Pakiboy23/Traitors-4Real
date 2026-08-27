@@ -461,6 +461,14 @@ const Welcome: React.FC<WelcomeProps> = ({
             </PremiumCard>
           </motion.div>
 
+          {/* Reference, not the weekly action. A player opens this app to answer
+              three questions — am I done, when is it due, where do I stand — and
+              these three cards answer none of them. Collapsed by default so the
+              answer is above the fold instead of ten cards down. Front-Runners
+              stays visible: it is the "where do I stand" half. */}
+          <details className="premium-more">
+            <summary className="premium-more-summary">More detail</summary>
+            <div className="premium-more-body">
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline">
@@ -527,9 +535,7 @@ const Welcome: React.FC<WelcomeProps> = ({
               </section>
             </PremiumCard>
           </motion.div>
-        </motion.div>
 
-        <motion.aside className="space-y-3 premium-overview-right" variants={cardRevealVariants}>
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline">
@@ -554,6 +560,11 @@ const Welcome: React.FC<WelcomeProps> = ({
               </ol>
             </PremiumCard>
           </motion.div>
+            </div>
+          </details>
+        </motion.div>
+
+        <motion.aside className="space-y-3 premium-overview-right" variants={cardRevealVariants}>
 
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
