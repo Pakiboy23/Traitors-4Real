@@ -329,17 +329,20 @@ const Welcome: React.FC<WelcomeProps> = ({
                       ? "FINALE PROTOCOL IS ACTIVE"
                       : "CONTROL THE ESTATE. COMMAND THE BOARD."}
                   </h2>
-                  <p
-                    className={`premium-overview-copy ${
-                      isFinaleMode ? "premium-overview-copy-finale" : ""
-                    }`}
-                  >
-                    {isSeasonFinalized
-                      ? "The board is finalized. Review the final standings and complete ledger below."
-                      : isFinaleMode
-                      ? "Finale dossier submissions are open. Lock every call before the estate seals."
-                      : "Track betrayals, forecast outcomes, and outmaneuver the room with disciplined weekly calls."}
-                  </p>
+                  {/* Only rendered when it carries an instruction. In an ordinary
+                      week this repeated the subtitle already in the shell header
+                      and pushed the countdown and the action further down. */}
+                  {(isSeasonFinalized || isFinaleMode) && (
+                    <p
+                      className={`premium-overview-copy ${
+                        isFinaleMode ? "premium-overview-copy-finale" : ""
+                      }`}
+                    >
+                      {isSeasonFinalized
+                        ? "The board is finalized. Review the final standings and complete ledger below."
+                        : "Finale dossier submissions are open. Lock every call before the estate seals."}
+                    </p>
+                  )}
 
                   <div className="premium-overview-hero-actions flex-col gap-2">
                     {isSeasonFinalized ? (
@@ -400,6 +403,21 @@ const Welcome: React.FC<WelcomeProps> = ({
                   </div>
                 )}
 
+              </div>
+            </PremiumCard>
+          </motion.div>
+
+          {/* Reference, not the weekly action. A player opens this app to answer
+              three questions — am I done, when is it due, where do I stand — and
+              these three cards answer none of them. Collapsed by default so the
+              answer is above the fold instead of ten cards down. Front-Runners
+              stays visible: it is the "where do I stand" half. */}
+          <details className="premium-more">
+            <summary className="premium-more-summary">More detail</summary>
+            <div className="premium-more-body">
+              {/* Lifted out of the hero card. Both are standings detail, not the
+                  weekly action, and inside the hero they pushed the countdown
+                  and the button below the fold on a phone. */}
                 {!isSeasonFinalized && (
                   <article className="premium-overview-rival-card premium-overview-rival-card-inline relative pt-11">
                     <div className="premium-section-topline absolute -top-3 left-4 z-20 rounded-full bg-black/70 px-3 py-1 shadow-[0_4px_14px_rgba(0,0,0,0.35)] backdrop-blur-sm">
@@ -457,18 +475,7 @@ const Welcome: React.FC<WelcomeProps> = ({
                     </motion.article>
                   ))}
                 </div>
-              </div>
-            </PremiumCard>
-          </motion.div>
 
-          {/* Reference, not the weekly action. A player opens this app to answer
-              three questions — am I done, when is it due, where do I stand — and
-              these three cards answer none of them. Collapsed by default so the
-              answer is above the fold instead of ten cards down. Front-Runners
-              stays visible: it is the "where do I stand" half. */}
-          <details className="premium-more">
-            <summary className="premium-more-summary">More detail</summary>
-            <div className="premium-more-body">
           <motion.div variants={cardRevealVariants} whileHover={cardHover}>
             <PremiumCard className="premium-panel-pad premium-stack-sm">
               <div className="premium-section-topline">
