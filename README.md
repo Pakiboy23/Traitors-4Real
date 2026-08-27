@@ -113,6 +113,32 @@ to `public/` and re-adds the live-site `server.url`, producing a shell that
 loads a website over the network — which is what App Store Review Guideline 4.2
 rejects.
 
+### Archiving without the web assets
+
+`ios/App/App/public` is build output, so it is gitignored and a fresh clone does
+not have it. It is a *folder reference* in Copy Bundle Resources, and Xcode
+resolves those by enumerating the directory — a directory that is not there
+enumerates to nothing and is dropped from the build with no error. An archive
+taken before `npm run ios:sync:bundled` therefore succeeds, validates, uploads,
+and passes App Store Connect processing while containing no web app at all.
+It fails only on the device: Capacitor's `CAPBridgeViewController.loadWebView()`
+calls `exit(1)` when `index.html` is missing, so the app installs from
+TestFlight, shows the launch screen, and closes.
+
+Two things stop that build from being produced:
+
+- `ios/App/Scripts/verify-web-assets.sh` runs as the App target's first build
+  phase and fails the build when `App/public/index.html` is missing, or when a
+  Release build still carries a `server.url`.
+- `ios/App/ci_scripts/ci_post_clone.sh` builds the export and runs `cap sync`
+  before Xcode Cloud opens the project, then asserts the same thing.
+
+**`ci_scripts` has to live next to `App.xcodeproj`.** Xcode Cloud looks for it
+in the directory holding the project it is building, not at the repository root;
+a copy at the root is never found and never runs. It needs
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` set under
+Workflow > Environment, because both are inlined into the bundle at build time.
+
 ### Icons and the launch screen
 
 All of it comes from one file, `design/app-icon.svg`:

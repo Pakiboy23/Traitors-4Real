@@ -55,10 +55,26 @@ src/utils/                 scoring, draft window, cast profiles, persistence
 src/native/                Capacitor bridge (push registration)
 supabase/functions/        Edge Functions (Deno)
 ios/App/                   Xcode project
+ios/App/Scripts/           build-phase guard against an assetless archive
+ios/App/ci_scripts/        Xcode Cloud post-clone hook (location is load-bearing)
 design/app-icon.svg        source art for every icon
 ```
 
 ## Things that will bite you
+
+**An archive can ship with no web app in it, silently.** `ios/App/App/public` is
+gitignored build output and a *folder reference* in Copy Bundle Resources. Xcode
+resolves folder references by enumerating the directory, so a missing directory
+enumerates to nothing and is dropped from the build without an error — the
+archive succeeds, uploads, and passes App Store Connect processing containing no
+web assets. On the device, `CAPBridgeViewController.loadWebView()` guards on
+`index.html` existing and calls `exit(1)`, so the app installs from TestFlight,
+shows the launch screen, and closes. It reads as a crash and it shipped that way
+once. Two guards now prevent it: `ios/App/Scripts/verify-web-assets.sh` runs as
+the App target's first build phase, and `ios/App/ci_scripts/ci_post_clone.sh`
+runs the sync for Xcode Cloud. **`ci_scripts` must sit next to `App.xcodeproj`**
+— Xcode Cloud looks for it beside the project it builds, never at the repository
+root, and a copy at the root silently never runs.
 
 **Two sign conventions in scoring.** Weekly penalties are stored **positive**
 and subtracted; `REDEMPTION_ROULETTE_INCORRECT` is stored **negative** and

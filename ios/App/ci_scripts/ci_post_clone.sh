@@ -2,10 +2,18 @@
 #
 # Xcode Cloud post-clone hook.
 #
+# LOCATION IS LOAD-BEARING. Xcode Cloud looks for ci_scripts in the directory
+# that holds the Xcode project or workspace it is building — here ios/App/,
+# next to App.xcodeproj — not at the repository root. A copy at the root is
+# never found and never runs, and because ios/App/App/public is a folder
+# reference, a missing folder is silently dropped from the build rather than
+# failing it: the archive succeeds and ships with no web assets. Capacitor
+# calls exit(1) when index.html is absent, so that build installs from
+# TestFlight and closes the instant it is opened. Do not move this file.
+#
 # Xcode Cloud clones the repo and builds ios/App/App.xcodeproj directly. It has
 # no knowledge of npm, Next.js, or Capacitor — and `ios/App/App/public` is
 # gitignored (ios/.gitignore), so a clone contains no web assets at all.
-# Without this script the archive builds cleanly and ships an empty shell.
 #
 # So: install Node, build the static export, and run `cap sync` before Xcode
 # opens the project.
@@ -19,6 +27,8 @@
 
 set -e
 
+# Xcode Cloud runs this script with ci_scripts/ as the working directory, so
+# every path below is resolved from the repository root explicitly.
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
 # Node 20 deliberately, matching .github/workflows/ci.yml. It is not cosmetic:
@@ -50,6 +60,9 @@ npm run ios:sync:bundled
 
 # cap sync is what populates ios/App/App/public. If it is empty the archive
 # would still succeed, so assert it here instead of shipping a blank app.
+# The App target repeats this check as a build phase, which is what catches a
+# local archive that skipped the sync; this one keeps the reason at the top of
+# the Xcode Cloud log rather than buried in the build output.
 if [ ! -f "ios/App/App/public/index.html" ]; then
   echo "[ci_post_clone] ios/App/App/public/index.html missing after sync." >&2
   echo "[ci_post_clone] The archive would contain no web assets — stopping." >&2
