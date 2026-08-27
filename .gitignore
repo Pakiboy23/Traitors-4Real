@@ -43,3 +43,6 @@ backups/
 
 # Claude Code session memory (local only)
 /MEMORY.md
+
+# Next.js generated — regenerates differently after `next dev` vs `next build`
+next-env.d.ts
