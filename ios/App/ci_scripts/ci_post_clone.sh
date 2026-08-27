@@ -56,14 +56,23 @@ npm ci
 
 # Fail loudly here rather than letting build-native-web.mjs discover it further
 # in, so the reason is the first thing in the Xcode Cloud log.
-for var in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
-  eval "value=\$$var"
-  if [ -z "$value" ]; then
-    echo "[ci_post_clone] Missing required environment variable: $var" >&2
-    echo "[ci_post_clone] Set it in the Xcode Cloud workflow's Environment tab." >&2
-    exit 1
-  fi
-done
+#
+# Resolved the way the build resolves it, not from the shell alone. These may
+# come from Workflow > Environment *or* from the committed .env.production,
+# which Next.js loads via @next/env and the shell never sees. A shell-only
+# check rejects a clone that would build perfectly well from the committed
+# defaults — which is the whole point of committing them.
+node -e '
+const { loadEnvConfig } = require("@next/env");
+loadEnvConfig(process.cwd());
+const missing = ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]
+  .filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  console.error("[ci_post_clone] Missing required environment: " + missing.join(", "));
+  console.error("[ci_post_clone] Set them in Workflow > Environment, or restore .env.production.");
+  process.exit(1);
+}
+'
 
 echo "[ci_post_clone] Building bundled web assets and syncing iOS..."
 npm run ios:sync:bundled
