@@ -80,16 +80,17 @@ const Layout: React.FC<LayoutProps> = ({
 
   const terminology = showConfig?.terminology;
   const weeklyLabel = terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
+  // Five tabs put four destinations between a player and the one thing they
+  // opened the app to do. Rules is a reference, not a destination, so it moved
+  // to a persistent link in the utility bar — still never gated, still reachable
+  // from every screen, just not competing with the weekly action for a tab.
   const navItems: Array<{ id: string; label: string }> = [
-    { id: "home", label: "Overview" },
+    { id: "home", label: "Home" },
     ...(showConfig?.featureToggles?.draftEnabled === false
       ? []
       : [{ id: "draft", label: terminology?.draftLabel || "Draft" }]),
     { id: "weekly", label: weeklyLabel },
-    { id: "leaderboard", label: terminology?.leaderboardLabel || "Leaderboard" },
-    // Always available: a player needs the scoring rules most while a form is
-    // closed to them, so this is never gated behind the draft being open.
-    { id: "rules", label: "Rules" },
+    { id: "leaderboard", label: terminology?.leaderboardLabel || "Standings" },
     // Hidden unless asked for by URL or already signed in — see
     // src/utils/adminEntry.ts for why, and for the two URLs that reveal it.
     ...(showAdminTab
@@ -128,12 +129,17 @@ const Layout: React.FC<LayoutProps> = ({
                   {isLightMode ? "Dark" : "Light"}
                 </PremiumButton>
               )}
+              {/* Was a primary "Lock {weeklyLabel} Picks" button, which competed
+                  with the home screen's own call to action and only jumped to a
+                  tab already in the nav two rows below. Rules takes the slot
+                  instead: it is the one thing a player needs from any screen,
+                  and it no longer costs a tab. */}
               <button
                 type="button"
-                  onClick={() => onTabChange("weekly")}
-                  className="premium-btn premium-btn-primary px-5 text-xs md:text-sm"
-                >
-                Lock {weeklyLabel} Picks
+                onClick={() => onTabChange("rules")}
+                className="premium-btn premium-btn-ghost px-4 text-xs md:text-sm"
+              >
+                Rules
               </button>
             </div>
           </motion.div>
