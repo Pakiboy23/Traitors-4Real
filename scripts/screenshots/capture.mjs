@@ -62,7 +62,7 @@ const SHOTS = [
         await autoFill.click();
         await page.waitForTimeout(800);
       }
-      await scrollTo(page, "Draft Board");
+      await scrollTo(page, "Draft Board", { keepNav: true });
     },
   },
   {
@@ -95,13 +95,35 @@ const SHOTS = [
   { name: "06-rules", tab: "Rules" },
 ];
 
-/** Scrolls a heading to the top of the frame so the content leads the shot. */
-const scrollTo = async (page, text) => {
+/**
+ * Scrolls `text` toward the top of the frame, leaving `gutter` CSS px above it
+ * so the shot does not start flush against the target.
+ *
+ * A flush `scrollIntoView({ block: "start" })` gets two things wrong here. It
+ * pins the target to y=0, which clips anything that overflows the target's own
+ * box upward — the leaderboard's headline value shares a row with its label but
+ * is taller, so it lost its top edge. And the tab bar is `position: static`, so
+ * on a long screen a flush scroll carries the app header and the tabs out of
+ * frame entirely, which is how 02-draft ended up reading as a bare list rather
+ * than a screen of the app. `keepNav` caps the scroll so the tabs stay in shot.
+ */
+const scrollTo = async (page, text, { gutter = 40, keepNav = false } = {}) => {
   const target = page.getByText(text, { exact: false }).first();
-  if (await target.count()) {
-    await target.evaluate((el) => el.scrollIntoView({ block: "start" }));
-    await page.waitForTimeout(500);
-  }
+  if (!(await target.count())) return;
+
+  // Cap at the tab bar's own offset: scrolling past it is what removes it.
+  const cap = keepNav
+    ? await page.evaluate(() => {
+        const nav = document.querySelector("nav.premium-tabs");
+        return nav ? nav.getBoundingClientRect().top + window.scrollY : Number.MAX_SAFE_INTEGER;
+      })
+    : Number.MAX_SAFE_INTEGER;
+
+  await target.evaluate((el, [g, limit]) => {
+    const y = el.getBoundingClientRect().top + window.scrollY - g;
+    window.scrollTo({ top: Math.max(0, Math.min(y, limit)), behavior: "instant" });
+  }, [gutter, cap]);
+  await page.waitForTimeout(500);
 };
 
 await mkdir(OUT, { recursive: true });
