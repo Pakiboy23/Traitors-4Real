@@ -30,13 +30,21 @@ set -e
 # every path below is resolved from the repository root explicitly.
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-# Node 22, matching .github/workflows/ci.yml. This was pinned to 20 for a
-# lockfile that npm 11 rejected with ~90 "Missing: @tailwindcss/oxide-*" errors;
-# that lockfile has since been regenerated and `npm ci` is clean on npm 10 and
-# 11 alike. Two things forced the move off 20: @capacitor/cli 8.5.0 declares
-# engines.node >=22.0.0, so `cap sync` was running unsupported (npm warned
-# EBADENGINE on every Xcode Cloud build), and Homebrew deprecated node@20 and
-# disables it on 2026-10-28, which would fail this step outright.
+# Node 22, matching .github/workflows/ci.yml. Not a preference: @capacitor/cli
+# has declared engines >=22.0.0 since 8.1.0 and enforces it itself, so `cap sync`
+# below dies outright on anything older —
+#
+#   [fatal] The Capacitor CLI requires NodeJS >=22.0.0
+#
+# npm only warns (EBADENGINE on every Xcode Cloud build); the CLI does not.
+# This was pinned to 20 for a lockfile that npm 11 rejected with ~90
+# "Missing: @tailwindcss/oxide-*" errors; that lockfile has since been
+# regenerated and `npm ci` is clean on npm 10 and 11 alike, so the constraint
+# that motivated node@20 no longer holds while the CLI's always did. Homebrew
+# has also deprecated node@20 and disables it on 2026-10-28.
+#
+# Node 22 ships npm 10.9.x, keeping npm on the 10.x line `npm ci` is verified
+# against.
 echo "[ci_post_clone] Installing Node 22..."
 brew install node@22
 export PATH="$(brew --prefix node@22)/bin:$PATH"
