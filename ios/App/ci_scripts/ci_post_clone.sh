@@ -31,13 +31,24 @@ set -e
 # every path below is resolved from the repository root explicitly.
 cd "$CI_PRIMARY_REPOSITORY_PATH"
 
-# Node 20 deliberately, matching .github/workflows/ci.yml. It is not cosmetic:
-# npm 11 (Node 22+) rejects this lockfile with ~90 "Missing: @tailwindcss/oxide-*"
-# and "@esbuild/*" errors, because it is stricter about optional platform
-# binaries. `npm ci` succeeds on Node 20 and fails on Node 26.
-echo "[ci_post_clone] Installing Node 20..."
-brew install node@20
-export PATH="$(brew --prefix node@20)/bin:$PATH"
+# Node 22 is a hard requirement, not a preference. @capacitor/cli has declared
+# engines >=22.0.0 since 8.1.0 and enforces it itself, so `cap sync` below dies
+# outright on anything older:
+#
+#   [fatal] The Capacitor CLI requires NodeJS >=22.0.0
+#
+# This script previously installed node@20, on the grounds that npm 11 (Node
+# 22+) rejected the lockfile with ~90 "Missing: @tailwindcss/oxide-*" errors.
+# That lockfile has since been rewritten with npm 11, and now installs cleanly
+# under npm 10 and npm 11 alike, so the constraint that motivated node@20 no
+# longer holds — while the CLI's requirement always did. Homebrew has also
+# deprecated node@20; it is disabled on 2026-10-28.
+#
+# Node 22 ships npm 10.9.x, which keeps npm on the 10.x line `npm ci` is
+# verified against.
+echo "[ci_post_clone] Installing Node 22..."
+brew install node@22
+export PATH="$(brew --prefix node@22)/bin:$PATH"
 
 echo "[ci_post_clone] node $(node -v), npm $(npm -v)"
 
