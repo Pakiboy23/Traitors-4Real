@@ -299,6 +299,14 @@ const App: React.FC = () => {
   const pendingWriteRef = useRef<string | null>(null);
   const writeTimerRef = useRef<number | null>(null);
   const hasRemoteSnapshotRef = useRef(false);
+  // show_configs is the authority for branding and terminology, but the game
+  // and season snapshots each embed their own copy, frozen whenever they were
+  // last written. Those snapshots arrive on a whole-state replace, so without
+  // this the fresh config is fetched, applied, and then silently overwritten by
+  // a months-old duplicate. Held in a ref because the two loads race and either
+  // can land first.
+  const [authoritativeShowConfig, setAuthoritativeShowConfig] =
+    useState<ShowConfig | null>(null);
   const remoteExistsRef = useRef<boolean | null>(null);
 
   const [gameState, setGameState] = useState<GameState>(() => {
@@ -426,6 +434,7 @@ const App: React.FC = () => {
       try {
         const config = await fetchShowConfig();
         if (!config || cancelled) return;
+        setAuthoritativeShowConfig(config);
         setUiVariant(config.defaultUiVariant || "premium");
         setGameState((prev) => {
           const next = normalizeGameState({
@@ -602,6 +611,35 @@ const App: React.FC = () => {
     };
   }, [activeSeasonId, gameState.seasonId, isAdminAuthenticated, seasonShellEnabled]);
 
+  // Several loaders write the whole game state, and each source embeds its own
+  // copy of showConfig — the game snapshot, the season snapshot, local storage.
+  // Whichever lands last would otherwise decide the app's branding, and the
+  // stale ones are months old. Reconcile centrally instead of patching each
+  // writer: show_configs is the authority, so re-assert it whenever what is on
+  // screen has drifted from it. Compared by value, so this settles in one pass.
+  useEffect(() => {
+    if (!authoritativeShowConfig) return;
+    if (
+      JSON.stringify(gameState.showConfig) === JSON.stringify(authoritativeShowConfig)
+    ) {
+      return;
+    }
+    setGameState((prev) =>
+      normalizeGameState({ ...prev, showConfig: authoritativeShowConfig })
+    );
+  }, [authoritativeShowConfig, gameState.showConfig]);
+
+  // Remote snapshots replace the whole state, and each carries its own embedded
+  // showConfig. Keep everything else from the snapshot; take branding and
+  // terminology from show_configs when we have it.
+  const withAuthoritativeShowConfig = useCallback((remoteState: unknown) => {
+    const authoritative = authoritativeShowConfig;
+    if (!authoritative || !remoteState || typeof remoteState !== "object") {
+      return remoteState;
+    }
+    return { ...(remoteState as Record<string, unknown>), showConfig: authoritative };
+  }, [authoritativeShowConfig]);
+
   useEffect(() => {
     if (seasonShellEnabled) return () => undefined;
     let isMounted = true;
@@ -613,7 +651,7 @@ const App: React.FC = () => {
         if (!remote || !isMounted) return;
         const serialized = JSON.stringify(remote.state);
         lastRemoteStateRef.current = serialized;
-        setGameState(normalizeGameState(remote.state));
+        setGameState(normalizeGameState(withAuthoritativeShowConfig(remote.state)));
         if (typeof remote.updatedAt === "number") {
           setLastSavedAt(remote.updatedAt);
         }
@@ -633,7 +671,7 @@ const App: React.FC = () => {
       remoteExistsRef.current = true;
       const serialized = JSON.stringify(remoteState);
       lastRemoteStateRef.current = serialized;
-      setGameState(normalizeGameState(remoteState));
+      setGameState(normalizeGameState(withAuthoritativeShowConfig(remoteState)));
       if (typeof updatedAt === "number") {
         setLastSavedAt(updatedAt);
       }
