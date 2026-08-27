@@ -21,10 +21,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      # Node 22 to match ios/App/ci_scripts/ci_post_clone.sh, which needs it:
+      # @capacitor/cli declares engines >=22.0.0 and refuses to run below that.
+      # This job never invokes the CLI — it stops at native:web:build — so it
+      # passed on Node 20 while the Xcode Cloud sync could not run at all.
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install deps
