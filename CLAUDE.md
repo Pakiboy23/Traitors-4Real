@@ -57,6 +57,7 @@ supabase/functions/        Edge Functions (Deno)
 ios/App/                   Xcode project
 ios/App/Scripts/           build-phase guard against an assetless archive
 ios/App/ci_scripts/        Xcode Cloud post-clone hook (location is load-bearing)
+ios/App/AppTests/          native XCTest smoke tests, hosted in the App target
 design/app-icon.svg        source art for every icon
 ```
 
@@ -105,6 +106,20 @@ render a portrait through a bare `<img>`.
 **Verify UI changes by rendering them.** Several bugs here passed typecheck,
 tests, and build, and were only caught by opening the app in a browser — a
 roster showing 45 names, a counter reading 23 for a 22-person cast. Run the app.
+
+**The Xcode Cloud "Test - iOS" action needs a real test target, or it fails
+every run.** The project had no `.xcscheme` committed and no XCTest target, so
+Xcode Cloud fell back to autocreating a scheme with an empty Test action —
+`xcodebuild test-without-building` then fails immediately (scheme not
+configured for testing) on every simulator, before any test runs. This blocked
+the `TestFlight External Testing` post-action, which is gated on Test passing.
+Fixed by adding `AppTests` (a real unit test target, `TEST_HOST`/`BUNDLE_LOADER`
+hosted in `App`) and committing `ios/App/App.xcodeproj/xcshareddata/xcschemes/App.xcscheme`
+as a shared scheme covering both targets. `AppTests` asserts the two things
+this file already warns about: `public/index.html` is present in the bundle,
+and `capacitor.config.json` has no `server.url`. If Xcode Cloud's Test action
+starts failing again, check the scheme is still shared and still lists
+`AppTests` before assuming the test itself regressed.
 
 ## Keys
 
