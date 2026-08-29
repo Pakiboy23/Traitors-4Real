@@ -59,6 +59,7 @@ ios/App/Scripts/           build-phase guard against an assetless archive
 ios/App/ci_scripts/        Xcode Cloud post-clone hook (location is load-bearing)
 ios/App/AppTests/          native XCTest smoke tests, hosted in the App target
 design/app-icon.svg        source art for every icon
+archive/                   retired assets, kept out of public/ so they stop shipping
 ```
 
 ## Things that will bite you
@@ -101,7 +102,15 @@ override and is normally unset.
 **Cast portraits are derived from the name.** `public/cast-portraits/<slug>.png`
 where slug is the lowercased, hyphenated name. A missing file is fine —
 `components/CastPortrait.tsx` falls back to the initial on load error. Never
-render a portrait through a bare `<img>`.
+render a *cast* portrait through a bare `<img>` (player-profile photos in
+`Leaderboard.tsx`/`RosterSection.tsx` are a separate, unrelated feature and do
+use one directly). `public/cast-portraits/` currently has no real photos for
+the live cast — that's intentional, not a gap to fill by scraping or
+generating likenesses. Last season's celebrity portraits moved to
+`archive/cast-portraits/season-legacy/`, outside `public/`, because Next ships
+everything under `public/` verbatim in both the Vercel deploy and the
+Capacitor bundle — leaving them in place would have shipped 23 files that
+matched nothing in the current cast.
 
 **Verify UI changes by rendering them.** Several bugs here passed typecheck,
 tests, and build, and were only caught by opening the app in a browser — a
