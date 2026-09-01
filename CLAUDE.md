@@ -75,7 +75,39 @@ once. Two guards now prevent it: `ios/App/Scripts/verify-web-assets.sh` runs as
 the App target's first build phase, and `ios/App/ci_scripts/ci_post_clone.sh`
 runs the sync for Xcode Cloud. **`ci_scripts` must sit next to `App.xcodeproj`**
 — Xcode Cloud looks for it beside the project it builds, never at the repository
-root, and a copy at the root silently never runs.
+root, and a copy at the root silently never runs. That build phase also needs
+`ENABLE_USER_SCRIPT_SANDBOXING = NO` on the App target: a sandboxed Run Script
+phase can be denied permission to execute the script file at all, failing with
+`/bin/sh: Operation not permitted` before any of the script's own logic runs.
+It looks like a file-permission problem and is not one.
+
+**A stale `node_modules` silently rewrites the Capacitor SPM pin.**
+`ios/App/CapApp-SPM/Package.swift` is generated — it says so at the top — and
+`cap sync` rebuilds it from whatever `@capacitor/ios` is installed, pinning
+`capacitor-swift-pm` to that version. So an out-of-date install does not fail
+the sync; it quietly downgrades the pin. The damage shows up later and in the
+wrong place: Xcode compiles against the older Capacitor and reports
+`cannot find 'SceneDelegateProxy' in scope` in `SceneDelegate.swift`, which
+reads as a bug in that file rather than in the dependency. It is real — the
+type ships in 8.5.0, not 8.3.1. Two further traps once you are there. The
+regenerated `Package.swift` is a plausible-looking one-line diff that is easy
+to commit by accident, and fixing the version alone is not enough: SPM
+re-resolves lazily, so the first rebuild fails identically against the cached
+module and the fix looks like it did not work. Delete the project's
+DerivedData too. `scripts/build-native-web.mjs` now compares every installed
+`@capacitor/*` against `package-lock.json` and stops the build with a `npm ci`
+instruction, so the sync path is guarded — but a bare `npx cap sync ios`
+bypasses it, which is one more reason to go through `ios:sync:bundled`.
+
+**Xcode's "update to recommended settings" will retarget the app.** Accepting
+it rewrites the App target's `IPHONEOS_DEPLOYMENT_TARGET` to
+`$(RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET)`. That is a floating value, not a
+number: it resolves to whatever the building Xcode recommends, so it can
+differ between a laptop and Xcode Cloud, and it currently resolves to 17.0
+against a project that ships at 15.0 — dropping every iOS 15 and 16 device
+without a word in the diff. Keep the deployment target an explicit literal.
+The same pass also moves `DEVELOPMENT_TEAM` from the per-target configs up to
+the project level; that one is harmless, both targets inherit it.
 
 **Two sign conventions in scoring.** Weekly penalties are stored **positive**
 and subtracted; `REDEMPTION_ROULETTE_INCORRECT` is stored **negative** and
