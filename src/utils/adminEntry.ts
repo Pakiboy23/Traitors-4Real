@@ -19,10 +19,12 @@
  * On iOS neither of those exists. The bundled build loads
  * `capacitor://localhost/index.html` inside a web view with no address bar, so
  * a URL-only gate makes the admin panel unreachable on the one platform this
- * league actually plays on. The second way is therefore a gesture: tap the
- * footer ADMIN_REVEAL_TAPS times inside ADMIN_REVEAL_WINDOW_MS. That answer is
- * remembered under ADMIN_REVEAL_STORAGE_KEY so it survives a relaunch, the way
- * signing in already did.
+ * league actually plays on. The second way is therefore a gesture: activate
+ * the footer ADMIN_REVEAL_TAPS times inside ADMIN_REVEAL_WINDOW_MS — or inside
+ * ADMIN_REVEAL_ASSISTIVE_WINDOW_MS when the activations arrive from a keyboard
+ * or a screen reader rather than a finger, which cannot hit the shorter one.
+ * That answer is remembered under ADMIN_REVEAL_STORAGE_KEY so it survives a
+ * relaunch, the way signing in already did.
  *
  * None of this is a security control — the admin panel is protected by
  * Supabase auth and row-level security, not by the tab being hard to find.
@@ -45,6 +47,17 @@ export const ADMIN_REVEAL_TAPS = 5;
  * which is idle prodding, not a gesture.
  */
 export const ADMIN_REVEAL_WINDOW_MS = 3000;
+
+/**
+ * The same run, entered through assistive input rather than a finger.
+ *
+ * VoiceOver, Switch Control and a keyboard all need seconds per activation, so
+ * three seconds is not a stricter gate for them — it is a closed door, and on
+ * iOS there is no URL to fall back to. Fifteen seconds is comfortable at that
+ * cadence and still far more deliberate than anything a player does to a
+ * footer by accident.
+ */
+export const ADMIN_REVEAL_ASSISTIVE_WINDOW_MS = 15000;
 
 export interface AdminEntryInput {
   isAuthenticated: boolean;
@@ -107,13 +120,13 @@ export const emptyAdminRevealTapState = (): AdminRevealTapState => ({
  */
 export const registerAdminRevealTap = (
   state: AdminRevealTapState,
-  now: number
+  now: number,
+  windowMs: number = ADMIN_REVEAL_WINDOW_MS
 ): AdminRevealTapResult => {
   // count > 0 is what distinguishes a run in progress from the empty state,
   // whose firstTapAt of 0 would otherwise read as "started long ago" for a
   // real clock and "started just now" for a small test one.
-  const continuesRun =
-    state.count > 0 && now - state.firstTapAt <= ADMIN_REVEAL_WINDOW_MS;
+  const continuesRun = state.count > 0 && now - state.firstTapAt <= windowMs;
 
   const count = continuesRun ? state.count + 1 : 1;
   const firstTapAt = continuesRun ? state.firstTapAt : now;

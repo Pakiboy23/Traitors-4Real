@@ -19,7 +19,7 @@ a Capacitor wrapper for iOS.
 | Hosting | **Vercel** — production is `traitorsfantasydraft.online` |
 | Backend | **Supabase** project `tpjiqegneohtbcxapqnq` — Postgres 17, Auth, Realtime, Edge Functions (Deno) |
 | Native | **Capacitor 8**, iOS only. Swift Package Manager, not CocoaPods |
-| Tests | **Vitest** — 183 tests across 10 files |
+| Tests | **Vitest** — 187 tests across 10 files |
 | Styling | Tailwind 4 + a hand-written design system in `src/index.css` |
 
 There is no separate API server. The browser talks to Supabase directly with
@@ -114,9 +114,13 @@ a real device — override the variables in devtools to see the device layout.
 `src/utils/adminEntry.ts`. `?admin=1` / `#admin` only works on the web; the
 bundled iOS build loads `capacitor://localhost/index.html` in a web view with
 no URL bar, so a URL-only gate leaves the admin panel unreachable on device.
-The second route is a gesture — five taps on the footer inside three seconds —
-remembered in `localStorage` under `traitors_admin_revealed`. Neither route is
-a security control; Supabase auth and RLS are.
+The second route is a gesture — five activations of the footer inside three
+seconds, or inside fifteen when they come from a keyboard or screen reader
+rather than a finger — remembered in `localStorage` under
+`traitors_admin_revealed`. That second window is not a nicety: assistive input
+needs seconds per activation, and with no URL to fall back to on iOS, a
+finger-speed-only gesture is a locked door rather than a hidden one. Neither
+route is a security control; Supabase auth and RLS are.
 
 **Cast portraits are derived from the name.** `public/cast-portraits/<slug>.png`
 where slug is the lowercased, hyphenated name. A missing file is fine —

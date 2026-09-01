@@ -12,7 +12,9 @@ import {
   PremiumTabs,
 } from "../src/ui/premium";
 import {
+  ADMIN_REVEAL_ASSISTIVE_WINDOW_MS,
   ADMIN_REVEAL_STORAGE_KEY,
+  ADMIN_REVEAL_WINDOW_MS,
   emptyAdminRevealTapState,
   registerAdminRevealTap,
   shouldShowAdminTab,
@@ -97,8 +99,12 @@ const Layout: React.FC<LayoutProps> = ({
 
   // The footer is the reveal gesture for iOS, where there is no address bar to
   // put ?admin=1 into. See src/utils/adminEntry.ts.
-  const handleFooterTap = useCallback(() => {
-    const result = registerAdminRevealTap(revealTapsRef.current, Date.now());
+  const countRevealActivation = useCallback((windowMs: number) => {
+    const result = registerAdminRevealTap(
+      revealTapsRef.current,
+      Date.now(),
+      windowMs
+    );
     revealTapsRef.current = { count: result.count, firstTapAt: result.firstTapAt };
 
     if (!result.revealed) return;
@@ -110,6 +116,33 @@ const Layout: React.FC<LayoutProps> = ({
     }
     setShowAdminTab(true);
   }, []);
+
+  const handleFooterClick = useCallback(
+    (event: React.MouseEvent<HTMLSpanElement>) => {
+      // VoiceOver and Switch Control activate by dispatching a click, not a
+      // keydown, so routing on the event type alone would still leave them on
+      // the finger-speed window they cannot hit. A synthesized click carries
+      // detail 0; a real tap carries 1 or more.
+      countRevealActivation(
+        event.detail === 0
+          ? ADMIN_REVEAL_ASSISTIVE_WINDOW_MS
+          : ADMIN_REVEAL_WINDOW_MS
+      );
+    },
+    [countRevealActivation]
+  );
+
+  const handleFooterKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLSpanElement>) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      // A held key auto-repeats, which would walk the count up on its own.
+      if (event.repeat) return;
+      // Space scrolls the page otherwise.
+      event.preventDefault();
+      countRevealActivation(ADMIN_REVEAL_ASSISTIVE_WINDOW_MS);
+    },
+    [countRevealActivation]
+  );
 
   const terminology = showConfig?.terminology;
   const weeklyLabel = terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
@@ -202,10 +235,19 @@ const Layout: React.FC<LayoutProps> = ({
         </motion.main>
 
         <footer className="premium-footer">
-          {/* Deliberately not a <button>: it is decorative copy that happens to
-              count taps, and announcing it to a screen reader would advertise
-              the very thing the gesture exists to keep out of a player's way. */}
-          <span className="premium-footer-copy" onClick={handleFooterTap}>
+          {/* This was a bare span, on the theory that announcing it would
+              advertise what the gesture exists to keep quiet. That traded a
+              non-leak for a real exclusion: the accessible name is the footer
+              copy, which gives nothing away, while on iOS there is no URL to
+              fall back to — so anyone driving the app by keyboard, VoiceOver
+              or Switch Control had no route to the admin login at all. */}
+          <span
+            className="premium-footer-copy"
+            role="button"
+            tabIndex={0}
+            onClick={handleFooterClick}
+            onKeyDown={handleFooterKeyDown}
+          >
             {showConfig?.branding?.footerCopy || "Round Table Draft workspace."}
           </span>
         </footer>

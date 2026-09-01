@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADMIN_REVEAL_ASSISTIVE_WINDOW_MS,
   ADMIN_REVEAL_TAPS,
   ADMIN_REVEAL_WINDOW_MS,
   emptyAdminRevealTapState,
@@ -65,13 +66,13 @@ describe("shouldShowAdminTab", () => {
 });
 
 describe("registerAdminRevealTap", () => {
-  const tapRepeatedly = (times: number, gapMs: number) => {
+  const tapRepeatedly = (times: number, gapMs: number, windowMs?: number) => {
     let state = emptyAdminRevealTapState();
     let revealed = false;
     let now = 1_000;
 
     for (let i = 0; i < times; i += 1) {
-      const result = registerAdminRevealTap(state, now);
+      const result = registerAdminRevealTap(state, now, windowMs);
       revealed = result.revealed;
       state = { count: result.count, firstTapAt: result.firstTapAt };
       now += gapMs;
@@ -120,6 +121,26 @@ describe("registerAdminRevealTap", () => {
     // The window must not be so tight that a deliberate tapper misses it.
     const perTap = Math.floor(ADMIN_REVEAL_WINDOW_MS / ADMIN_REVEAL_TAPS);
     expect(tapRepeatedly(ADMIN_REVEAL_TAPS, perTap).revealed).toBe(true);
+  });
+
+  it("opens at assistive-input speed when given the longer window", () => {
+    // A VoiceOver or Switch Control activation takes a second or two each.
+    // That run must complete, or iOS — which has no URL fallback — locks an
+    // admin using assistive input out of the sign-in screen entirely.
+    const perActivation = 2_000;
+
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS, perActivation).revealed).toBe(false);
+    expect(
+      tapRepeatedly(ADMIN_REVEAL_TAPS, perActivation, ADMIN_REVEAL_ASSISTIVE_WINDOW_MS)
+        .revealed
+    ).toBe(true);
+  });
+
+  it("keeps the assistive window bounded rather than open-ended", () => {
+    const tooSlow = ADMIN_REVEAL_ASSISTIVE_WINDOW_MS;
+    expect(
+      tapRepeatedly(ADMIN_REVEAL_TAPS, tooSlow, ADMIN_REVEAL_ASSISTIVE_WINDOW_MS).revealed
+    ).toBe(false);
   });
 
   it("clears its counter once it opens, so it cannot re-fire on one more tap", () => {
