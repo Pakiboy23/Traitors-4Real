@@ -19,7 +19,7 @@ a Capacitor wrapper for iOS.
 | Hosting | **Vercel** — production is `traitorsfantasydraft.online` |
 | Backend | **Supabase** project `tpjiqegneohtbcxapqnq` — Postgres 17, Auth, Realtime, Edge Functions (Deno) |
 | Native | **Capacitor 8**, iOS only. Swift Package Manager, not CocoaPods |
-| Tests | **Vitest** — 177 tests across 10 files |
+| Tests | **Vitest** — 187 tests across 10 files |
 | Styling | Tailwind 4 + a hand-written design system in `src/index.css` |
 
 There is no separate API server. The browser talks to Supabase directly with
@@ -97,6 +97,30 @@ now bans the `...CAST_NAMES` spread outright.
 `src/utils/draftWindow.ts`. Authority order: env override → season lifecycle →
 admin toggle → scheduled lock. `NEXT_PUBLIC_DRAFT_CLOSED` is an emergency
 override and is normally unset.
+
+**The web view runs under the status bar, so page chrome needs the safe-area
+insets.** `src/app/layout.tsx` sets `viewportFit: "cover"` and a
+`black-translucent` status bar, which means CSS `y=0` is under the clock and the
+notch, not below them. `:root` in `src/index.css` exposes `--safe-top`,
+`--safe-right`, `--safe-bottom` and `--safe-left`; every top-level container
+(`.app-shell`, `.legal-page`) adds them to its padding. Anything new that sits
+at the top or bottom edge must do the same. This shipped wrong once: the header
+utility bar's Rules button rendered underneath the iOS status bar, half-clipped
+and untappable, because nothing in the stylesheet had ever read an inset. A
+desktop browser resolves all four to `0px`, so it looks fine everywhere except
+a real device — override the variables in devtools to see the device layout.
+
+**The Admin tab has to be reachable without an address bar.** The gate lives in
+`src/utils/adminEntry.ts`. `?admin=1` / `#admin` only works on the web; the
+bundled iOS build loads `capacitor://localhost/index.html` in a web view with
+no URL bar, so a URL-only gate leaves the admin panel unreachable on device.
+The second route is a gesture — five activations of the footer inside three
+seconds, or inside fifteen when they come from a keyboard or screen reader
+rather than a finger — remembered in `localStorage` under
+`traitors_admin_revealed`. That second window is not a nicety: assistive input
+needs seconds per activation, and with no URL to fall back to on iOS, a
+finger-speed-only gesture is a locked door rather than a hidden one. Neither
+route is a security control; Supabase auth and RLS are.
 
 **Cast portraits are derived from the name.** `public/cast-portraits/<slug>.png`
 where slug is the lowercased, hyphenated name. A missing file is fine —
@@ -189,6 +213,6 @@ against the crash logs. Build 3 was created after #133 merged.
 Screenshots are unblocked as of #118. The `DEVELOPMENT` badge is gated on
 `NODE_ENV` and is dead-code-eliminated from a production build; the `NO SYNC YET`
 chip no longer exists (`syncLabel` is null until there is a real sync); the Admin
-tab is hidden unless `?admin=1`/`#admin` or already signed in. Verified 2026-08-24
+tab is hidden unless revealed or already signed in. Verified 2026-08-24
 by rendering a production build: the nav is exactly Overview / Draft / Weekly
 Council / Leaderboard / Rules and the utility bar is empty.

@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isAdminRequestedByUrl, shouldShowAdminTab } from "./adminEntry";
+import {
+  ADMIN_REVEAL_ASSISTIVE_WINDOW_MS,
+  ADMIN_REVEAL_TAPS,
+  ADMIN_REVEAL_WINDOW_MS,
+  emptyAdminRevealTapState,
+  isAdminRequestedByUrl,
+  registerAdminRevealTap,
+  shouldShowAdminTab,
+} from "./adminEntry";
 
 describe("isAdminRequestedByUrl", () => {
   it.each([
@@ -47,5 +55,96 @@ describe("shouldShowAdminTab", () => {
     // This is the only route to the sign-in screen, so it has to work before
     // authentication or the panel is unreachable.
     expect(shouldShowAdminTab({ isAuthenticated: false, search: "?admin=1" })).toBe(true);
+  });
+
+  it("appears for a remembered footer reveal, with no URL at all", () => {
+    // The iOS case: capacitor://localhost/index.html, no address bar, so the
+    // URL can never carry the flag. Without this the panel is unreachable on
+    // the only platform the league plays on.
+    expect(shouldShowAdminTab({ isAuthenticated: false, isRevealed: true })).toBe(true);
+  });
+});
+
+describe("registerAdminRevealTap", () => {
+  const tapRepeatedly = (times: number, gapMs: number, windowMs?: number) => {
+    let state = emptyAdminRevealTapState();
+    let revealed = false;
+    let now = 1_000;
+
+    for (let i = 0; i < times; i += 1) {
+      const result = registerAdminRevealTap(state, now, windowMs);
+      revealed = result.revealed;
+      state = { count: result.count, firstTapAt: result.firstTapAt };
+      now += gapMs;
+    }
+
+    return { state, revealed };
+  };
+
+  it("stays shut short of the full gesture", () => {
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS - 1, 200).revealed).toBe(false);
+  });
+
+  it("opens on the last tap of a quick run", () => {
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS, 200).revealed).toBe(true);
+  });
+
+  it("does not open when the taps are spread past the window", () => {
+    // Otherwise a player who idly prods the footer over a whole season would
+    // eventually land on the admin screen without ever asking for it.
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS * 3, ADMIN_REVEAL_WINDOW_MS + 1).revealed).toBe(
+      false
+    );
+  });
+
+  it("restarts the count after a gap instead of resuming it", () => {
+    const state = { count: ADMIN_REVEAL_TAPS - 1, firstTapAt: 1_000 };
+    const result = registerAdminRevealTap(state, 1_000 + ADMIN_REVEAL_WINDOW_MS + 1);
+
+    expect(result.revealed).toBe(false);
+    expect(result.count).toBe(1);
+    expect(result.firstTapAt).toBe(1_000 + ADMIN_REVEAL_WINDOW_MS + 1);
+  });
+
+  it("measures the window from the first tap, not the previous one", () => {
+    // The window has to bound the whole run. Measured gap-to-gap it only
+    // bounds each pair, so taps just inside it chain indefinitely: five of
+    // them 2.9s apart would reveal the tab after 11.6s of idle prodding.
+    const almost = ADMIN_REVEAL_WINDOW_MS - 100;
+    const { revealed } = tapRepeatedly(ADMIN_REVEAL_TAPS, almost);
+
+    expect(almost * (ADMIN_REVEAL_TAPS - 1)).toBeGreaterThan(ADMIN_REVEAL_WINDOW_MS);
+    expect(revealed).toBe(false);
+  });
+
+  it("still opens for a run that is quick but not instant", () => {
+    // The window must not be so tight that a deliberate tapper misses it.
+    const perTap = Math.floor(ADMIN_REVEAL_WINDOW_MS / ADMIN_REVEAL_TAPS);
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS, perTap).revealed).toBe(true);
+  });
+
+  it("opens at assistive-input speed when given the longer window", () => {
+    // A VoiceOver or Switch Control activation takes a second or two each.
+    // That run must complete, or iOS — which has no URL fallback — locks an
+    // admin using assistive input out of the sign-in screen entirely.
+    const perActivation = 2_000;
+
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS, perActivation).revealed).toBe(false);
+    expect(
+      tapRepeatedly(ADMIN_REVEAL_TAPS, perActivation, ADMIN_REVEAL_ASSISTIVE_WINDOW_MS)
+        .revealed
+    ).toBe(true);
+  });
+
+  it("keeps the assistive window bounded rather than open-ended", () => {
+    const tooSlow = ADMIN_REVEAL_ASSISTIVE_WINDOW_MS;
+    expect(
+      tapRepeatedly(ADMIN_REVEAL_TAPS, tooSlow, ADMIN_REVEAL_ASSISTIVE_WINDOW_MS).revealed
+    ).toBe(false);
+  });
+
+  it("clears its counter once it opens, so it cannot re-fire on one more tap", () => {
+    const { state } = tapRepeatedly(ADMIN_REVEAL_TAPS, 200);
+    expect(state.count).toBe(0);
   });
 });
