@@ -18,7 +18,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -54,6 +54,44 @@ if (missingEnv.length > 0) {
       `These are inlined into the bundle at build time, so the native app cannot\n` +
       `recover them at runtime. Set them (see .env.example) and re-run.`
   );
+}
+
+// `cap sync` regenerates ios/App/CapApp-SPM/Package.swift from whatever version
+// of @capacitor/ios is installed in node_modules, pinning capacitor-swift-pm to
+// match. A stale install therefore rewrites that pin to an older Capacitor
+// without saying so, and the next Xcode build fails compiling against an API
+// that no longer exists — an error that points at your own Swift rather than at
+// the dependency. Fail here instead, where the cause is still visible.
+const lockfile = resolve(repoRoot, "package-lock.json");
+if (existsSync(lockfile)) {
+  const locked = JSON.parse(readFileSync(lockfile, "utf8")).packages ?? {};
+  const stale = [];
+
+  for (const [entry, meta] of Object.entries(locked)) {
+    const name = entry.replace(/^node_modules\//, "");
+    if (!name.startsWith("@capacitor/") || !meta?.version) continue;
+
+    const installed = resolve(repoRoot, "node_modules", name, "package.json");
+    if (!existsSync(installed)) {
+      stale.push(`${name}: not installed (lockfile pins ${meta.version})`);
+      continue;
+    }
+
+    const { version } = JSON.parse(readFileSync(installed, "utf8"));
+    if (version !== meta.version) {
+      stale.push(`${name}: ${version} installed, lockfile pins ${meta.version}`);
+    }
+  }
+
+  if (stale.length > 0) {
+    fail(
+      `node_modules is out of sync with package-lock.json:\n  ` +
+        stale.join("\n  ") +
+        `\n\nRun \`npm ci\` and re-run this build. Syncing as-is would rewrite the\n` +
+        `capacitor-swift-pm pin in ios/App/CapApp-SPM/Package.swift to the installed\n` +
+        `version, and that file is generated — the change is easy to commit by accident.`
+    );
+  }
 }
 
 console.log("[native:web:build] Cleaning previous output...");
