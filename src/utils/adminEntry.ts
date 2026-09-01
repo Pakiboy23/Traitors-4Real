@@ -8,19 +8,38 @@
  * looking incomplete.
  *
  * Hiding it entirely is not an option either, because that tab is the only
- * route to the sign-in screen. So it stays hidden until asked for by URL, and
- * remains visible once signed in.
+ * route to the sign-in screen. So it stays hidden until asked for, and remains
+ * visible once signed in.
+ *
+ * There are two ways to ask. On the web, the URL:
  *
  *   https://traitorsfantasydraft.online/?admin=1
  *   https://traitorsfantasydraft.online/#admin
  *
- * Neither is a security control — the admin panel is protected by Supabase
- * auth and row-level security, not by the tab being hard to find. This only
- * decides who has to look at it.
+ * On iOS neither of those exists. The bundled build loads
+ * `capacitor://localhost/index.html` inside a web view with no address bar, so
+ * a URL-only gate makes the admin panel unreachable on the one platform this
+ * league actually plays on. The second way is therefore a gesture: tap the
+ * footer ADMIN_REVEAL_TAPS times inside ADMIN_REVEAL_WINDOW_MS. That answer is
+ * remembered under ADMIN_REVEAL_STORAGE_KEY so it survives a relaunch, the way
+ * signing in already did.
+ *
+ * None of this is a security control — the admin panel is protected by
+ * Supabase auth and row-level security, not by the tab being hard to find.
+ * This only decides who has to look at it.
  */
 
 export const ADMIN_QUERY_KEY = "admin";
 export const ADMIN_HASH = "#admin";
+
+/** localStorage key holding the remembered footer-gesture reveal. */
+export const ADMIN_REVEAL_STORAGE_KEY = "traitors_admin_revealed";
+
+/** Taps needed to reveal the tab. High enough that nobody trips it browsing. */
+export const ADMIN_REVEAL_TAPS = 5;
+
+/** Taps must land inside this window, or the count starts over. */
+export const ADMIN_REVEAL_WINDOW_MS = 3000;
 
 export interface AdminEntryInput {
   isAuthenticated: boolean;
@@ -28,6 +47,8 @@ export interface AdminEntryInput {
   search?: string;
   /** location.hash, e.g. "#admin" */
   hash?: string;
+  /** A previously remembered footer-gesture reveal. */
+  isRevealed?: boolean;
 }
 
 const truthy = new Set(["1", "true", "yes"]);
@@ -54,5 +75,41 @@ export const shouldShowAdminTab = ({
   isAuthenticated,
   search = "",
   hash = "",
+  isRevealed = false,
 }: AdminEntryInput): boolean =>
-  isAuthenticated || isAdminRequestedByUrl(search, hash);
+  isAuthenticated || isRevealed || isAdminRequestedByUrl(search, hash);
+
+export interface AdminRevealTapState {
+  /** Taps counted so far in the current window. */
+  count: number;
+  /** Timestamp of the most recent counted tap. */
+  lastTapAt: number;
+}
+
+export interface AdminRevealTapResult extends AdminRevealTapState {
+  /** True on the tap that completes the gesture. */
+  revealed: boolean;
+}
+
+export const emptyAdminRevealTapState = (): AdminRevealTapState => ({
+  count: 0,
+  lastTapAt: 0,
+});
+
+/**
+ * Fold one tap into the reveal gesture. Pure so the counting rules are testable
+ * without a DOM — the suite here runs in plain Node.
+ */
+export const registerAdminRevealTap = (
+  state: AdminRevealTapState,
+  now: number
+): AdminRevealTapResult => {
+  const withinWindow = now - state.lastTapAt <= ADMIN_REVEAL_WINDOW_MS;
+  const count = withinWindow ? state.count + 1 : 1;
+
+  if (count >= ADMIN_REVEAL_TAPS) {
+    return { ...emptyAdminRevealTapState(), revealed: true };
+  }
+
+  return { count, lastTapAt: now, revealed: false };
+};

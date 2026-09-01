@@ -31,6 +31,15 @@
   --radius-2xl: 2rem;
   --tracking-title: 0.18em;
   --tracking-label: 0.14em;
+
+  /* iOS draws the web view edge to edge: the root layout sets
+     viewportFit: "cover" and a black-translucent status bar, so y=0 is under
+     the clock and the notch, not below them. Every top-level page chrome
+     measurement adds these. Non-notched browsers resolve them to 0px. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 
 body.light-mode {
@@ -101,7 +110,8 @@ body.light-mode {
   .app-shell {
     width: min(1320px, 100% - 2.2rem);
     margin: 0 auto;
-    padding: 1.4rem 0 2.2rem;
+    padding: calc(1.4rem + var(--safe-top)) var(--safe-right)
+      calc(2.2rem + var(--safe-bottom)) var(--safe-left);
   }
 
   .page-shell {
@@ -644,7 +654,7 @@ body.light-mode {
 @media (max-width: 768px) {
   .app-shell {
     width: min(1320px, 100% - 1rem);
-    padding-top: 1rem;
+    padding-top: calc(1rem + var(--safe-top));
   }
 
   button {
@@ -795,7 +805,7 @@ body.premium-ui #root {
 
 body.premium-ui .app-shell {
   width: min(1460px, 100% - 1.15rem);
-  padding-top: 0.72rem;
+  padding-top: calc(0.72rem + var(--safe-top));
 }
 
 body.premium-ui .page-shell {
@@ -867,6 +877,20 @@ body.premium-ui .premium-footer {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 0 0.35rem 0.62rem;
+}
+
+/* Tap target for the admin reveal gesture. Five quick taps should not select
+   the text or flash a highlight. cursor: pointer is not decoration: WebKit
+   only dispatches click on a non-interactive element that has it, so without
+   this the gesture silently does nothing in the iOS web view — which is the
+   one place it exists to serve. */
+.premium-footer-copy {
+  display: inline-block;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body.premium-ui .premium-page {
@@ -3574,7 +3598,8 @@ body.premium-ui .rounded-xl {
 .legal-page {
   max-width: 44rem;
   margin: 0 auto;
-  padding: 3rem 1.25rem 5rem;
+  padding: calc(3rem + var(--safe-top)) calc(1.25rem + var(--safe-right))
+    calc(5rem + var(--safe-bottom)) calc(1.25rem + var(--safe-left));
   line-height: 1.65;
   color: var(--text, #e7e9ed);
 }

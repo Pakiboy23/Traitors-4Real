@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { COUNCIL_LABELS, ShowConfig, UiVariant } from "../types";
 import {
@@ -11,7 +11,12 @@ import {
   PremiumStatusBadge,
   PremiumTabs,
 } from "../src/ui/premium";
-import { shouldShowAdminTab } from "../src/utils/adminEntry";
+import {
+  ADMIN_REVEAL_STORAGE_KEY,
+  emptyAdminRevealTapState,
+  registerAdminRevealTap,
+  shouldShowAdminTab,
+} from "../src/utils/adminEntry";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -66,17 +71,45 @@ const Layout: React.FC<LayoutProps> = ({
   const isDevBuild = process.env.NODE_ENV === "development";
 
   const [showAdminTab, setShowAdminTab] = useState(false);
+  const revealTapsRef = useRef(emptyAdminRevealTapState());
+
   useEffect(() => {
-    // Read on the client only: the URL is not known during prerender, and a
-    // mismatch between server and client markup would hydrate wrong.
+    // Read on the client only: neither the URL nor localStorage is known during
+    // prerender, and a mismatch between server and client markup would hydrate
+    // wrong.
+    let isRevealed = false;
+    try {
+      isRevealed = localStorage.getItem(ADMIN_REVEAL_STORAGE_KEY) === "1";
+    } catch {
+      // Private-mode Safari throws on localStorage. The URL and the gesture
+      // both still work; only the memory of a past gesture is lost.
+    }
+
     setShowAdminTab(
       shouldShowAdminTab({
         isAuthenticated: isAdminAuthenticated,
         search: window.location.search,
         hash: window.location.hash,
+        isRevealed,
       })
     );
   }, [isAdminAuthenticated]);
+
+  // The footer is the reveal gesture for iOS, where there is no address bar to
+  // put ?admin=1 into. See src/utils/adminEntry.ts.
+  const handleFooterTap = useCallback(() => {
+    const result = registerAdminRevealTap(revealTapsRef.current, Date.now());
+    revealTapsRef.current = { count: result.count, lastTapAt: result.lastTapAt };
+
+    if (!result.revealed) return;
+
+    try {
+      localStorage.setItem(ADMIN_REVEAL_STORAGE_KEY, "1");
+    } catch {
+      // Reveal still holds for this session; it just will not be remembered.
+    }
+    setShowAdminTab(true);
+  }, []);
 
   const terminology = showConfig?.terminology;
   const weeklyLabel = terminology?.weeklyCouncilLabel || COUNCIL_LABELS.weekly;
@@ -169,7 +202,12 @@ const Layout: React.FC<LayoutProps> = ({
         </motion.main>
 
         <footer className="premium-footer">
-          {showConfig?.branding?.footerCopy || "Round Table Draft workspace."}
+          {/* Deliberately not a <button>: it is decorative copy that happens to
+              count taps, and announcing it to a screen reader would advertise
+              the very thing the gesture exists to keep out of a player's way. */}
+          <span className="premium-footer-copy" onClick={handleFooterTap}>
+            {showConfig?.branding?.footerCopy || "Round Table Draft workspace."}
+          </span>
         </footer>
       </div>
     </motion.div>
