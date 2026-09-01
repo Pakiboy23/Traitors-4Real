@@ -545,12 +545,19 @@ export const markSubmissionMerged = async (id: string) => {
 };
 
 export const markDraftSubmissionMerged = async (id: string) => {
-  // Distinct from markSubmissionMerged, which stamps kind "weekly_merged".
-  // A merged draft is not a weekly vote, and mislabelling it would put it in
-  // the weekly history the admin panel reads back.
+  // Only the status moves. `kind` is left as "draft" deliberately: the column
+  // carries CHECK (kind IN ('draft','weekly','weekly_merged','growth')), so the
+  // "draft_merged" this first wrote violated the constraint and every call threw
+  // — the merge added the player and then failed here, leaving the entry in the
+  // roster and in the pending queue at the same time.
+  //
+  // Leaving it as "draft" is also the better label. fetchDraftSubmissions
+  // filters on kind AND submission_status, so the status alone removes it from
+  // the queue, and the row cannot drift into the weekly history, which reads
+  // kind = "weekly".
   const { error } = await supabase
     .from("submissions")
-    .update({ kind: "draft_merged", submission_status: "merged", updated_at: new Date().toISOString() })
+    .update({ submission_status: "merged", updated_at: new Date().toISOString() })
     .eq("id", id);
   if (error) throw error;
 };
