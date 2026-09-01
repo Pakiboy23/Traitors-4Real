@@ -569,7 +569,7 @@ export const submitWeeklyCouncilVote = async (input: {
   const normalizedEmail = normalizeEmail(input.email || "");
   const normalizedWeekId = typeof input.weekId === "string" ? input.weekId.trim() : "";
   const league = input.league === "jr" ? "jr" : input.league === "main" ? "main" : null;
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("submissions")
     .insert({
       name: input.name,
@@ -609,11 +609,8 @@ export const submitWeeklyCouncilVote = async (input: {
           },
         },
       },
-    })
-    .select()
-    .single();
+    });
   if (error) throw error;
-  return data;
 };
 
 export const submitDraftEntry = async (entry: {
@@ -626,7 +623,7 @@ export const submitDraftEntry = async (entry: {
   weeklyPredictions?: { nextBanished: string; nextMurdered: string };
 }) => {
   const normalizedEmail = normalizeEmail(entry.email || "");
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("submissions")
     .insert({
       name: entry.name,
@@ -635,11 +632,8 @@ export const submitDraftEntry = async (entry: {
       weekly_banished: entry.weeklyPredictions?.nextBanished || null,
       weekly_murdered: entry.weeklyPredictions?.nextMurdered || null,
       payload: entry as unknown as Database["public"]["Tables"]["submissions"]["Insert"]["payload"],
-    })
-    .select()
-    .single();
+    });
   if (error) throw error;
-  return data;
 };
 
 export const submitGrowthEvent = async (input: {
@@ -649,16 +643,13 @@ export const submitGrowthEvent = async (input: {
   payload?: Record<string, unknown>;
 }) => {
   const normalizedEmail = normalizeEmail(input.email || "");
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("submissions")
     .insert({
       name: input.name?.trim() || "growth",
       email: normalizedEmail || "growth@local",
       kind: "growth",
       payload: { event: input.event, ...input.payload } as unknown as Database["public"]["Tables"]["submissions"]["Insert"]["payload"],
-    })
-    .select()
-    .single();
+    });
   if (error) throw error;
-  return data;
 };
