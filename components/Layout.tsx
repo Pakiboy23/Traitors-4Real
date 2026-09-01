@@ -99,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({
   // put ?admin=1 into. See src/utils/adminEntry.ts.
   const handleFooterTap = useCallback(() => {
     const result = registerAdminRevealTap(revealTapsRef.current, Date.now());
-    revealTapsRef.current = { count: result.count, lastTapAt: result.lastTapAt };
+    revealTapsRef.current = { count: result.count, firstTapAt: result.firstTapAt };
 
     if (!result.revealed) return;
 

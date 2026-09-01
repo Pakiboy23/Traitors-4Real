@@ -73,7 +73,7 @@ describe("registerAdminRevealTap", () => {
     for (let i = 0; i < times; i += 1) {
       const result = registerAdminRevealTap(state, now);
       revealed = result.revealed;
-      state = { count: result.count, lastTapAt: result.lastTapAt };
+      state = { count: result.count, firstTapAt: result.firstTapAt };
       now += gapMs;
     }
 
@@ -97,11 +97,29 @@ describe("registerAdminRevealTap", () => {
   });
 
   it("restarts the count after a gap instead of resuming it", () => {
-    const state = { count: ADMIN_REVEAL_TAPS - 1, lastTapAt: 1_000 };
+    const state = { count: ADMIN_REVEAL_TAPS - 1, firstTapAt: 1_000 };
     const result = registerAdminRevealTap(state, 1_000 + ADMIN_REVEAL_WINDOW_MS + 1);
 
     expect(result.revealed).toBe(false);
     expect(result.count).toBe(1);
+    expect(result.firstTapAt).toBe(1_000 + ADMIN_REVEAL_WINDOW_MS + 1);
+  });
+
+  it("measures the window from the first tap, not the previous one", () => {
+    // The window has to bound the whole run. Measured gap-to-gap it only
+    // bounds each pair, so taps just inside it chain indefinitely: five of
+    // them 2.9s apart would reveal the tab after 11.6s of idle prodding.
+    const almost = ADMIN_REVEAL_WINDOW_MS - 100;
+    const { revealed } = tapRepeatedly(ADMIN_REVEAL_TAPS, almost);
+
+    expect(almost * (ADMIN_REVEAL_TAPS - 1)).toBeGreaterThan(ADMIN_REVEAL_WINDOW_MS);
+    expect(revealed).toBe(false);
+  });
+
+  it("still opens for a run that is quick but not instant", () => {
+    // The window must not be so tight that a deliberate tapper misses it.
+    const perTap = Math.floor(ADMIN_REVEAL_WINDOW_MS / ADMIN_REVEAL_TAPS);
+    expect(tapRepeatedly(ADMIN_REVEAL_TAPS, perTap).revealed).toBe(true);
   });
 
   it("clears its counter once it opens, so it cannot re-fire on one more tap", () => {

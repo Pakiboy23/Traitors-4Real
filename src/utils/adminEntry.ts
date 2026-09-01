@@ -38,7 +38,12 @@ export const ADMIN_REVEAL_STORAGE_KEY = "traitors_admin_revealed";
 /** Taps needed to reveal the tab. High enough that nobody trips it browsing. */
 export const ADMIN_REVEAL_TAPS = 5;
 
-/** Taps must land inside this window, or the count starts over. */
+/**
+ * The whole run of taps must land inside this window, measured from the first
+ * tap — not from the previous one. A per-gap window silently accumulates: five
+ * taps 2.9s apart would each be "in time" and reveal the tab after 11.6s,
+ * which is idle prodding, not a gesture.
+ */
 export const ADMIN_REVEAL_WINDOW_MS = 3000;
 
 export interface AdminEntryInput {
@@ -82,8 +87,8 @@ export const shouldShowAdminTab = ({
 export interface AdminRevealTapState {
   /** Taps counted so far in the current window. */
   count: number;
-  /** Timestamp of the most recent counted tap. */
-  lastTapAt: number;
+  /** When the current run started. The window is measured from here. */
+  firstTapAt: number;
 }
 
 export interface AdminRevealTapResult extends AdminRevealTapState {
@@ -93,7 +98,7 @@ export interface AdminRevealTapResult extends AdminRevealTapState {
 
 export const emptyAdminRevealTapState = (): AdminRevealTapState => ({
   count: 0,
-  lastTapAt: 0,
+  firstTapAt: 0,
 });
 
 /**
@@ -104,12 +109,18 @@ export const registerAdminRevealTap = (
   state: AdminRevealTapState,
   now: number
 ): AdminRevealTapResult => {
-  const withinWindow = now - state.lastTapAt <= ADMIN_REVEAL_WINDOW_MS;
-  const count = withinWindow ? state.count + 1 : 1;
+  // count > 0 is what distinguishes a run in progress from the empty state,
+  // whose firstTapAt of 0 would otherwise read as "started long ago" for a
+  // real clock and "started just now" for a small test one.
+  const continuesRun =
+    state.count > 0 && now - state.firstTapAt <= ADMIN_REVEAL_WINDOW_MS;
+
+  const count = continuesRun ? state.count + 1 : 1;
+  const firstTapAt = continuesRun ? state.firstTapAt : now;
 
   if (count >= ADMIN_REVEAL_TAPS) {
     return { ...emptyAdminRevealTapState(), revealed: true };
   }
 
-  return { count, lastTapAt: now, revealed: false };
+  return { count, firstTapAt, revealed: false };
 };
