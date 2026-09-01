@@ -23,6 +23,11 @@ interface SubmissionsSectionProps {
   onRefreshSubmissions: () => void;
   onMergeAllSubmissions: () => void;
   mergeAllDisabled: boolean;
+  draftSubmissions: SubmissionRecord[];
+  isLoadingDraftSubmissions: boolean;
+  draftSubmissionsError: string | null;
+  onRefreshDraftSubmissions: () => void;
+  onMergeAllDraftSubmissions: () => void;
   getSubmissionLeague: (submission: SubmissionRecord) => "main" | "jr";
   getSubmissionBonusGames: (
     submission: SubmissionRecord
@@ -150,6 +155,11 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
   submissions,
   isLoadingSubmissions,
   submissionsError,
+  draftSubmissions,
+  isLoadingDraftSubmissions,
+  draftSubmissionsError,
+  onRefreshDraftSubmissions,
+  onMergeAllDraftSubmissions,
   onRefreshSubmissions,
   onMergeAllSubmissions,
   mergeAllDisabled,
@@ -170,6 +180,80 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
 }) => {
   return (
     <div className="space-y-5">
+      <section className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Incoming Drafts</p>
+            <h3 className="headline text-2xl">Draft entries (pending)</h3>
+            <p className="text-sm text-[color:var(--text-muted)]">
+              Players cannot add themselves to the roster — merging is what puts them in Standings.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={onRefreshDraftSubmissions} className="btn-secondary px-4 text-[11px]">
+              Refresh
+            </button>
+            <button
+              type="button"
+              onClick={onMergeAllDraftSubmissions}
+              disabled={draftSubmissions.length === 0}
+              className={`px-4 py-2 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
+                draftSubmissions.length === 0
+                  ? "border border-[color:var(--panel-border)] text-[color:var(--text-muted)] cursor-not-allowed"
+                  : "btn-primary"
+              }`}
+            >
+              Merge All
+            </button>
+          </div>
+        </div>
+
+        {isLoadingDraftSubmissions && (
+          <p className="text-sm text-[color:var(--text-muted)]">Loading draft entries...</p>
+        )}
+        {draftSubmissionsError && (
+          <p className="text-sm text-[color:var(--danger)]">{draftSubmissionsError}</p>
+        )}
+        {!isLoadingDraftSubmissions && draftSubmissions.length === 0 && (
+          <p className="text-sm text-[color:var(--text-muted)]">No draft entries waiting to be merged.</p>
+        )}
+
+        <div className="space-y-3">
+          {draftSubmissions.map((submission) => {
+            const payload = (submission.payload && typeof submission.payload === "object"
+              ? submission.payload
+              : {}) as Record<string, unknown>;
+            const pickCount = Array.isArray(payload.picks) ? payload.picks.length : 0;
+            const alreadyOnRoster = players.some(
+              (player) =>
+                (player.email || "").trim().toLowerCase() ===
+                (submission.email || "").trim().toLowerCase()
+            );
+            return (
+              <div
+                key={submission.id}
+                className="rounded-2xl border border-[color:var(--panel-border)] p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2"
+              >
+                <div>
+                  <p className="font-semibold">{submission.name}</p>
+                  <p className="text-sm text-[color:var(--text-muted)]">
+                    {pickCount} picks
+                    {submission.created ? ` · ${new Date(submission.created).toLocaleString()}` : ""}
+                  </p>
+                </div>
+                <div className="text-sm text-[color:var(--text-muted)]">
+                  {pickCount === 0
+                    ? "No picks — will be skipped"
+                    : alreadyOnRoster
+                      ? "Already on the roster — will be skipped"
+                      : "Ready to merge"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
       <section className="soft-card rounded-3xl p-5 md:p-6 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>

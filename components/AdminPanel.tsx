@@ -32,6 +32,9 @@ import {
   deleteSubmission,
   fetchSeasonState,
   fetchWeeklySubmissions,
+  fetchDraftSubmissions,
+  draftSubmissionToPlayerEntry,
+  markDraftSubmissionMerged,
   finalizeSeason,
   listSeasons as listSeasonRecords,
   listScoreAdjustments,
@@ -134,6 +137,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [submissions, setSubmissions] = useState<SubmissionRecord[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState(false);
   const [submissionsError, setSubmissionsError] = useState<string | null>(null);
+  const [draftSubmissions, setDraftSubmissions] = useState<SubmissionRecord[]>([]);
+  const [isLoadingDraftSubmissions, setIsLoadingDraftSubmissions] = useState(false);
+  const [draftSubmissionsError, setDraftSubmissionsError] = useState<string | null>(null);
   const [editPlayerName, setEditPlayerName] = useState("");
   const [editPlayerEmail, setEditPlayerEmail] = useState("");
   const [editWeeklyBanished, setEditWeeklyBanished] = useState("");
@@ -692,6 +698,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   }, [activeSeasonId, supabaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
 
+  const refreshDraftSubmissions = useCallback(async () => {
+    setIsLoadingDraftSubmissions(true);
+    setDraftSubmissionsError(null);
+    try {
+      const scopedSeasonId = getActiveSeasonId();
+      setDraftSubmissions(await fetchDraftSubmissions({ seasonId: scopedSeasonId }));
+    } catch (error: any) {
+      setDraftSubmissionsError(error?.message || String(error));
+    } finally {
+      setIsLoadingDraftSubmissions(false);
+    }
+  }, [activeSeasonId, supabaseUrl, seasonConfig?.seasonId, seasonRecords.length]);
+
+  useEffect(() => {
+    refreshDraftSubmissions();
+  }, [refreshDraftSubmissions]);
+
   useEffect(() => {
     refreshSubmissions();
     const unsubscribe = subscribeToWeeklySubmissions((submission) => {
@@ -1232,6 +1255,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const mergeAllSubmissions = async () => {
     await mergeSubmissionList(submissions);
+  };
+
+  /**
+   * Pull draft entries into the season roster.
+   *
+   * Players can insert a draft submission but cannot write season state, so
+   * without this step an entry is stored and never appears anywhere — Standings
+   * reads the roster, not the submissions table. Existing members are matched on
+   * email so re-running this does not duplicate anyone.
+   */
+  const mergeDraftSubmissionList = async (records: SubmissionRecord[]) => {
+    if (records.length === 0) return;
+
+    const existingPlayers = gameStateRef.current.players || [];
+    const seenEmails = new Set(
+      existingPlayers.map((player) => (player.email || "").trim().toLowerCase()).filter(Boolean)
+    );
+
+    const additions: PlayerEntry[] = [];
+    const mergedIds: string[] = [];
+    let duplicates = 0;
+    let empty = 0;
+
+    for (const record of records) {
+      const entry = draftSubmissionToPlayerEntry(record);
+      if (!entry) {
+        empty += 1;
+        continue;
+      }
+      const key = (entry.email || "").trim().toLowerCase();
+      if (key && seenEmails.has(key)) {
+        duplicates += 1;
+        mergedIds.push(record.id);
+        continue;
+      }
+      if (key) seenEmails.add(key);
+      additions.push(entry);
+      mergedIds.push(record.id);
+    }
+
+    if (additions.length > 0) {
+      const nextState = {
+        ...gameStateRef.current,
+        players: [...existingPlayers, ...additions],
+      };
+      gameStateRef.current = nextState;
+      updateGameState(nextState);
+    }
+
+    try {
+      await Promise.all(mergedIds.map((id) => markDraftSubmissionMerged(id)));
+      setDraftSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
+      setMsg({
+        text:
+          `Merged ${additions.length} draft ${additions.length === 1 ? "entry" : "entries"}` +
+          `${duplicates ? `, skipped ${duplicates} already on the roster` : ""}` +
+          `${empty ? `, skipped ${empty} with no picks` : ""}.`,
+        type: "success",
+      });
+    } catch (err: any) {
+      setMsg({
+        text: `Added the entries to the roster, but failed to mark some as merged: ${err?.message || err}`,
+        type: "error",
+      });
+    }
+  };
+
+  const mergeAllDraftSubmissions = async () => {
+    await mergeDraftSubmissionList(draftSubmissions);
   };
 
   const updateSelectedPlayer = (updates: Partial<PlayerEntry>) => {
@@ -1961,6 +2053,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       onRefreshSubmissions={refreshSubmissions}
       onMergeAllSubmissions={mergeAllSubmissions}
       mergeAllDisabled={submissions.length === 0}
+      draftSubmissions={draftSubmissions}
+      isLoadingDraftSubmissions={isLoadingDraftSubmissions}
+      draftSubmissionsError={draftSubmissionsError}
+      onRefreshDraftSubmissions={refreshDraftSubmissions}
+      onMergeAllDraftSubmissions={mergeAllDraftSubmissions}
       getSubmissionLeague={getSubmissionLeague}
       getSubmissionBonusGames={normalizeSubmissionBonusGames}
       getSubmissionFinalePredictions={normalizeSubmissionFinalePredictions}

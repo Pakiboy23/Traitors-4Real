@@ -303,7 +303,13 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
     onAddEntry(newEntry);
 
     try {
-      await submitDraftEntry(newEntry);
+      // Season comes from live game state, not the bundled config — an entry
+      // tagged with the wrong season is invisible to the admin merge.
+      await submitDraftEntry({
+        ...newEntry,
+        seasonId: gameState.seasonId,
+        rulePackId: gameState.rulePackId,
+      });
       showToast("Draft submitted successfully.", "success");
     } catch (err) {
       logger.warn("Draft submission failed:", err);
