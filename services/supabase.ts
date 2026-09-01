@@ -1,6 +1,8 @@
 import type {
+  DraftPick,
   FinalePredictions,
   GameState,
+  PlayerEntry,
   ScoreAdjustment,
   SeasonConfig,
   SeasonState,
@@ -542,6 +544,17 @@ export const markSubmissionMerged = async (id: string) => {
   if (error) throw error;
 };
 
+export const markDraftSubmissionMerged = async (id: string) => {
+  // Distinct from markSubmissionMerged, which stamps kind "weekly_merged".
+  // A merged draft is not a weekly vote, and mislabelling it would put it in
+  // the weekly history the admin panel reads back.
+  const { error } = await supabase
+    .from("submissions")
+    .update({ kind: "draft_merged", submission_status: "merged", updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
+};
+
 export const markSubmissionSkipped = async (id: string, status: "skipped_late" | "skipped_stale") => {
   const { error } = await supabase
     .from("submissions")
@@ -621,19 +634,108 @@ export const submitDraftEntry = async (entry: {
   predWinner?: string;
   predTraitors?: unknown;
   weeklyPredictions?: { nextBanished: string; nextMurdered: string };
+  seasonId?: string;
+  rulePackId?: string;
+  league?: string;
 }) => {
   const normalizedEmail = normalizeEmail(entry.email || "");
+  // Tagged with the season for the same reason weekly votes are: an untagged
+  // row cannot be told apart from one belonging to a previous season, and the
+  // admin merge filters on it. Rows written before this existed have a null
+  // season_id and will not appear in the merge list.
+  const league = entry.league === "jr" ? "jr" : entry.league === "main" ? "main" : null;
   const { error } = await supabase
     .from("submissions")
     .insert({
       name: entry.name,
       email: normalizedEmail,
       kind: "draft",
+      season_id: entry.seasonId || null,
+      rule_pack_id: entry.rulePackId || null,
+      league,
       weekly_banished: entry.weeklyPredictions?.nextBanished || null,
       weekly_murdered: entry.weeklyPredictions?.nextMurdered || null,
       payload: entry as unknown as Database["public"]["Tables"]["submissions"]["Insert"]["payload"],
     });
   if (error) throw error;
+};
+
+/**
+ * Draft entries pending merge into a season roster.
+ *
+ * Anonymous players can insert a draft submission but cannot write
+ * `season_states` — that is admin-only, and deliberately so. Without this read
+ * and the merge that follows it, a draft entry is stored and then never
+ * surfaces anywhere: Standings reads the season roster, not this table.
+ */
+export const fetchDraftSubmissions = async (input?: {
+  seasonId?: string | null;
+}): Promise<SubmissionRecord[]> => {
+  try {
+    const normalizedSeasonId = normalizeWeekId(input?.seasonId);
+    let query = supabase
+      .from("submissions")
+      .select("*")
+      .eq("kind", "draft")
+      .eq("submission_status", "new")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (normalizedSeasonId) {
+      query = query.eq("season_id", normalizedSeasonId);
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    const records = (data ?? []).map(rowToSubmissionRecord);
+    logger.log(`fetchDraftSubmissions: Loaded ${records.length} submissions`);
+    return records;
+  } catch (error) {
+    logger.warn("fetchDraftSubmissions failed:", error);
+    return [];
+  }
+};
+
+const asDraftPicks = (value: unknown): DraftPick[] => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((pick): pick is Record<string, unknown> => Boolean(pick) && typeof pick === "object")
+    .map((pick): DraftPick => ({
+      member: typeof pick.member === "string" ? pick.member : "",
+      rank: typeof pick.rank === "number" && Number.isFinite(pick.rank) ? pick.rank : 1,
+      role: pick.role === "Traitor" ? "Traitor" : "Faithful",
+    }))
+    .filter((pick) => pick.member !== "");
+};
+
+const asStringList = (value: unknown): string[] =>
+  Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item !== "") : [];
+
+/**
+ * A stored draft submission as a roster entry.
+ *
+ * The payload is whatever the client sent, so nothing here trusts its shape.
+ * Returns null when the entry carries no picks — merging an empty roster slot
+ * would show a member on the leaderboard with nothing to score.
+ */
+export const draftSubmissionToPlayerEntry = (record: SubmissionRecord): PlayerEntry | null => {
+  const payload = (record.payload && typeof record.payload === "object"
+    ? record.payload
+    : {}) as Record<string, unknown>;
+
+  const picks = asDraftPicks(payload.picks);
+  if (picks.length === 0) return null;
+
+  const league = record.league === "jr" ? "jr" : record.league === "main" ? "main" : undefined;
+
+  return {
+    id: record.id,
+    name: record.name,
+    email: record.email,
+    ...(league ? { league } : {}),
+    picks,
+    predFirstOut: typeof payload.predFirstOut === "string" ? payload.predFirstOut : "",
+    predWinner: typeof payload.predWinner === "string" ? payload.predWinner : "",
+    predTraitors: asStringList(payload.predTraitors),
+  } as PlayerEntry;
 };
 
 export const submitGrowthEvent = async (input: {
