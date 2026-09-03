@@ -10,7 +10,7 @@
  *
  * Run a production build first, serve it, then point this at it:
  *
- *   npm i -D playwright && npx playwright install chromium
+ *   npx playwright install chromium
  *   npx next build && npx next start -p 3222
  *   node scripts/screenshots/capture.mjs http://127.0.0.1:3222
  *
@@ -26,7 +26,8 @@
  * private league title on the most public surface the app has. Fonts and the
  * app origin still load.
  *
- * Playwright is not a dependency of the app — install it only when capturing.
+ * Playwright is a devDependency so the import resolves after `npm ci`.
+ * Chromium still needs `npx playwright install chromium` before capture.
  * Output lands in ./store/screenshots (override with SHOT_DIR).
  *
  * The sample season is injected into localStorage before the app boots. See

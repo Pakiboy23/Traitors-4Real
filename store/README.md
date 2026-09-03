@@ -41,7 +41,7 @@ only (`TARGETED_DEVICE_FAMILY = 1`), so iPad slots stay empty.
 ```bash
 npx next build && npx next start -p 3222
 # other terminal:
-npm i -D playwright && npx playwright install chromium
+npx playwright install chromium
 npm run screenshots:capture
 ```
 
