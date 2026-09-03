@@ -94,6 +94,10 @@ describe("iOS release shipping guards", () => {
     expect(entitlements).toContain("<key>aps-environment</key>");
     expect(privacy).toContain("<key>NSPrivacyTracking</key>");
     expect(privacy).toMatch(/<key>NSPrivacyTracking<\/key>\s*<false\/>/);
+    expect(privacy).toContain("NSPrivacyCollectedDataTypeName");
+    expect(privacy).toContain("NSPrivacyCollectedDataTypeEmailAddress");
+    expect(privacy).toContain("NSPrivacyCollectedDataTypeGameplayContent");
+    expect(privacy).toContain("NSPrivacyCollectedDataTypeDeviceID");
     expect(pbxproj).toContain("PrivacyInfo.xcprivacy in Resources");
     expect(pbxproj).toContain("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;");
   });

@@ -78,6 +78,40 @@ describe("App Store listing copy", () => {
     expect(notes).toMatch(/com\.roundtabledraft\.app/);
     expect(notes.length).toBeLessThanOrEqual(4000);
   });
+
+  it("discloses gameplay content next to the privacy manifest and policy", () => {
+    const answers = readFileSync(
+      path.join(repoRoot, "store/privacy_answers.md"),
+      "utf8",
+    );
+    const privacy = readFileSync(
+      path.join(repoRoot, "ios/App/App/PrivacyInfo.xcprivacy"),
+      "utf8",
+    );
+    const policy = readFileSync(
+      path.join(repoRoot, "src/app/privacy/page.tsx"),
+      "utf8",
+    );
+
+    expect(answers).toMatch(/Gameplay Content/);
+    expect(answers).toMatch(/picks and weekly predictions/i);
+    expect(answers).toMatch(/linked to the user/i);
+    expect(answers).toMatch(/not used for tracking/i);
+    expect(answers).toMatch(/App Functionality/);
+
+    expect(privacy).toContain("NSPrivacyCollectedDataTypeGameplayContent");
+    expect(privacy).toMatch(
+      /NSPrivacyCollectedDataTypeGameplayContent[\s\S]*?NSPrivacyCollectedDataTypeLinked<\/key>\s*<true\/>/,
+    );
+    expect(privacy).toMatch(
+      /NSPrivacyCollectedDataTypeGameplayContent[\s\S]*?NSPrivacyCollectedDataTypeTracking<\/key>\s*<false\/>/,
+    );
+    expect(privacy).toMatch(
+      /NSPrivacyCollectedDataTypeGameplayContent[\s\S]*?NSPrivacyCollectedDataTypePurposeAppFunctionality/,
+    );
+
+    expect(policy).toMatch(/Your picks and predictions/);
+  });
 });
 
 describe("App Store screenshot capture", () => {
