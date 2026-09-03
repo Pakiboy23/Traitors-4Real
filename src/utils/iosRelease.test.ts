@@ -10,6 +10,7 @@ const privacy = readFileSync(path.join(repoRoot, "ios/App/App/PrivacyInfo.xcpriv
 const capacitorConfig = readFileSync(path.join(repoRoot, "capacitor.config.ts"), "utf8");
 const envProduction = readFileSync(path.join(repoRoot, ".env.production"), "utf8");
 const verifyScript = readFileSync(path.join(repoRoot, "ios/App/Scripts/verify-web-assets.sh"), "utf8");
+const packageSwift = readFileSync(path.join(repoRoot, "ios/App/CapApp-SPM/Package.swift"), "utf8");
 
 /** App Store Connect version 2.0; newest processed TestFlight build is 1.0 (34). */
 const MARKETING_VERSION = "2.0";
@@ -68,6 +69,14 @@ describe("iOS release shipping guards", () => {
     expect(pbxproj).toMatch(
       /buildPhases = \(\s*C0FFEE0000000000000000B1 \/\* Verify bundled web assets \*\//,
     );
+  });
+
+  it("keeps the committed Capacitor SPM pin on iOS 15", () => {
+    // `cap sync` rewrites this file from whatever is installed. The one-line
+    // platforms: .iOS(.v17) diff is easy to commit by accident and is not the
+    // App target's 15.0 deployment target.
+    expect(packageSwift).toContain("platforms: [.iOS(.v15)]");
+    expect(packageSwift).toContain('exact: "8.5.0"');
   });
 
   it("keeps the Capacitor app id and only adds server.url off the bundled path", () => {
