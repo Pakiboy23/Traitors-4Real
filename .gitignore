@@ -38,7 +38,8 @@ backups/
 # TypeScript incremental build cache
 *.tsbuildinfo
 
-# App Store screenshot output (regenerate with scripts/screenshots/capture.mjs)
+# Working dir if capture is pointed at the repo root. Committed App Store
+# shots live in store/screenshots/ and are not ignored.
 /screenshots/
 
 # Claude Code session memory (local only)

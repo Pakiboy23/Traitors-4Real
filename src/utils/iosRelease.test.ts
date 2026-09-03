@@ -41,6 +41,10 @@ describe("iOS 2.0 release identity", () => {
       expect(settings).toContain(`PRODUCT_BUNDLE_IDENTIFIER = ${BUNDLE_ID};`);
       expect(settings).toContain("IPHONEOS_DEPLOYMENT_TARGET = 15.0;");
       expect(settings).not.toContain("RECOMMENDED_IPHONEOS_DEPLOYMENT_TARGET");
+      // Universal (1,2) requires iPad 13" screenshots and a tablet layout this
+      // shell does not have. iPhone-only is the submission device family.
+      expect(settings).toMatch(/TARGETED_DEVICE_FAMILY = 1;/);
+      expect(settings).not.toContain('TARGETED_DEVICE_FAMILY = "1,2";');
     },
   );
 

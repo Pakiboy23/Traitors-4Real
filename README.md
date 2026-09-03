@@ -152,6 +152,12 @@ favicons and touch icon. Edit the source art, re-run it, commit the output — d
 not hand-edit the PNGs, or the platforms drift apart. The App Store icon is
 written without an alpha channel, which App Store Connect requires.
 
+## App Store
+
+Listing copy, review notes, privacy answers, and iPhone screenshots live in
+[`store/`](store/README.md). Native identity is version **2.0**, build **35**,
+iPhone only. Archive from a Mac after `npm run ios:sync:bundled`.
+
 ## Push notifications
 
 Devices register themselves on launch (`src/native/push.ts`) and tokens land in

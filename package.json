@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "icons:build": "node scripts/build-icons.mjs"
+    "icons:build": "node scripts/build-icons.mjs",
+    "screenshots:capture": "node scripts/screenshots/capture.mjs http://127.0.0.1:3222"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.0",
