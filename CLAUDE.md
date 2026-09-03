@@ -209,13 +209,16 @@ Removed in August 2026. If you find a reference, it is stale — correct it.
 `docs/sora_ad_concept.md` is an archived marketing document that still names the
 old stack in its body — it carries a correction header.
 
-## Current state — August 2026
+## Current state — September 2026
 
 - Season `traitors-new-blood-s1` is **live**, 22 cast members, draft open.
 - App renamed **Round Table Draft**; league name is a separate configurable
   field, currently `UPRV Fantasy League`. The two are deliberately distinct —
   only one is public on the App Store.
 - Bundle id `com.roundtabledraft.app`. **Locks permanently at first submission.**
+- Native identity is **2.0 (35)** as of #155. App Store Connect already has a
+  2.0 version record; listing copy, screenshots, privacy answers, and review
+  notes live in `store/`. The App target is **iPhone only**.
 - iOS target has the push entitlement, the `remote-notification` background
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
 - `send-lock-reminder` Edge Function is deployed (v3) and exercised. Real APNs
@@ -229,10 +232,10 @@ old stack in its body — it carries a correction header.
   not deliver anything — a physical device has to register first.
 
 **Shipping already.** App Store Connect record, App ID, and signing are all
-done — do not describe them as outstanding. As of 2026-08-27 three builds are
-uploaded under version 1.0: build 1 in internal Testing, build 2 Expired, build
-3 Waiting for Review. TestFlight groups `DrafTers` (internal) and `DrafTers2`
-(external) exist, and Xcode Cloud is wired to the App target.
+done — do not describe them as outstanding. TestFlight groups `DrafTers`
+(internal) and `DrafTers2` (external) exist, and Xcode Cloud is wired to the
+App target. Newest processed TestFlight build before 2.0 was **1.0 (34)**.
+Archive and upload **2.0 (35)** from a Mac — see `store/README.md`.
 
 **Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
 iOS 26+ (no UIScene adoption — UIKit calls
@@ -240,11 +243,10 @@ iOS 26+ (no UIScene adoption — UIKit calls
 That is the most likely cause and the timing fits, but it is not confirmed
 against the crash logs. Build 3 was created after #133 merged.
 
-**Not done:** cast photos.
+**Not done:** cast photos. The Mac archive / App Store Connect submit click.
 
-Screenshots are unblocked as of #118. The `DEVELOPMENT` badge is gated on
-`NODE_ENV` and is dead-code-eliminated from a production build; the `NO SYNC YET`
-chip no longer exists (`syncLabel` is null until there is a real sync); the Admin
-tab is hidden unless revealed or already signed in. Verified 2026-08-24
-by rendering a production build: the nav is exactly Overview / Draft / Weekly
-Council / Leaderboard / Rules and the utility bar is empty.
+The `DEVELOPMENT` badge is gated on `NODE_ENV` and is dead-code-eliminated from
+a production build; the `NO SYNC YET` chip no longer exists (`syncLabel` is
+null until there is a real sync); the Admin tab is hidden unless revealed or
+already signed in. Player nav is Home / Draft / Weekly Council / Leaderboard,
+with Rules in the utility bar.

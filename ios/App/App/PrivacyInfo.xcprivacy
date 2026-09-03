@@ -55,6 +55,24 @@
 		</dict>
 
 		<!--
+			Draft picks and weekly predictions are the substance of the game
+			(Apple: User Content → Gameplay Content). Linked because they sit
+			on the same player record as name and email. Not used for tracking.
+		-->
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeGameplayContent</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+
+		<!--
 			The APNs device token, stored so the app can send lock reminders.
 			Linked because it is recorded against the season the device is
 			following.

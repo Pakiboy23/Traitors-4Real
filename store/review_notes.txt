@@ -1,0 +1,18 @@
+Round Table Draft is an independent private fantasy-draft companion for a reality competition season. It is not affiliated with, endorsed by, or connected to any television network, studio, or production company.
+
+The public name, icon, and screenshots do not use any programme’s title, logos, or likenesses. Screenshots in this version were captured from a fictional sample season (“The Sunday Table”) with invented cast and player names.
+
+How to review
+No account is required to browse the app. Open Home, Draft, Weekly Council, Leaderboard, and Rules (utility-bar button, top right). Submitting a draft or weekly entry asks only for a name and email; use any test values.
+
+The Admin tab is hidden on purpose. It is not a player destination. League administration uses Supabase auth; reviewers do not need it.
+
+What this binary is
+A bundled Capacitor shell (com.roundtabledraft.app, version 2.0, build 35). The web assets ship inside the app. It does not load a website over the network.
+
+Export compliance
+ITSAppUsesNonExemptEncryption is false. The app uses HTTPS only.
+
+Privacy
+Name and email are collected when a player submits an entry. A device notification token is stored only if the player allows notifications. Nothing is used for tracking or advertising. Privacy policy: https://traitorsfantasydraft.online/privacy
+Support: https://traitorsfantasydraft.online/support

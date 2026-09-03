@@ -29,6 +29,6 @@ Private league, not a growth app. Calendar: H.I.M. growth flight ends 13 Sep 202
 
 Keep CFBundleDisplayName `Round Table Draft`. Archive only a bundled shell. Privacy and support are in-app routes — keep them versioned with the code they describe. Push background mode is already in Info.plist.
 
-**Shipping already** (as of 2026-08-27). App Store Connect record, App ID, and signing are done — do not describe them as outstanding. Three builds under version 1.0: build 1 internal Testing, build 2 Expired, build 3 Waiting for Review. TestFlight groups `DrafTers` (internal) and `DrafTers2` (external) exist. Do not revert to "do not open a submission."
+**Shipping already.** App Store Connect record, App ID, and signing are done — do not describe them as outstanding. Native identity is **2.0 (35)** (#155). Listing copy, iPhone screenshots, privacy answers, and review notes live in `store/`. The App target is iPhone only. Remaining Mac step: archive and upload 2.0 (35), then submit the version record. TestFlight groups `DrafTers` (internal) and `DrafTers2` (external) exist. Do not revert to "do not open a submission."
 
 Still missing before a public release: New Blood civilian portraits. Last-season celebrity stills must not live in `public/cast-portraits/` (they ship in web + native if present). Set `APNS_ENV=production` before the first production TestFlight send; `push_tokens` is empty until a device registers.

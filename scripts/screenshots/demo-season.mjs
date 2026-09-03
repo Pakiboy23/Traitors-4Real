@@ -151,6 +151,14 @@ export const buildDemoState = () => ({
       appTitle: "Round Table Command Desk",
       footerCopy: "Round Table Draft workspace.",
     },
+    terminology: {
+      weeklyCouncilLabel: "Weekly Council",
+      jrCouncilLabel: "Jr. Council",
+      draftLabel: "Draft",
+      leaderboardLabel: "Leaderboard",
+      adminLabel: "Admin",
+      finaleLabelDefault: "Finale Gauntlet",
+    },
     featureToggles: {
       draftEnabled: true,
       jrLeagueEnabled: true,
