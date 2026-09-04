@@ -31,6 +31,7 @@ import { calculatePlayerScore, getFinaleTieBreakDistance } from "./src/utils/sco
 import { TIMING } from "./src/utils/scoringConstants";
 import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
+import { adminAuthErrorMessage } from "./src/utils/adminAuth";
 import { logger } from "./src/utils/logger";
 import {
   normalizeCastMemberStatus,
@@ -289,6 +290,8 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [uiVariant, setUiVariant] = useState<UiVariant>("premium");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
+  const [adminAuthPending, setAdminAuthPending] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
@@ -794,11 +797,19 @@ const App: React.FC = () => {
     email: string,
     password: string
   ): Promise<boolean> => {
+    setAdminAuthPending(true);
+    setAdminAuthError(null);
     try {
       const success = await signInAdmin(email, password);
+      if (success) setIsAdminAuthenticated(true);
       return success;
-    } catch {
+    } catch (error) {
+      const message = adminAuthErrorMessage(error);
+      setAdminAuthError(message);
+      logger.warn("Admin sign-in failed:", error);
       return false;
+    } finally {
+      setAdminAuthPending(false);
     }
   }, []);
 
@@ -1032,7 +1043,9 @@ const App: React.FC = () => {
           />
         );
       case "admin":
-        return isAdminAuthenticated ? (
+        // Keep AdminAuth mounted until sign-in settles so a remount cannot
+        // swallow "Not an admin user" (or a membership query failure).
+        return isAdminAuthenticated && !adminAuthPending ? (
           <AdminPanel
             gameState={gameState}
             updateGameState={updateGameState}
@@ -1050,6 +1063,7 @@ const App: React.FC = () => {
         ) : (
           <AdminAuth
             onAuthenticate={authenticateAdmin}
+            authError={adminAuthError}
             uiVariant={uiVariant}
           />
         );
@@ -1082,6 +1096,8 @@ const App: React.FC = () => {
     uiVariant,
     gameState,
     handleAddEntry,
+    adminAuthError,
+    adminAuthPending,
     authenticateAdmin,
     handleSignOut,
     isAdminAuthenticated,

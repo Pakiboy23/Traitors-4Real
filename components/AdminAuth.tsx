@@ -4,26 +4,32 @@ import { PremiumButton, PremiumCard, PremiumField, PremiumPanelHeader } from "..
 
 interface AdminAuthProps {
   onAuthenticate: (email: string, password: string) => Promise<boolean>;
+  authError?: string | null;
   uiVariant: UiVariant;
 }
 
-const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, uiVariant }) => {
+const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError, uiVariant }) => {
   const isPremiumUi = uiVariant === "premium";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const error = authError || localError;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
     setIsSubmitting(true);
     const success = await onAuthenticate(email, password);
     setIsSubmitting(false);
 
     if (!success) {
-      setError(true);
       setPassword("");
-      setTimeout(() => setError(false), 2000);
+      // Parent-owned authError survives a remount; this is only a fallback
+      // if the form stayed mounted and App did not lift a message.
+      if (!authError) {
+        setLocalError("Authentication failed");
+      }
     }
   };
 
@@ -45,7 +51,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, uiVariant }) => {
             placeholder="Admin email"
             autoComplete="email"
             required
-            aria-invalid={error}
+            aria-invalid={Boolean(error)}
             className="premium-input-compact"
           />
           <PremiumField
@@ -56,14 +62,14 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, uiVariant }) => {
             placeholder="Password"
             autoComplete="current-password"
             required
-            aria-invalid={error}
+            aria-invalid={Boolean(error)}
             aria-describedby={error ? "login-error" : undefined}
             className="premium-input-compact"
           />
 
           {error && (
             <p id="login-error" className="text-xs uppercase tracking-[0.16em] text-[color:var(--danger)] font-semibold" role="alert">
-              Authentication failed
+              {error}
             </p>
           )}
 

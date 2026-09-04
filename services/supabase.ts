@@ -14,6 +14,10 @@ import { supabase, supabaseUrl } from "../src/lib/supabase";
 import type { Database } from "../src/types/database";
 import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
+import {
+  isConfirmedAdminMembership,
+  settleAdminSignInMembership,
+} from "../src/utils/adminAuth";
 import { logger } from "../src/utils/logger";
 
 export { supabaseUrl };
@@ -110,29 +114,60 @@ export interface ScoreAdjustmentRecord {
 
 // ── auth ──────────────────────────────────────────────────────────────────────
 
+const fetchAdminMembership = (userId: string) =>
+  supabase.from("admin_users").select("user_id").eq("user_id", userId).maybeSingle();
+
+const resolveAdminSession = async (
+  userId: string | undefined,
+  callback: (isAuthed: boolean) => void
+) => {
+  if (!userId) {
+    callback(false);
+    return;
+  }
+  const { data, error } = await fetchAdminMembership(userId);
+  if (error) {
+    logger.warn("admin membership check failed:", error);
+    callback(false);
+    return;
+  }
+  callback(isConfirmedAdminMembership({ data, error: null }));
+};
+
 export const onAdminAuthChange = (callback: (isAuthed: boolean) => void) => {
-  // Fire immediately with current state
+  let cancelled = false;
+  let requestId = 0;
+  const notify = (isAuthed: boolean) => {
+    if (!cancelled) callback(isAuthed);
+  };
+  const resolve = (userId: string | undefined) => {
+    const id = ++requestId;
+    void resolveAdminSession(userId, (isAuthed) => {
+      if (id !== requestId) return;
+      notify(isAuthed);
+    });
+  };
+
+  // A raw session is not admin access — wait for admin_users membership.
   supabase.auth.getSession().then(({ data: { session } }) => {
-    callback(!!session?.user);
+    resolve(session?.user?.id);
   });
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(!!session?.user);
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    resolve(session?.user?.id);
   });
-  return () => subscription.unsubscribe();
+  return () => {
+    cancelled = true;
+    subscription.unsubscribe();
+  };
 };
 
 export const signInAdmin = async (email: string, password: string): Promise<boolean> => {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  const { data: adminRow } = await supabase
-    .from("admin_users")
-    .select("user_id")
-    .eq("user_id", data.user!.id)
-    .single();
-  if (!adminRow) {
-    await supabase.auth.signOut();
-    throw new Error("Not an admin user");
-  }
+  const membership = await fetchAdminMembership(data.user!.id);
+  await settleAdminSignInMembership(membership, () => supabase.auth.signOut());
   return true;
 };
 
