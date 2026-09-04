@@ -1,0 +1,10 @@
+{
+  "name": "Round Table Draft",
+  "install": "npm ci && { [ -f .env.local ] || cp .env.production .env.local; }",
+  "terminals": [
+    {
+      "name": "next-dev",
+      "command": "npm run dev"
+    }
+  ]
+}
