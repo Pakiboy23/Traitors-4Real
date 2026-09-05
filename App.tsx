@@ -31,7 +31,7 @@ import { calculatePlayerScore, getFinaleTieBreakDistance } from "./src/utils/sco
 import { TIMING } from "./src/utils/scoringConstants";
 import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
-import { adminAuthErrorMessage } from "./src/utils/adminAuth";
+import { adminAuthErrorMessage, applyAdminSessionResult } from "./src/utils/adminAuth";
 import { logger } from "./src/utils/logger";
 import {
   normalizeCastMemberStatus,
@@ -291,6 +291,7 @@ const App: React.FC = () => {
   const [uiVariant, setUiVariant] = useState<UiVariant>("premium");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
+  const confirmedAdminUserIdRef = useRef<string | null>(null);
   const [adminAuthPending, setAdminAuthPending] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
@@ -418,14 +419,19 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = onAdminAuthChange((result) => {
-      if (result.status === "query_error") {
-        setAdminAuthError(adminAuthErrorMessage(result.error));
-        return;
+      const next = applyAdminSessionResult(result, {
+        isAuthenticated: confirmedAdminUserIdRef.current !== null,
+        authError: null,
+        confirmedUserId: confirmedAdminUserIdRef.current,
+      });
+      // Preserve an in-flight sign-in error when the listener reports
+      // not_admin (the form already owns that message). Query errors
+      // always replace it.
+      if (result.status === "query_error" || result.status === "admin") {
+        setAdminAuthError(next.authError);
       }
-      setIsAdminAuthenticated(result.status === "admin");
-      if (result.status === "admin") {
-        setAdminAuthError(null);
-      }
+      confirmedAdminUserIdRef.current = next.confirmedUserId;
+      setIsAdminAuthenticated(next.isAuthenticated);
     });
     return () => {
       unsubscribe?.();
