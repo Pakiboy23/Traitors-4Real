@@ -74,6 +74,17 @@ export const applyAdminSessionResult = (
 };
 
 /**
+ * Whether a getSession() that was stamped at launch may still apply.
+ * Stamp the id when the lookup starts, not when the promise settles — a
+ * slow initial session must not overwrite a later SIGNED_IN.
+ */
+export const shouldApplyInitialSessionLookup = (args: {
+  stampedId: number;
+  latestId: number;
+  authEventSeen: boolean;
+}): boolean => !args.authEventSeen && args.stampedId === args.latestId;
+
+/**
  * After a password sign-in: throw query errors without signing out; a missing
  * row signs out and throws a stable "not an admin" error.
  */

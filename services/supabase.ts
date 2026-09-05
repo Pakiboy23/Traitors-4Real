@@ -16,6 +16,7 @@ import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultSho
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
 import {
   interpretAdminMembership,
+  shouldApplyInitialSessionLookup,
   settleAdminSignInMembership,
   type AdminMembershipResult,
 } from "../src/utils/adminAuth";
@@ -136,24 +137,35 @@ const resolveAdminSession = async (
 export const onAdminAuthChange = (callback: (result: AdminMembershipResult) => void) => {
   let cancelled = false;
   let requestId = 0;
+  let authEventSeen = false;
   const notify = (result: AdminMembershipResult) => {
     if (!cancelled) callback(result);
   };
-  const resolve = (userId: string | undefined) => {
-    const id = ++requestId;
+  const resolve = (userId: string | undefined, startedId?: number) => {
+    const id = startedId ?? ++requestId;
     void resolveAdminSession(userId, (result) => {
       if (id !== requestId) return;
       notify(result);
     });
   };
 
-  // A raw session is not admin access — wait for admin_users membership.
+  // Stamp freshness before getSession starts. If SIGNED_IN lands first,
+  // this initial lookup is discarded instead of overwriting admin.
+  const initialId = ++requestId;
   supabase.auth.getSession().then(({ data: { session } }) => {
-    resolve(session?.user?.id);
+    if (!shouldApplyInitialSessionLookup({
+      stampedId: initialId,
+      latestId: requestId,
+      authEventSeen,
+    })) {
+      return;
+    }
+    resolve(session?.user?.id, initialId);
   });
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
+    authEventSeen = true;
     resolve(session?.user?.id);
   });
   return () => {

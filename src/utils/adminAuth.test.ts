@@ -7,6 +7,7 @@ import {
   applyAdminSessionResult,
   interpretAdminMembership,
   isConfirmedAdminMembership,
+  shouldApplyInitialSessionLookup,
   settleAdminSignInMembership,
 } from "./adminAuth";
 
@@ -111,6 +112,25 @@ describe("applyAdminSessionResult", () => {
   });
 });
 
+describe("shouldApplyInitialSessionLookup", () => {
+  it("accepts the initial getSession only while it is still the latest lookup", () => {
+    expect(
+      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 1, authEventSeen: false })
+    ).toBe(true);
+  });
+
+  it("discards a late getSession after SIGNED_IN has already been seen", () => {
+    // Otherwise a slow empty getSession overwrites a confirmed admin and
+    // bounces them back to the login form.
+    expect(
+      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 2, authEventSeen: true })
+    ).toBe(false);
+    expect(
+      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 1, authEventSeen: true })
+    ).toBe(false);
+  });
+});
+
 describe("adminAuthErrorMessage", () => {
   it("keeps Error and Postgrest-shaped messages readable", () => {
     expect(adminAuthErrorMessage(new Error(ADMIN_NOT_ADMIN_ERROR))).toBe(
@@ -145,5 +165,11 @@ describe("admin session wiring", () => {
     expect(appSource).not.toMatch(/catch\s*\{\s*return false;\s*\}/);
     expect(appSource).toMatch(/adminAuthError/);
     expect(appSource).toMatch(/adminAuthPending/);
+  });
+
+  it("stamps getSession before the promise settles", () => {
+    expect(supabaseAuth).toMatch(/const initialId = \+\+requestId/);
+    expect(supabaseAuth).toMatch(/shouldApplyInitialSessionLookup/);
+    expect(supabaseAuth).toMatch(/authEventSeen = true/);
   });
 });
