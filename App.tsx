@@ -813,9 +813,12 @@ const App: React.FC = () => {
     setAdminAuthPending(true);
     setAdminAuthError(null);
     try {
-      const success = await signInAdmin(email, password);
-      if (success) setIsAdminAuthenticated(true);
-      return success;
+      const userId = await signInAdmin(email, password);
+      // Stamp before elevating so a parallel listener query_error for this
+      // user cannot treat the session as unconfirmed and clear AdminPanel.
+      confirmedAdminUserIdRef.current = userId;
+      setIsAdminAuthenticated(true);
+      return true;
     } catch (error) {
       const message = adminAuthErrorMessage(error);
       setAdminAuthError(message);

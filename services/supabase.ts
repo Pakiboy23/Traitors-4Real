@@ -165,12 +165,13 @@ export const onAdminAuthChange = (callback: (result: AdminMembershipResult) => v
   };
 };
 
-export const signInAdmin = async (email: string, password: string): Promise<boolean> => {
+export const signInAdmin = async (email: string, password: string): Promise<string> => {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
-  const membership = await fetchAdminMembership(data.user!.id);
+  const userId = data.user!.id;
+  const membership = await fetchAdminMembership(userId);
   await settleAdminSignInMembership(membership, () => supabase.auth.signOut());
-  return true;
+  return userId;
 };
 
 export const signOutAdmin = () => {

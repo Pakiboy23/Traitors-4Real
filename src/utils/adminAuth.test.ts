@@ -194,4 +194,14 @@ describe("admin session wiring", () => {
     expect(supabaseAuth).toMatch(/generation\.isCurrent\(initialToken\)/);
     expect(supabaseAuth).toMatch(/generation\.start\(\)/);
   });
+
+  it("stamps the confirmed user id on explicit sign-in before elevating", () => {
+    // signInAdmin used to return a boolean and skip the ref. A later
+    // same-user query_error then saw confirmedUserId === null and dropped
+    // a just-confirmed AdminPanel back to the login form.
+    expect(supabaseAuth).toMatch(/return userId;/);
+    expect(appSource).toMatch(
+      /confirmedAdminUserIdRef\.current = userId;[\s\S]*?setIsAdminAuthenticated\(true\)/
+    );
+  });
 });
