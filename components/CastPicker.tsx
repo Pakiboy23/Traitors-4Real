@@ -3,7 +3,6 @@ import CastPortrait from "./CastPortrait";
 import {
   describeCastMember,
   filterCastOptions,
-  summariseCastMember,
   type CastOption,
 } from "../src/utils/castProfiles";
 
@@ -123,7 +122,7 @@ const CastPicker: React.FC<CastPickerProps> = ({
     }
   };
 
-  const summary = selected ? summariseCastMember(selected) : "";
+  const summary = selected ? describeCastMember(selected) : "";
 
   return (
     <div ref={rootRef} className={`premium-cast-picker ${className}`}>

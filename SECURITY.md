@@ -1,21 +1,36 @@
 # Security Policy
 
-## Supported Versions
+Round Table Draft is a private fantasy league. A public GitHub Security tab
+template does not describe this repo.
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
+## Reporting
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+Email the repo owner privately. Do not open a public issue for anything that
+would let someone impersonate a manager, read another table's roster, or send
+push to the league.
 
-## Reporting a Vulnerability
+## What is public by design
 
-Use this section to tell people how to report a vulnerability.
+The Supabase anon key ships in the web client. Row Level Security is the access
+control. A leaked anon key is not a breach.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+## What is not
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- APNs `.p8` / `APNS_PRIVATE_KEY`
+- Admin session cookies
+- Anyone's email, push token, or draft picks
+
+The service-role key, the APNs key, and admin session secrets never belong in
+the client, in git, or in a support email.
+
+## Native
+
+Archive only the bundled shell (`npm run ios:sync:bundled`). A hosted
+`server.url` in a store binary is a Guideline 4.2 defect and points the binary
+at a server we do not control at review time.
+
+Live APNs sends from `send-lock-reminder` require `APNS_ENV=production`.
+TestFlight and App Store both use the production APNs host. Sandbox is only for
+Xcode-signed development builds. A mismatch returns `BadDeviceToken`, which the
+function used to treat as a dead device and delete.
