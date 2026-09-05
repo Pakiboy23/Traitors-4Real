@@ -12,18 +12,20 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *   APNS_TEAM_ID      Apple Developer team ID
  *   APNS_PRIVATE_KEY  Contents of the .p8 file, PEM including header/footer
  *   APNS_BUNDLE_ID    Defaults to com.roundtabledraft.app
- *   APNS_ENV          "sandbox" (default) or "production"
+ *   APNS_ENV          Must be "production" for a live send. TestFlight and the
+ *                     App Store both use the production APNs host. Sandbox is
+ *                     only for Xcode-signed development builds. dryRun still
+ *                     works with the secret unset, so the audience can be
+ *                     checked before any key exists.
  *
  * Call with {"dryRun": true} to resolve the audience and render the message
- * without contacting Apple. That path works with no credentials configured,
- * which makes the audience logic verifiable before any key exists.
+ * without contacting Apple.
  */
 
 const BUNDLE_ID = Deno.env.get("APNS_BUNDLE_ID") ?? "com.roundtabledraft.app";
+const APNS_ENV = Deno.env.get("APNS_ENV");
 const APNS_HOST =
-  Deno.env.get("APNS_ENV") === "production"
-    ? "api.push.apple.com"
-    : "api.sandbox.push.apple.com";
+  APNS_ENV === "production" ? "api.push.apple.com" : "api.sandbox.push.apple.com";
 
 interface RequestBody {
   seasonId?: string;
@@ -144,6 +146,17 @@ Deno.serve(async (req: Request) => {
       seasonId,
       audience: audience.length,
       notification: { title, body },
+    });
+  }
+
+  // TestFlight and App Store both talk to api.push.apple.com. Sending live
+  // against sandbox from a production-signed binary returns BadDeviceToken,
+  // which this function then deletes — wiping every registered device.
+  if (APNS_ENV !== "production") {
+    return json(503, {
+      error: "APNs environment is not production.",
+      env: APNS_ENV ?? "(unset)",
+      hint: "TestFlight and App Store both use the production APNs host. Set APNS_ENV=production, then retry. Sandbox is only for Xcode-signed development builds. dryRun still works without this secret.",
     });
   }
 

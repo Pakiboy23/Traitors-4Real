@@ -182,7 +182,7 @@ the Apple Developer portal:
 | `APNS_KEY_ID` | Key ID shown when the `.p8` is created |
 | `APNS_TEAM_ID` | Membership details in the developer portal |
 | `APNS_PRIVATE_KEY` | Full `.p8` contents, including the BEGIN and END lines |
-| `APNS_ENV` | `sandbox` for TestFlight builds, `production` for the App Store |
+| `APNS_ENV` | Must be `production` for a live send. TestFlight and the App Store both use the production APNs host. Sandbox is only for Xcode-signed development builds. `dryRun` still works with this unset. |
 
 Without them the function returns 503 and names what is missing, rather than
 reporting success and sending nothing — a reminder that quietly fails is only

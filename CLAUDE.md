@@ -223,13 +223,14 @@ old stack in its body — it carries a correction header.
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
 - `send-lock-reminder` Edge Function is deployed (v3) and exercised. Real APNs
   delivery is untested. It needs three secrets that are not set yet:
-  `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. `APNS_ENV` defaults to
-  `sandbox` and `APNS_BUNDLE_ID` defaults to the correct bundle id, so neither
-  is required — but **set `APNS_ENV=production` before the first TestFlight
-  send**. On a sandbox/production mismatch Apple returns `BadDeviceToken`, which
-  the function treats as a stale token and deletes; it cannot tell a mismatch
-  from a dead device. `push_tokens` is currently empty, so secrets alone will
-  not deliver anything — a physical device has to register first.
+  `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. Live send **refuses**
+  anything other than `APNS_ENV=production` — TestFlight and the App Store both
+  use the production APNs host; sandbox is only for Xcode-signed development
+  builds. `dryRun` still works with the secret unset. A sandbox/production
+  mismatch returns `BadDeviceToken`, which the function treats as a stale token
+  and deletes; it cannot tell a mismatch from a dead device. `push_tokens` is
+  currently empty, so secrets alone will not deliver anything — a physical
+  device has to register first.
 
 **Shipping already.** App Store Connect record, App ID, and signing are all
 done — do not describe them as outstanding. TestFlight groups `DrafTers`
