@@ -417,8 +417,16 @@ const App: React.FC = () => {
   }, [gameState]);
 
   useEffect(() => {
-    const unsubscribe = onAdminAuthChange((isAuthed) => {
-      setIsAdminAuthenticated(isAuthed);
+    const unsubscribe = onAdminAuthChange((result) => {
+      if (result.status === "query_error") {
+        setIsAdminAuthenticated(false);
+        setAdminAuthError(adminAuthErrorMessage(result.error));
+        return;
+      }
+      setIsAdminAuthenticated(result.status === "admin");
+      if (result.status === "admin") {
+        setAdminAuthError(null);
+      }
     });
     return () => {
       unsubscribe?.();

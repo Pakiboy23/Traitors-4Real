@@ -98,6 +98,13 @@ describe("admin session wiring", () => {
     expect(supabaseAuth).toMatch(/admin_users[\s\S]*?maybeSingle\(\)/);
   });
 
+  it("keeps auth-state membership failures distinct from unauthenticated", () => {
+    expect(supabaseAuth).toMatch(/interpretAdminMembership/);
+    expect(supabaseAuth).not.toMatch(/callback\(\s*false\s*\)/);
+    expect(appSource).toMatch(/status === "query_error"/);
+    expect(appSource).toMatch(/setAdminAuthError\(adminAuthErrorMessage/);
+  });
+
   it("surfaces sign-in failures instead of swallowing them", () => {
     expect(appSource).not.toMatch(/catch\s*\{\s*return false;\s*\}/);
     expect(appSource).toMatch(/adminAuthError/);

@@ -15,8 +15,9 @@ import type { Database } from "../src/types/database";
 import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
 import {
-  isConfirmedAdminMembership,
+  interpretAdminMembership,
   settleAdminSignInMembership,
+  type AdminMembershipResult,
 } from "../src/utils/adminAuth";
 import { logger } from "../src/utils/logger";
 
@@ -119,32 +120,30 @@ const fetchAdminMembership = (userId: string) =>
 
 const resolveAdminSession = async (
   userId: string | undefined,
-  callback: (isAuthed: boolean) => void
+  callback: (result: AdminMembershipResult) => void
 ) => {
   if (!userId) {
-    callback(false);
+    callback({ status: "not_admin" });
     return;
   }
-  const { data, error } = await fetchAdminMembership(userId);
-  if (error) {
-    logger.warn("admin membership check failed:", error);
-    callback(false);
-    return;
+  const query = await fetchAdminMembership(userId);
+  if (query.error) {
+    logger.warn("admin membership check failed:", query.error);
   }
-  callback(isConfirmedAdminMembership({ data, error: null }));
+  callback(interpretAdminMembership(query));
 };
 
-export const onAdminAuthChange = (callback: (isAuthed: boolean) => void) => {
+export const onAdminAuthChange = (callback: (result: AdminMembershipResult) => void) => {
   let cancelled = false;
   let requestId = 0;
-  const notify = (isAuthed: boolean) => {
-    if (!cancelled) callback(isAuthed);
+  const notify = (result: AdminMembershipResult) => {
+    if (!cancelled) callback(result);
   };
   const resolve = (userId: string | undefined) => {
     const id = ++requestId;
-    void resolveAdminSession(userId, (isAuthed) => {
+    void resolveAdminSession(userId, (result) => {
       if (id !== requestId) return;
-      notify(isAuthed);
+      notify(result);
     });
   };
 
