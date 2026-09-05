@@ -20,13 +20,22 @@ export type AdminMembershipQuery = {
 export type AdminMembershipResult =
   | { status: "admin"; userId: string }
   | { status: "not_admin" }
-  | { status: "query_error"; error: { message?: string; code?: string } };
+  | {
+      status: "query_error";
+      error: { message?: string; code?: string };
+      userId?: string;
+    };
 
 export const interpretAdminMembership = (
-  query: AdminMembershipQuery
+  query: AdminMembershipQuery,
+  attemptedUserId?: string
 ): AdminMembershipResult => {
   if (query.error) {
-    return { status: "query_error", error: query.error };
+    return {
+      status: "query_error",
+      error: query.error,
+      ...(attemptedUserId ? { userId: attemptedUserId } : {}),
+    };
   }
   if (!query.data?.user_id) {
     return { status: "not_admin" };
@@ -50,39 +59,48 @@ export const adminAuthErrorMessage = (error: unknown): string => {
 export type AdminUiAuthState = {
   isAuthenticated: boolean;
   authError: string | null;
+  confirmedUserId: string | null;
 };
 
 /**
  * Apply an auth-listener result to the admin UI flags.
- * A query failure is not signed-out: keep the current auth flag and surface
- * the error so a restored admin is not dumped onto an empty login.
+ * A query failure keeps the admin flag only when it belongs to the same
+ * confirmed user; a different session must not inherit a stale AdminPanel.
  */
 export const applyAdminSessionResult = (
   result: AdminMembershipResult,
   current: AdminUiAuthState
 ): AdminUiAuthState => {
   if (result.status === "query_error") {
+    const sameUser =
+      Boolean(current.confirmedUserId) && result.userId === current.confirmedUserId;
     return {
-      isAuthenticated: current.isAuthenticated,
+      isAuthenticated: sameUser ? current.isAuthenticated : false,
       authError: adminAuthErrorMessage(result.error),
+      confirmedUserId: sameUser ? current.confirmedUserId : null,
     };
   }
   if (result.status === "admin") {
-    return { isAuthenticated: true, authError: null };
+    return { isAuthenticated: true, authError: null, confirmedUserId: result.userId };
   }
-  return { isAuthenticated: false, authError: current.authError };
+  return {
+    isAuthenticated: false,
+    authError: current.authError,
+    confirmedUserId: null,
+  };
 };
 
 /**
- * Whether a getSession() that was stamped at launch may still apply.
- * Stamp the id when the lookup starts, not when the promise settles — a
- * slow initial session must not overwrite a later SIGNED_IN.
+ * Sequence for overlapping session lookups. Call start() before any await;
+ * ignore a result whose token is no longer current when it settles.
  */
-export const shouldApplyInitialSessionLookup = (args: {
-  stampedId: number;
-  latestId: number;
-  authEventSeen: boolean;
-}): boolean => !args.authEventSeen && args.stampedId === args.latestId;
+export const createAdminLookupGeneration = () => {
+  let latest = 0;
+  return {
+    start: () => ++latest,
+    isCurrent: (token: number) => token === latest,
+  };
+};
 
 /**
  * After a password sign-in: throw query errors without signing out; a missing
