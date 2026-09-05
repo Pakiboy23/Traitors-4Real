@@ -132,7 +132,7 @@ const resolveAdminSession = async (
   if (query.error) {
     logger.warn("admin membership check failed:", query.error);
   }
-  return interpretAdminMembership(query);
+  return interpretAdminMembership(query, userId);
 };
 
 export const onAdminAuthChange = (callback: (result: AdminMembershipResult) => void) => {

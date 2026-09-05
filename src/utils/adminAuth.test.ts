@@ -33,9 +33,10 @@ describe("interpretAdminMembership", () => {
 
   it("keeps a query error distinct from a missing row", () => {
     const error = { message: "permission denied", code: "42501" };
-    expect(interpretAdminMembership({ data: null, error })).toEqual({
+    expect(interpretAdminMembership({ data: null, error }, "user-9")).toEqual({
       status: "query_error",
       error,
+      userId: "user-9",
     });
   });
 });
@@ -81,34 +82,59 @@ describe("settleAdminSignInMembership", () => {
 });
 
 describe("applyAdminSessionResult", () => {
-  it("does not treat a membership query failure as signed-out", () => {
+  it("keeps the admin flag only when the failed lookup is the confirmed user", () => {
     expect(
       applyAdminSessionResult(
-        { status: "query_error", error: { message: "permission denied" } },
-        { isAuthenticated: true, authError: null }
+        { status: "query_error", error: { message: "permission denied" }, userId: "admin-1" },
+        { isAuthenticated: true, authError: null, confirmedUserId: "admin-1" }
       )
-    ).toEqual({ isAuthenticated: true, authError: "permission denied" });
+    ).toEqual({
+      isAuthenticated: true,
+      authError: "permission denied",
+      confirmedUserId: "admin-1",
+    });
+  });
+
+  it("clears the admin flag when a query error has no attempted user", () => {
     expect(
       applyAdminSessionResult(
         { status: "query_error", error: { message: "timeout" } },
-        { isAuthenticated: false, authError: null }
+        { isAuthenticated: true, authError: null, confirmedUserId: "admin-1" }
       )
-    ).toEqual({ isAuthenticated: false, authError: "timeout" });
+    ).toEqual({
+      isAuthenticated: false,
+      authError: "timeout",
+      confirmedUserId: null,
+    });
+  });
+
+  it("clears the admin flag when a different session's membership lookup fails", () => {
+    // Otherwise a swapped tab session inherits AdminPanel under the new user.
+    expect(
+      applyAdminSessionResult(
+        { status: "query_error", error: { message: "timeout" }, userId: "other-user" },
+        { isAuthenticated: true, authError: null, confirmedUserId: "admin-1" }
+      )
+    ).toEqual({
+      isAuthenticated: false,
+      authError: "timeout",
+      confirmedUserId: null,
+    });
   });
 
   it("elevates only a confirmed admin and signs out a missing row", () => {
     expect(
       applyAdminSessionResult(
         { status: "admin", userId: "admin-1" },
-        { isAuthenticated: false, authError: "stale" }
+        { isAuthenticated: false, authError: "stale", confirmedUserId: null }
       )
-    ).toEqual({ isAuthenticated: true, authError: null });
+    ).toEqual({ isAuthenticated: true, authError: null, confirmedUserId: "admin-1" });
     expect(
       applyAdminSessionResult(
         { status: "not_admin" },
-        { isAuthenticated: true, authError: null }
+        { isAuthenticated: true, authError: null, confirmedUserId: "admin-1" }
       )
-    ).toEqual({ isAuthenticated: false, authError: null });
+    ).toEqual({ isAuthenticated: false, authError: null, confirmedUserId: null });
   });
 });
 
@@ -151,13 +177,10 @@ describe("admin session wiring", () => {
   });
 
   it("keeps auth-state membership failures distinct from unauthenticated", () => {
-    expect(supabaseAuth).toMatch(/interpretAdminMembership/);
+    expect(supabaseAuth).toMatch(/interpretAdminMembership\(query, userId\)/);
     expect(supabaseAuth).not.toMatch(/callback\(\s*false\s*\)/);
-    expect(appSource).toMatch(/status === "query_error"/);
-    expect(appSource).toMatch(/setAdminAuthError\(adminAuthErrorMessage/);
-    expect(appSource).not.toMatch(
-      /status === "query_error"[\s\S]*?setIsAdminAuthenticated\(false\)/
-    );
+    expect(appSource).toMatch(/applyAdminSessionResult/);
+    expect(appSource).toMatch(/confirmedAdminUserIdRef/);
   });
 
   it("surfaces sign-in failures instead of swallowing them", () => {
