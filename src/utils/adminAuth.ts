@@ -74,15 +74,16 @@ export const applyAdminSessionResult = (
 };
 
 /**
- * Whether a getSession() that was stamped at launch may still apply.
- * Stamp the id when the lookup starts, not when the promise settles — a
- * slow initial session must not overwrite a later SIGNED_IN.
+ * Sequence for overlapping session lookups. Call start() before any await;
+ * ignore a result whose token is no longer current when it settles.
  */
-export const shouldApplyInitialSessionLookup = (args: {
-  stampedId: number;
-  latestId: number;
-  authEventSeen: boolean;
-}): boolean => !args.authEventSeen && args.stampedId === args.latestId;
+export const createAdminLookupGeneration = () => {
+  let latest = 0;
+  return {
+    start: () => ++latest,
+    isCurrent: (token: number) => token === latest,
+  };
+};
 
 /**
  * After a password sign-in: throw query errors without signing out; a missing

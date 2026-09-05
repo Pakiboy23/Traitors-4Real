@@ -15,8 +15,8 @@ import type { Database } from "../src/types/database";
 import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
 import {
+  createAdminLookupGeneration,
   interpretAdminMembership,
-  shouldApplyInitialSessionLookup,
   settleAdminSignInMembership,
   type AdminMembershipResult,
 } from "../src/utils/adminAuth";
@@ -121,52 +121,43 @@ const fetchAdminMembership = (userId: string) =>
 
 const resolveAdminSession = async (
   userId: string | undefined,
-  callback: (result: AdminMembershipResult) => void
-) => {
+  token: number,
+  isCurrent: (token: number) => boolean
+): Promise<AdminMembershipResult | null> => {
   if (!userId) {
-    callback({ status: "not_admin" });
-    return;
+    return isCurrent(token) ? { status: "not_admin" } : null;
   }
   const query = await fetchAdminMembership(userId);
+  if (!isCurrent(token)) return null;
   if (query.error) {
     logger.warn("admin membership check failed:", query.error);
   }
-  callback(interpretAdminMembership(query));
+  return interpretAdminMembership(query);
 };
 
 export const onAdminAuthChange = (callback: (result: AdminMembershipResult) => void) => {
   let cancelled = false;
-  let requestId = 0;
-  let authEventSeen = false;
+  const generation = createAdminLookupGeneration();
   const notify = (result: AdminMembershipResult) => {
     if (!cancelled) callback(result);
   };
-  const resolve = (userId: string | undefined, startedId?: number) => {
-    const id = startedId ?? ++requestId;
-    void resolveAdminSession(userId, (result) => {
-      if (id !== requestId) return;
+  const resolve = (userId: string | undefined, token: number) => {
+    void resolveAdminSession(userId, token, generation.isCurrent).then((result) => {
+      if (!result || !generation.isCurrent(token)) return;
       notify(result);
     });
   };
 
-  // Stamp freshness before getSession starts. If SIGNED_IN lands first,
-  // this initial lookup is discarded instead of overwriting admin.
-  const initialId = ++requestId;
+  // Token is assigned before getSession, not when the promise settles.
+  const initialToken = generation.start();
   supabase.auth.getSession().then(({ data: { session } }) => {
-    if (!shouldApplyInitialSessionLookup({
-      stampedId: initialId,
-      latestId: requestId,
-      authEventSeen,
-    })) {
-      return;
-    }
-    resolve(session?.user?.id, initialId);
+    if (!generation.isCurrent(initialToken)) return;
+    resolve(session?.user?.id, initialToken);
   });
   const {
     data: { subscription },
   } = supabase.auth.onAuthStateChange((_event, session) => {
-    authEventSeen = true;
-    resolve(session?.user?.id);
+    resolve(session?.user?.id, generation.start());
   });
   return () => {
     cancelled = true;

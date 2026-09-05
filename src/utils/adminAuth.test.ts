@@ -7,7 +7,7 @@ import {
   applyAdminSessionResult,
   interpretAdminMembership,
   isConfirmedAdminMembership,
-  shouldApplyInitialSessionLookup,
+  createAdminLookupGeneration,
   settleAdminSignInMembership,
 } from "./adminAuth";
 
@@ -112,22 +112,21 @@ describe("applyAdminSessionResult", () => {
   });
 });
 
-describe("shouldApplyInitialSessionLookup", () => {
-  it("accepts the initial getSession only while it is still the latest lookup", () => {
-    expect(
-      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 1, authEventSeen: false })
-    ).toBe(true);
+describe("createAdminLookupGeneration", () => {
+  it("keeps the first token current until a newer lookup starts", () => {
+    const generation = createAdminLookupGeneration();
+    const first = generation.start();
+    expect(generation.isCurrent(first)).toBe(true);
   });
 
-  it("discards a late getSession after SIGNED_IN has already been seen", () => {
-    // Otherwise a slow empty getSession overwrites a confirmed admin and
-    // bounces them back to the login form.
-    expect(
-      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 2, authEventSeen: true })
-    ).toBe(false);
-    expect(
-      shouldApplyInitialSessionLookup({ stampedId: 1, latestId: 1, authEventSeen: true })
-    ).toBe(false);
+  it("treats an older token as stale after a later lookup starts", () => {
+    // getSession must stamp before it awaits. If SIGNED_IN starts afterward,
+    // the empty session that settles late must not win.
+    const generation = createAdminLookupGeneration();
+    const getSessionToken = generation.start();
+    const signedInToken = generation.start();
+    expect(generation.isCurrent(getSessionToken)).toBe(false);
+    expect(generation.isCurrent(signedInToken)).toBe(true);
   });
 });
 
@@ -168,8 +167,8 @@ describe("admin session wiring", () => {
   });
 
   it("stamps getSession before the promise settles", () => {
-    expect(supabaseAuth).toMatch(/const initialId = \+\+requestId/);
-    expect(supabaseAuth).toMatch(/shouldApplyInitialSessionLookup/);
-    expect(supabaseAuth).toMatch(/authEventSeen = true/);
+    expect(supabaseAuth).toMatch(/const initialToken = generation\.start\(\)/);
+    expect(supabaseAuth).toMatch(/generation\.isCurrent\(initialToken\)/);
+    expect(supabaseAuth).toMatch(/generation\.start\(\)/);
   });
 });
