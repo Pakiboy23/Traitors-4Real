@@ -419,7 +419,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const unsubscribe = onAdminAuthChange((result) => {
       if (result.status === "query_error") {
-        setIsAdminAuthenticated(false);
         setAdminAuthError(adminAuthErrorMessage(result.error));
         return;
       }

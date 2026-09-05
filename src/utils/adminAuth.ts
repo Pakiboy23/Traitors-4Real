@@ -47,6 +47,32 @@ export const adminAuthErrorMessage = (error: unknown): string => {
   return "Authentication failed";
 };
 
+export type AdminUiAuthState = {
+  isAuthenticated: boolean;
+  authError: string | null;
+};
+
+/**
+ * Apply an auth-listener result to the admin UI flags.
+ * A query failure is not signed-out: keep the current auth flag and surface
+ * the error so a restored admin is not dumped onto an empty login.
+ */
+export const applyAdminSessionResult = (
+  result: AdminMembershipResult,
+  current: AdminUiAuthState
+): AdminUiAuthState => {
+  if (result.status === "query_error") {
+    return {
+      isAuthenticated: current.isAuthenticated,
+      authError: adminAuthErrorMessage(result.error),
+    };
+  }
+  if (result.status === "admin") {
+    return { isAuthenticated: true, authError: null };
+  }
+  return { isAuthenticated: false, authError: current.authError };
+};
+
 /**
  * After a password sign-in: throw query errors without signing out; a missing
  * row signs out and throws a stable "not an admin" error.

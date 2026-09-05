@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   ADMIN_NOT_ADMIN_ERROR,
   adminAuthErrorMessage,
+  applyAdminSessionResult,
   interpretAdminMembership,
   isConfirmedAdminMembership,
   settleAdminSignInMembership,
@@ -78,6 +79,38 @@ describe("settleAdminSignInMembership", () => {
   });
 });
 
+describe("applyAdminSessionResult", () => {
+  it("does not treat a membership query failure as signed-out", () => {
+    expect(
+      applyAdminSessionResult(
+        { status: "query_error", error: { message: "permission denied" } },
+        { isAuthenticated: true, authError: null }
+      )
+    ).toEqual({ isAuthenticated: true, authError: "permission denied" });
+    expect(
+      applyAdminSessionResult(
+        { status: "query_error", error: { message: "timeout" } },
+        { isAuthenticated: false, authError: null }
+      )
+    ).toEqual({ isAuthenticated: false, authError: "timeout" });
+  });
+
+  it("elevates only a confirmed admin and signs out a missing row", () => {
+    expect(
+      applyAdminSessionResult(
+        { status: "admin", userId: "admin-1" },
+        { isAuthenticated: false, authError: "stale" }
+      )
+    ).toEqual({ isAuthenticated: true, authError: null });
+    expect(
+      applyAdminSessionResult(
+        { status: "not_admin" },
+        { isAuthenticated: true, authError: null }
+      )
+    ).toEqual({ isAuthenticated: false, authError: null });
+  });
+});
+
 describe("adminAuthErrorMessage", () => {
   it("keeps Error and Postgrest-shaped messages readable", () => {
     expect(adminAuthErrorMessage(new Error(ADMIN_NOT_ADMIN_ERROR))).toBe(
@@ -103,6 +136,9 @@ describe("admin session wiring", () => {
     expect(supabaseAuth).not.toMatch(/callback\(\s*false\s*\)/);
     expect(appSource).toMatch(/status === "query_error"/);
     expect(appSource).toMatch(/setAdminAuthError\(adminAuthErrorMessage/);
+    expect(appSource).not.toMatch(
+      /status === "query_error"[\s\S]*?setIsAdminAuthenticated\(false\)/
+    );
   });
 
   it("surfaces sign-in failures instead of swallowing them", () => {
