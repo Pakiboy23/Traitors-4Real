@@ -12,9 +12,9 @@ const envProduction = readFileSync(path.join(repoRoot, ".env.production"), "utf8
 const verifyScript = readFileSync(path.join(repoRoot, "ios/App/Scripts/verify-web-assets.sh"), "utf8");
 const packageSwift = readFileSync(path.join(repoRoot, "ios/App/CapApp-SPM/Package.swift"), "utf8");
 
-/** App Store Connect version 2.0; newest processed TestFlight build is 1.0 (34). */
-const MARKETING_VERSION = "2.0";
-const MIN_BUILD_NUMBER = 35;
+/** App Store Connect version 2.0.1; 2.0 (35) is the released store binary. */
+const MARKETING_VERSION = "2.0.1";
+const MIN_BUILD_NUMBER = 36;
 const BUNDLE_ID = "com.roundtabledraft.app";
 
 function appTargetSettings(name: "Debug" | "Release"): string {
@@ -29,9 +29,9 @@ function appTargetSettings(name: "Debug" | "Release"): string {
   return match[0];
 }
 
-describe("iOS 2.0 release identity", () => {
+describe("iOS 2.0.1 release identity", () => {
   it.each(["Debug", "Release"] as const)(
-    "sets MARKETING_VERSION 2.0 and CURRENT_PROJECT_VERSION >= 35 on App %s",
+    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 36 on App %s",
     (name) => {
       const settings = appTargetSettings(name);
       expect(settings).toMatch(new RegExp(`MARKETING_VERSION = ${MARKETING_VERSION};`));

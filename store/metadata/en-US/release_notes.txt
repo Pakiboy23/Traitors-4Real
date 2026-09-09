@@ -1,8 +1,7 @@
-First public iOS release of Round Table Draft.
+Draft window fix: countdown now follows the premiere lock (17 Sep, 8pm Eastern) instead of a leftover finale timestamp.
 
-• Draft a ranked roster and lock it before the premiere
-• Make weekly council calls, including optional bonus games
-• Follow live standings as results are certified
-• Read rules generated from the scoring engine that awards the points
+• Home “Picks Lock In” counts down to draft lock, not finale
+• Live season is preferred over a leftover draft clone
+• Existing entries are unchanged — player data lives on the server, not in the app binary
 
 Independent app — not affiliated with any television network or production.

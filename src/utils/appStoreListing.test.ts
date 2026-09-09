@@ -73,8 +73,8 @@ describe("App Store listing copy", () => {
   it("keeps review notes aligned with the privacy manifest", () => {
     const notes = readFileSync(path.join(repoRoot, "store/review_notes.txt"), "utf8");
     expect(notes).toMatch(/not affiliated/i);
-    expect(notes).toMatch(/2\.0/);
-    expect(notes).toMatch(/build 35/i);
+    expect(notes).toMatch(/2\.0\.1/);
+    expect(notes).toMatch(/build 36/i);
     expect(notes).toMatch(/com\.roundtabledraft\.app/);
     expect(notes.length).toBeLessThanOrEqual(4000);
   });

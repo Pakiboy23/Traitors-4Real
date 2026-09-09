@@ -8,7 +8,7 @@ No account is required to browse the app. Open Home, Draft, Weekly Council, Lead
 The Admin tab is hidden on purpose. It is not a player destination. League administration uses Supabase auth; reviewers do not need it.
 
 What this binary is
-A bundled Capacitor shell (com.roundtabledraft.app, version 2.0, build 35). The web assets ship inside the app. It does not load a website over the network.
+A bundled Capacitor shell (com.roundtabledraft.app, version 2.0.1, build 36). The web assets ship inside the app. It does not load a website over the network.
 
 Export compliance
 ITSAppUsesNonExemptEncryption is false. The app uses HTTPS only.
