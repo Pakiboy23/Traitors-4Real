@@ -73,8 +73,12 @@ export const resolveHomeCountdown = ({
     };
   }
 
+  // Only after the scheduled draft lock. A draft/not-live season, an
+  // admin-disabled draft, or a forced-close can still carry a future
+  // weeklyLockAt from set-up; counting down to it would tell Home
+  // "Picks Lock In" while the Draft tab correctly says the draft is closed.
   const weeklyLockAt = futureIso(lockSchedule?.weeklyLockAt, now);
-  if (weeklyLockAt) {
+  if (weeklyLockAt && draftWindow.reason === "past-lock-time") {
     return {
       kind: "weekly",
       label: "Picks Lock In",

@@ -95,6 +95,33 @@ describe("resolveHomeCountdown", () => {
     expect(countdown.targetAt).toBeNull();
   });
 
+  it("does not count down to a weekly lock unless the draft closed on schedule", () => {
+    const weeklyLockAt = "2026-09-24T00:00:00.000Z";
+    const lockSchedule = { draftLockAt: PREMIERE, weeklyLockAt };
+    const closedReasons = [
+      "season-not-live",
+      "season-locked",
+      "disabled-by-admin",
+      "forced-closed",
+    ] as const;
+
+    for (const reason of closedReasons) {
+      const countdown = resolve({
+        draftWindow: closed(reason),
+        lockSchedule,
+      });
+      expect(countdown.kind).toBe("none");
+      expect(countdown.targetAt).toBeNull();
+    }
+
+    expect(
+      resolve({
+        draftWindow: open(null),
+        lockSchedule,
+      }).kind
+    ).toBe("none");
+  });
+
   it("states the draft is open when nothing is scheduled instead of inventing a time", () => {
     expect(resolve({ draftWindow: open(null) })).toEqual({
       kind: "none",
@@ -105,12 +132,35 @@ describe("resolveHomeCountdown", () => {
   });
 
   it("explains a closed draft in the same words as the Draft tab", () => {
-    expect(resolve({ draftWindow: closed("season-not-live") }).statusText).toBe(
-      "Draft opens when the season goes live."
-    );
-    expect(resolve({ draftWindow: closed("season-locked") }).statusText).toBe(
-      "This season is complete. Draft entries are closed."
-    );
+    const lockSchedule = {
+      draftLockAt: PREMIERE,
+      weeklyLockAt: "2026-09-24T00:00:00.000Z",
+    };
+
+    expect(
+      resolve({
+        draftWindow: closed("season-not-live"),
+        lockSchedule,
+      }).statusText
+    ).toBe("Draft opens when the season goes live.");
+    expect(
+      resolve({
+        draftWindow: closed("season-locked"),
+        lockSchedule,
+      }).statusText
+    ).toBe("This season is complete. Draft entries are closed.");
+    expect(
+      resolve({
+        draftWindow: closed("disabled-by-admin"),
+        lockSchedule,
+      }).statusText
+    ).toBe("Draft is currently closed.");
+    expect(
+      resolve({
+        draftWindow: closed("forced-closed"),
+        lockSchedule,
+      }).statusText
+    ).toBe("Draft is currently closed.");
   });
 
   it("uses the league's own draft terminology", () => {
