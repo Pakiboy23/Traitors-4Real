@@ -315,6 +315,11 @@ const App: React.FC = () => {
   const [authoritativeShowConfig, setAuthoritativeShowConfig] =
     useState<ShowConfig | null>(null);
   const remoteExistsRef = useRef<boolean | null>(null);
+  // `now` is state rather than a bare Date.now() so a Home tab left open
+  // across draftLockAt actually switches to the weekly countdown: without it
+  // the memo would hold the timestamp from first render and keep counting
+  // down to a lock that has already passed.
+  const [now, setNow] = useState(() => Date.now());
 
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
@@ -935,12 +940,31 @@ const App: React.FC = () => {
           "Finale Gauntlet",
         draftWindow: resolveDraftWindow(gameState, {
           forceClosed: readForceClosedFromEnv(),
+          now,
         }),
         draftLabel: gameState.showConfig?.terminology?.draftLabel || "Draft",
         lockSchedule: gameState.seasonConfig?.lockSchedule,
+        now,
       }),
-    [gameState]
+    [gameState, now]
   );
+
+  useEffect(() => {
+    if (!homeCountdown.targetAt) return;
+
+    const msUntilLock = Date.parse(homeCountdown.targetAt) - Date.now();
+    if (msUntilLock <= 0) {
+      setNow(Date.now());
+      return;
+    }
+
+    // setTimeout truncates delays beyond a signed 32-bit int, which would fire
+    // immediately and spin. Clamp instead; the effect re-arms on each tick and
+    // converges on the real lock time.
+    const delay = Math.min(msUntilLock + 250, 2_147_483_647);
+    const timer = setTimeout(() => setNow(Date.now()), delay);
+    return () => clearTimeout(timer);
+  }, [homeCountdown.targetAt]);
 
   const weeklyMvp = useMemo(() => {
     if (scoreHistory.length === 0) return null;
