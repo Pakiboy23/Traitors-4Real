@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from "react";
 
 interface CountdownTimerProps {
   targetDate: string;
+  /** Replaces the timer once the target has passed. */
+  expiredLabel?: string;
 }
 
 type CountdownParts = {
@@ -45,7 +47,10 @@ const toCountdownParts = (targetMs: number): CountdownParts => {
 
 const formatValue = (value: number) => String(value).padStart(2, "0");
 
-const CountdownTimer: React.FC<CountdownTimerProps> = ({ targetDate }) => {
+const CountdownTimer: React.FC<CountdownTimerProps> = ({
+  targetDate,
+  expiredLabel = "Picks are locked.",
+}) => {
   const targetMs = useMemo(() => Date.parse(targetDate), [targetDate]);
   const [parts, setParts] = useState<CountdownParts>(() =>
     Number.isNaN(targetMs) ? EMPTY_COUNTDOWN : toCountdownParts(targetMs)
@@ -78,9 +83,7 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ targetDate }) => {
 
   if (parts.expired) {
     return (
-      <span className="text-xs font-semibold text-current">
-        Picks are locked.
-      </span>
+      <span className="text-xs font-semibold text-current">{expiredLabel}</span>
     );
   }
 

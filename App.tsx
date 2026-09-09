@@ -32,6 +32,9 @@ import { TIMING } from "./src/utils/scoringConstants";
 import { DEFAULT_SHOW_CONFIG } from "./src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "./src/config/validation";
 import { adminAuthErrorMessage, applyAdminSessionResult } from "./src/utils/adminAuth";
+import { readForceClosedFromEnv, resolveDraftWindow } from "./src/utils/draftWindow";
+import { resolveHomeCountdown } from "./src/utils/homeCountdown";
+import { pickPreferredSeason } from "./src/utils/seasonSelection";
 import { logger } from "./src/utils/logger";
 import {
   normalizeCastMemberStatus,
@@ -483,10 +486,7 @@ const App: React.FC = () => {
         setSeasonShellEnabled(true);
         setSeasons(records);
         const stored = normalizeWeekId(localStorage.getItem("traitors_active_season"));
-        const preferred =
-          records.find((season) => season.seasonId === stored) ??
-          records.find((season) => season.status !== "archived") ??
-          records[0];
+        const preferred = pickPreferredSeason(records, stored);
         setActiveSeasonId(preferred?.seasonId || null);
       } catch (error) {
         logger.warn("Failed to load seasons:", error);
@@ -545,8 +545,7 @@ const App: React.FC = () => {
     ) {
       return;
     }
-    const preferred =
-      seasons.find((season) => season.status !== "archived") ?? seasons[0];
+    const preferred = pickPreferredSeason(seasons, null);
     setActiveSeasonId(preferred?.seasonId || null);
   }, [activeSeasonId, seasonShellEnabled, seasons]);
 
@@ -924,6 +923,25 @@ const App: React.FC = () => {
     [gameState.finaleConfig?.enabled, gameState.weeklyResults?.finaleResults]
   );
 
+  // Same resolver the Draft tab gates on, so the Home countdown and the
+  // submit button can never disagree about when the draft locks.
+  const homeCountdown = useMemo(
+    () =>
+      resolveHomeCountdown({
+        finaleConfig: gameState.finaleConfig,
+        finaleLabel:
+          gameState.finaleConfig?.label?.trim() ||
+          gameState.showConfig?.terminology?.finaleLabelDefault ||
+          "Finale Gauntlet",
+        draftWindow: resolveDraftWindow(gameState, {
+          forceClosed: readForceClosedFromEnv(),
+        }),
+        draftLabel: gameState.showConfig?.terminology?.draftLabel || "Draft",
+        lockSchedule: gameState.seasonConfig?.lockSchedule,
+      }),
+    [gameState]
+  );
+
   const weeklyMvp = useMemo(() => {
     if (scoreHistory.length === 0) return null;
     const last = scoreHistory[scoreHistory.length - 1];
@@ -1017,6 +1035,7 @@ const App: React.FC = () => {
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            homeCountdown={homeCountdown}
             seasonFinalized={seasonFinalized}
             finalStandings={finalStandings}
             showConfig={gameState.showConfig}
@@ -1092,6 +1111,7 @@ const App: React.FC = () => {
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            homeCountdown={homeCountdown}
             seasonFinalized={seasonFinalized}
             finalStandings={finalStandings}
             showConfig={gameState.showConfig}
@@ -1119,6 +1139,7 @@ const App: React.FC = () => {
     overallMvp,
     saveNow,
     seasonFinalized,
+    homeCountdown,
     finalStandings,
     handleSeasonChange,
     topMovers,

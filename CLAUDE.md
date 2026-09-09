@@ -19,7 +19,7 @@ a Capacitor wrapper for iOS.
 | Hosting | **Vercel** — production is `traitorsfantasydraft.online` |
 | Backend | **Supabase** project `tpjiqegneohtbcxapqnq` — Postgres 17, Auth, Realtime, Edge Functions (Deno) |
 | Native | **Capacitor 8**, iOS only. Swift Package Manager, not CocoaPods |
-| Tests | **Vitest** — 187 tests across 10 files |
+| Tests | **Vitest** — 241 tests across 16 files |
 | Styling | Tailwind 4 + a hand-written design system in `src/index.css` |
 
 There is no separate API server. The browser talks to Supabase directly with
@@ -130,6 +130,19 @@ now bans the `...CAST_NAMES` spread outright.
 admin toggle → scheduled lock. `NEXT_PUBLIC_DRAFT_CLOSED` is an emergency
 override and is normally unset.
 
+**`finaleConfig.lockAt` is not the draft lock.** It is only meaningful once
+the finale is enabled; until then it holds the admin panel's default of
+season-creation time plus 24 hours. The Home lock bar used to count down to
+it unconditionally, so a day after a season was created every player saw
+"Picks are locked." with the draft wide open — and that is what App Store
+build 2.0 (35) shipped with. The bar now goes through
+`src/utils/homeCountdown.ts`, which reads the same `resolveDraftWindow`
+result the Draft tab gates on, then the weekly lock, and only hands over to
+the finale lock when `finaleConfig.enabled` is true. Also: the stored
+`traitors_active_season` preference is ignored when it points at an archived
+season (`src/utils/seasonSelection.ts`) — the bundled iOS build has no way to
+clear storage, so honouring it would pin a device to a dead season.
+
 **The web view runs under the status bar, so page chrome needs the safe-area
 insets.** `src/app/layout.tsx` sets `viewportFit: "cover"` and a
 `black-translucent` status bar, which means CSS `y=0` is under the clock and the
@@ -211,14 +224,22 @@ old stack in its body — it carries a correction header.
 
 ## Current state — September 2026
 
-- Season `traitors-new-blood-s1` is **live**, 22 cast members, draft open.
+- Season `traitors-new-blood-s1` is **live**, 22 cast members, draft open,
+  `lockSchedule.draftLockAt` = `2026-09-18T00:00:00.000Z` (premiere, 17 Sep
+  8pm ET). It already holds signed-up players — never archive, finalize, or
+  clone-and-replace it. On 8 Sep it was archived by hand and a zero-player
+  clone with id `traitors new blood` took its place; every installed app then
+  read "locked". The row was restored and the clone deleted on 9 Sep.
 - App renamed **Round Table Draft**; league name is a separate configurable
   field, currently `UPRV Fantasy League`. The two are deliberately distinct —
   only one is public on the App Store.
 - Bundle id `com.roundtabledraft.app`. **Locks permanently at first submission.**
-- Native identity is **2.0 (35)** as of #155. App Store Connect already has a
-  2.0 version record; listing copy, screenshots, privacy answers, and review
-  notes live in `store/`. The App target is **iPhone only**.
+- **2.0 (35) is on the App Store.** Native identity in the repo is now
+  **2.0.1 (36)**, not yet archived. Listing copy, screenshots, privacy
+  answers, and review notes live in `store/`; the update workflow (bump
+  `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archive, add a version in
+  App Store Connect, select build, submit) is in `store/README.md`. The App
+  target is **iPhone only**.
 - iOS target has the push entitlement, the `remote-notification` background
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
 - `send-lock-reminder` Edge Function is deployed (v3) and exercised. Real APNs
@@ -235,8 +256,8 @@ old stack in its body — it carries a correction header.
 **Shipping already.** App Store Connect record, App ID, and signing are all
 done — do not describe them as outstanding. TestFlight groups `DrafTers`
 (internal) and `DrafTers2` (external) exist, and Xcode Cloud is wired to the
-App target. Newest processed TestFlight build before 2.0 was **1.0 (34)**.
-Archive and upload **2.0 (35)** from a Mac — see `store/README.md`.
+App target. **2.0 (35)** is released. Next archive is **2.0.1 (36)** from a
+Mac — see `store/README.md`.
 
 **Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
 iOS 26+ (no UIScene adoption — UIKit calls
@@ -244,7 +265,8 @@ iOS 26+ (no UIScene adoption — UIKit calls
 That is the most likely cause and the timing fits, but it is not confirmed
 against the crash logs. Build 3 was created after #133 merged.
 
-**Not done:** cast photos. The Mac archive / App Store Connect submit click.
+**Not done:** cast photos. The Mac archive / App Store Connect submit of
+2.0.1 (36).
 
 The `DEVELOPMENT` badge is gated on `NODE_ENV` and is dead-code-eliminated from
 a production build; the `NO SYNC YET` chip no longer exists (`syncLabel` is

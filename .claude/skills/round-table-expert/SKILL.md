@@ -5,7 +5,7 @@ description: Expert for Round Table Draft (Pakiboy23/Traitors-4Real) — private
 
 # Round Table Draft expert
 
-Private fantasy draft. Next.js 16 on Vercel (`traitorsfantasydraft.online`), Supabase `tpjiqegneohtbcxapqnq`, Capacitor 8 iOS. 158 Vitest tests.
+Private fantasy draft. Next.js 16 on Vercel (`traitorsfantasydraft.online`), Supabase `tpjiqegneohtbcxapqnq`, Capacitor 8 iOS. 241 Vitest tests.
 
 If older context mentions PocketBase, Fly.io, Firebase, or Vite — discard it.
 
@@ -29,6 +29,6 @@ Private league, not a growth app. Calendar: H.I.M. growth flight ends 13 Sep 202
 
 Keep CFBundleDisplayName `Round Table Draft`. Archive only a bundled shell. Privacy and support are in-app routes — keep them versioned with the code they describe. Push background mode is already in Info.plist.
 
-**Shipping already.** App Store Connect record, App ID, and signing are done — do not describe them as outstanding. Native identity is **2.0 (35)** (#155). Listing copy, iPhone screenshots, privacy answers, and review notes live in `store/`. The App target is iPhone only. Remaining Mac step: archive and upload 2.0 (35), then submit the version record. TestFlight groups `DrafTers` (internal) and `DrafTers2` (external) exist. Do not revert to "do not open a submission."
+**Shipping already.** App Store Connect record, App ID, and signing are done — do not describe them as outstanding. **2.0 (35)** is on the App Store; repo identity is **2.0.1 (36)**, not yet archived. Season `traitors-new-blood-s1` holds signed-up players — never archive or clone-and-replace it (that happened 8 Sep and locked every installed app). Listing copy, iPhone screenshots, privacy answers, and review notes live in `store/`. The App target is iPhone only. Remaining Mac step: archive and upload 2.0.1 (36) and submit it as an update — see `store/README.md`. TestFlight groups `DrafTers` (internal) and `DrafTers2` (external) exist. Do not revert to "do not open a submission."
 
 Still missing before a public release: New Blood civilian portraits. Last-season celebrity stills must not live in `public/cast-portraits/` — a test fails the suite if any PNG in that folder is not a current-season slug; missing files are allowed. Do not generate civilian faces. `send-lock-reminder` refuses a live send unless `APNS_ENV=production` (TestFlight and App Store both use the production APNs host; sandbox is Xcode-signed development only). `push_tokens` is empty until a device registers.

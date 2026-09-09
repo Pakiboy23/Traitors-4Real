@@ -1,11 +1,11 @@
 # App Store submission kit
 
-Copy, screenshots, privacy answers, and the remaining Mac archive steps for
-**Round Table Draft 2.0 (build 35)**.
+Copy, screenshots, privacy answers, and the Mac archive steps for
+**Round Table Draft**. Current native identity is **2.0.1 (build 36)**;
+**2.0 (35)** is the version on the App Store.
 
-#155 bumped the binary identity. It did not fill the version record, capture
-screenshots against the current nav, or restrict the device family. This
-directory is that leftover work.
+`release_notes.txt` holds the What's New for the version currently being
+shipped — rewrite it for each update, it is not a changelog.
 
 Paste the `metadata/en-US` files into App Store Connect. Do not invent a
 different public name. The binary display name, the listing name, and
@@ -58,12 +58,59 @@ branch):
    `ios/App/App/capacitor.config.json` has no `server.url`
 3. Discard a `CapApp-SPM/Package.swift` rewrite if `cap sync` changes
    platforms to iOS 17
-4. Open `ios/App/App.xcodeproj`, confirm Version **2.0** / Build **35** /
+4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **36** /
    iPhone only
-5. Archive and upload **2.0 (35)** to App Store Connect
-6. Select that build on the 2.0 version record, paste the copy and
-   screenshots from this directory, then submit for review
+5. Archive and upload **2.0.1 (36)** to App Store Connect
+6. Select that build on the 2.0.1 version record, paste `release_notes.txt`
+   into What's New, then submit for review
 
 Set `APNS_ENV=production` on the `send-lock-reminder` Edge Function before
 the first production push. `push_tokens` is empty until a device registers;
 that is not a submission blocker.
+
+## Shipping an update to a live app
+
+An update is not a resubmission. The App Store record, App ID, signing,
+screenshots, description, keywords, privacy answers, age rating, and review
+notes all carry over; only the build and the What's New text are new. Two
+things have to change in the repo per update, both in
+`ios/App/App.xcodeproj/project.pbxproj`:
+
+- `MARKETING_VERSION` — the public version string. Must be higher than the
+  version on the store (`2.0` → `2.0.1`). Apple compares this numerically per
+  component, so `2.0.1 > 2.0` and `2.1 > 2.0.1`.
+- `CURRENT_PROJECT_VERSION` — the build number. Must be higher than any
+  build ever uploaded for this app (`35` → `36`), across TestFlight and the
+  store. App Store Connect rejects a reused build number at upload.
+
+Then, on a Mac:
+
+1. `npm ci && npm run ios:sync:bundled` — the iOS app is a bundled static
+   export, so a web fix is not on devices until a new archive ships. The
+   website on Vercel picks it up on the next push to `main` without any of
+   this.
+2. Archive in Xcode (Product → Archive) and Distribute → App Store Connect.
+3. In App Store Connect → the app → **+** next to iOS App → enter the new
+   version string. Everything from the previous version is pre-filled.
+4. Once the upload finishes processing (usually 5–20 minutes), select it
+   under Build, paste `release_notes.txt` into What's New, and Add for
+   Review. Nothing else on the page needs touching unless the listing itself
+   is changing.
+5. Under Version Release, "Automatically release" ships the moment review
+   passes; "Manually release" holds it so it can be released at a chosen
+   time. Phased release is off by default and unnecessary for a private
+   league.
+
+Review for an update is the same process as the first submission but is
+usually much faster — commonly under 24 hours, often a few hours — because
+the record, privacy answers, and age rating already passed. TestFlight
+internal testers (`DrafTers`) can install the new build as soon as it
+processes, before review, which is the way to confirm the fix on a real
+device first.
+
+What does not need an app update: anything read from Supabase at runtime.
+Season status, lock schedules, cast, scoring results, and feature toggles all
+change from the Admin panel and are live in the installed app on its next
+launch. The September 2026 "already locked" report was mostly this kind of
+fix — the season row had been archived — and the installed 2.0 (35) started
+showing the correct countdown as soon as the row was corrected.
