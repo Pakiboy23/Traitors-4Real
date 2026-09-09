@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { GameState, SeasonConfig, SeasonStatus, ShowConfig } from "../../types";
 import { DEFAULT_SHOW_CONFIG } from "../config/defaultShowConfig";
-import { describeDraftWindow, resolveDraftWindow } from "./draftWindow";
+import {
+  describeDraftWindow,
+  resolveDraftWindow,
+  resolvePicksLockTarget,
+} from "./draftWindow";
 
 const NOW = Date.parse("2026-09-01T20:00:00.000Z");
 const BEFORE = "2026-09-01T21:00:00.000Z";
@@ -149,6 +153,46 @@ describe("resolveDraftWindow", () => {
 
       expect(window).toMatchObject({ isOpen: false, reason: "disabled-by-admin" });
     });
+  });
+});
+
+describe("resolvePicksLockTarget", () => {
+  const DRAFT_LOCK = "2026-09-18T00:00:00.000Z";
+  const STALE_FINALE_LOCK = "2026-09-08T20:49:07.347Z";
+  const NOW = Date.parse("2026-09-09T14:00:00.000Z");
+
+  it("uses the draft lock on the home countdown before finale mode", () => {
+    expect(
+      resolvePicksLockTarget({
+        isFinaleMode: false,
+        draftLockAt: DRAFT_LOCK,
+        finaleLockAt: STALE_FINALE_LOCK,
+        now: NOW,
+      })
+    ).toBe(DRAFT_LOCK);
+  });
+
+  it("does not fall back to a leftover finale timestamp during the draft", () => {
+    const target = resolvePicksLockTarget({
+      isFinaleMode: false,
+      draftLockAt: null,
+      finaleLockAt: STALE_FINALE_LOCK,
+      now: NOW,
+    });
+
+    expect(Date.parse(target)).toBeGreaterThan(NOW);
+    expect(target).not.toBe(STALE_FINALE_LOCK);
+  });
+
+  it("uses the finale lock once finale mode is on", () => {
+    expect(
+      resolvePicksLockTarget({
+        isFinaleMode: true,
+        draftLockAt: DRAFT_LOCK,
+        finaleLockAt: "2026-11-20T01:00:00.000Z",
+        now: NOW,
+      })
+    ).toBe("2026-11-20T01:00:00.000Z");
   });
 });
 

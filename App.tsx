@@ -38,6 +38,7 @@ import {
   resolveCastNames,
 } from "./src/utils/castProfiles";
 import { registerForPush } from "./src/native/push";
+import { pickPreferredSeasonId } from "./src/utils/seasonPicker";
 import {
   fetchShowConfig,
   fetchSeasonState,
@@ -483,11 +484,7 @@ const App: React.FC = () => {
         setSeasonShellEnabled(true);
         setSeasons(records);
         const stored = normalizeWeekId(localStorage.getItem("traitors_active_season"));
-        const preferred =
-          records.find((season) => season.seasonId === stored) ??
-          records.find((season) => season.status !== "archived") ??
-          records[0];
-        setActiveSeasonId(preferred?.seasonId || null);
+        setActiveSeasonId(pickPreferredSeasonId(records, stored));
       } catch (error) {
         logger.warn("Failed to load seasons:", error);
       }
@@ -545,9 +542,7 @@ const App: React.FC = () => {
     ) {
       return;
     }
-    const preferred =
-      seasons.find((season) => season.status !== "archived") ?? seasons[0];
-    setActiveSeasonId(preferred?.seasonId || null);
+    setActiveSeasonId(pickPreferredSeasonId(seasons, activeSeasonId));
   }, [activeSeasonId, seasonShellEnabled, seasons]);
 
   useEffect(() => {
@@ -1017,6 +1012,7 @@ const App: React.FC = () => {
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            seasonConfig={gameState.seasonConfig}
             seasonFinalized={seasonFinalized}
             finalStandings={finalStandings}
             showConfig={gameState.showConfig}
@@ -1092,6 +1088,7 @@ const App: React.FC = () => {
             topMovers={topMovers}
             actionQueue={actionQueue}
             finaleConfig={gameState.finaleConfig}
+            seasonConfig={gameState.seasonConfig}
             seasonFinalized={seasonFinalized}
             finalStandings={finalStandings}
             showConfig={gameState.showConfig}

@@ -96,6 +96,33 @@ export const resolveDraftWindow = (
   return { isOpen: true, reason: "open", lockAt: lockAtIso };
 };
 
+export interface PicksLockTargetInput {
+  isFinaleMode: boolean;
+  draftLockAt?: string | null;
+  finaleLockAt?: string | null;
+  now?: number;
+}
+
+const FALLBACK_LOCK_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Home-screen countdown target.
+ *
+ * Before finale mode the "Picks Lock In" bar is the draft window. A leftover
+ * finale timestamp (copied when a season is cloned, or filled by the default
+ * finale config) must not make that bar read as already locked.
+ */
+export const resolvePicksLockTarget = ({
+  isFinaleMode,
+  draftLockAt,
+  finaleLockAt,
+  now = Date.now(),
+}: PicksLockTargetInput): string => {
+  const preferred = isFinaleMode ? finaleLockAt : draftLockAt;
+  if (typeof preferred === "string" && preferred.trim()) return preferred;
+  return new Date(now + FALLBACK_LOCK_MS).toISOString();
+};
+
 /** Player-facing explanation for a closed draft. */
 export const describeDraftWindow = (
   window: DraftWindow,

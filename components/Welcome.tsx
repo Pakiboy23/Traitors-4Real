@@ -13,6 +13,7 @@ import {
   PremiumCard,
   PremiumStatusBadge,
 } from "../src/ui/premium";
+import { resolvePicksLockTarget } from "../src/utils/draftWindow";
 
 export interface MvpHighlight {
   name: string;
@@ -49,6 +50,7 @@ interface WelcomeProps {
   topMovers: TopMoverEntry[];
   actionQueue: string[];
   finaleConfig?: FinaleConfig;
+  seasonConfig?: SeasonConfig;
   seasonFinalized?: boolean;
   finalStandings?: FinalStandingEntry[];
   showConfig?: ShowConfig;
@@ -59,8 +61,6 @@ interface WelcomeProps {
 }
 
 const FINALE_OVERVIEW_CONFETTI_COUNT = 20;
-const buildDefaultLockAt = () =>
-  new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
 const formatDelta = (value: number) => {
   const formatted = formatScore(value);
@@ -112,6 +112,7 @@ const Welcome: React.FC<WelcomeProps> = ({
   topMovers,
   actionQueue,
   finaleConfig,
+  seasonConfig,
   seasonFinalized,
   finalStandings,
   showConfig,
@@ -124,7 +125,16 @@ const Welcome: React.FC<WelcomeProps> = ({
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
   const isFinaleMode = Boolean(finaleConfig?.enabled);
-  const countdownTarget = finaleConfig?.lockAt || buildDefaultLockAt();
+  const activeSeason =
+    seasons.find((season) => season.seasonId === activeSeasonId) ?? undefined;
+  const countdownTarget = resolvePicksLockTarget({
+    isFinaleMode,
+    draftLockAt:
+      seasonConfig?.lockSchedule?.draftLockAt ??
+      activeSeason?.lockSchedule?.draftLockAt ??
+      null,
+    finaleLockAt: finaleConfig?.lockAt,
+  });
   const lockLabel =
     typeof finaleConfig?.label === "string" && finaleConfig.label.trim()
       ? finaleConfig.label
