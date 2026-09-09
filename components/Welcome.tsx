@@ -8,6 +8,7 @@ import {
   sectionStaggerVariants,
 } from "../src/ui/motion";
 import { formatScore } from "../src/utils/scoring";
+import type { HomeCountdown } from "../src/utils/homeCountdown";
 import {
   PremiumButton,
   PremiumCard,
@@ -49,6 +50,8 @@ interface WelcomeProps {
   topMovers: TopMoverEntry[];
   actionQueue: string[];
   finaleConfig?: FinaleConfig;
+  /** Resolved by the shell from the season's lock schedule and finale state. */
+  homeCountdown: HomeCountdown;
   seasonFinalized?: boolean;
   finalStandings?: FinalStandingEntry[];
   showConfig?: ShowConfig;
@@ -59,8 +62,6 @@ interface WelcomeProps {
 }
 
 const FINALE_OVERVIEW_CONFETTI_COUNT = 20;
-const buildDefaultLockAt = () =>
-  new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
 const formatDelta = (value: number) => {
   const formatted = formatScore(value);
@@ -112,6 +113,7 @@ const Welcome: React.FC<WelcomeProps> = ({
   topMovers,
   actionQueue,
   finaleConfig,
+  homeCountdown,
   seasonFinalized,
   finalStandings,
   showConfig,
@@ -124,7 +126,6 @@ const Welcome: React.FC<WelcomeProps> = ({
   const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
   const isFinaleMode = Boolean(finaleConfig?.enabled);
-  const countdownTarget = finaleConfig?.lockAt || buildDefaultLockAt();
   const lockLabel =
     typeof finaleConfig?.label === "string" && finaleConfig.label.trim()
       ? finaleConfig.label
@@ -367,9 +368,18 @@ const Welcome: React.FC<WelcomeProps> = ({
                         aria-live="polite"
                       >
                         <span className="premium-overview-lockbar-label">
-                          {isFinaleMode ? lockLabel : "Picks Lock In"}
+                          {homeCountdown.label}
                         </span>
-                        <CountdownTimer targetDate={countdownTarget} />
+                        {homeCountdown.targetAt ? (
+                          <CountdownTimer
+                            targetDate={homeCountdown.targetAt}
+                            expiredLabel={homeCountdown.statusText}
+                          />
+                        ) : (
+                          <span className="text-xs font-semibold text-current">
+                            {homeCountdown.statusText}
+                          </span>
+                        )}
                       </div>
                     )}
                     <PremiumButton
