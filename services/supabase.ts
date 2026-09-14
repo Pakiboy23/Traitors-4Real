@@ -21,6 +21,7 @@ import {
   type AdminMembershipResult,
 } from "../src/utils/adminAuth";
 import { logger } from "../src/utils/logger";
+import { resetSeasonStateForClone } from "../src/utils/seasonAuthority";
 
 export { supabaseUrl };
 
@@ -295,39 +296,26 @@ export const saveSeasonState = async (seasonId: string, state: SeasonState): Pro
     { onConflict: "season_id" }
   );
   if (error) throw error;
+  // Keep the seasons row in lockstep so the next load's overlay matches
+  // what admin just saved. The row is Home's lifecycle authority.
+  if (state.finaleConfig) {
+    try {
+      await updateSeason(seasonId, { finaleConfig: state.finaleConfig });
+    } catch (syncError) {
+      logger.warn("Failed to sync season finaleConfig:", syncError);
+    }
+  }
   return { updated: now };
-};
-
-const resetSeasonStateForClone = (state: SeasonState): SeasonState => {
-  const castStatus = Object.fromEntries(
-    Object.entries(state.castStatus || {}).map(([name, status]) => [
-      name,
-      { ...status, isWinner: false, isFirstOut: false, isTraitor: false, isEliminated: false },
-    ])
-  );
-  return {
-    ...state,
-    players: [],
-    castStatus,
-    weeklyResults: {
-      weekId: "week-1",
-      nextBanished: "",
-      nextMurdered: "",
-      bonusGames: { redemptionRoulette: "", shieldGambit: "", traitorTrio: [] },
-      finaleResults: { finalWinner: "", lastFaithfulStanding: "", lastTraitorStanding: "", finalPotValue: null },
-    },
-    activeWeekId: "week-1",
-    weeklySubmissionHistory: [],
-    weeklyScoreHistory: [],
-    scoreAdjustments: [],
-  };
 };
 
 export const cloneSeason = async (params: { sourceSeasonId: string; targetSeason: SeasonConfig }) => {
   const sourceState = await fetchSeasonState(params.sourceSeasonId);
   await createSeason(params.targetSeason);
   if (!sourceState) return null;
-  return saveSeasonState(params.targetSeason.seasonId, resetSeasonStateForClone(sourceState));
+  return saveSeasonState(
+    params.targetSeason.seasonId,
+    resetSeasonStateForClone(sourceState, params.targetSeason)
+  );
 };
 
 // ── score adjustments ─────────────────────────────────────────────────────────

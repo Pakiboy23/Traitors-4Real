@@ -3,6 +3,7 @@ import {
   BonusGamePredictions,
   BonusPointBreakdownEntry,
   GameState,
+  FinaleConfig,
   FinalePredictions,
   CAST_NAMES,
   COUNCIL_LABELS,
@@ -59,6 +60,14 @@ import RosterSection from './admin/RosterSection';
 import CastSection from './admin/CastSection';
 import DatabaseSection from './admin/DatabaseSection';
 import { AdminSection, AdminSectionTab, InlineEditMap } from './admin/types';
+
+const withFinaleConfig = (prevState: GameState, finaleConfig: FinaleConfig): GameState => ({
+  ...prevState,
+  finaleConfig,
+  seasonConfig: prevState.seasonConfig
+    ? { ...prevState.seasonConfig, finaleConfig }
+    : prevState.seasonConfig,
+});
 
 interface AdminPanelProps {
   gameState: GameState;
@@ -2002,34 +2011,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         }))
       }
       onSetFinaleEnabled={(enabled) =>
-        updateGameState((prevState) => ({
-          ...prevState,
-          finaleConfig: {
+        updateGameState((prevState) =>
+          withFinaleConfig(prevState, {
             enabled,
             label: prevState.finaleConfig?.label || defaultFinaleLabel,
             lockAt: prevState.finaleConfig?.lockAt || defaultFinaleLockAt,
-          },
-        }))
+          })
+        )
       }
       onSetFinaleLabel={(value) =>
-        updateGameState((prevState) => ({
-          ...prevState,
-          finaleConfig: {
+        updateGameState((prevState) =>
+          withFinaleConfig(prevState, {
             enabled: Boolean(prevState.finaleConfig?.enabled),
             label: value,
             lockAt: prevState.finaleConfig?.lockAt || defaultFinaleLockAt,
-          },
-        }))
+          })
+        )
       }
       onSetFinaleLockAt={(value) =>
-        updateGameState((prevState) => ({
-          ...prevState,
-          finaleConfig: {
+        updateGameState((prevState) =>
+          withFinaleConfig(prevState, {
             enabled: Boolean(prevState.finaleConfig?.enabled),
             label: prevState.finaleConfig?.label || defaultFinaleLabel,
             lockAt: value,
-          },
-        }))
+          })
+        )
       }
       onSetFinaleResult={updateFinaleResult}
       onSetFinalePotValue={updateFinalePotValue}
