@@ -36,9 +36,10 @@ import { readForceClosedFromEnv, resolveDraftWindow } from "./src/utils/draftWin
 import { resolveHomeCountdown } from "./src/utils/homeCountdown";
 import { pickPreferredSeason } from "./src/utils/seasonSelection";
 import {
-  applySeasonRecord,
   canPersistSeasonState,
+  isolateSeasonGameplay,
   isFinaleResultsCertified,
+  rosterForSeason,
 } from "./src/utils/seasonAuthority";
 import { logger } from "./src/utils/logger";
 import {
@@ -543,15 +544,19 @@ const App: React.FC = () => {
           // Do not keep the previous season's board (or localStorage) on
           // screen under this season's chip — that is the Home mismatch.
           const empty = normalizeGameState(
-            applySeasonRecord({ players: [] }, seasonMeta)
+            isolateSeasonGameplay({ players: [] }, seasonMeta, rosterForSeason(seasonId))
           );
           lastRemoteStateRef.current = JSON.stringify(empty);
           setGameState(empty);
           setLoadedSeasonId(seasonId);
           return;
         }
+        const roster = rosterForSeason(
+          seasonId,
+          Object.keys(seasonState.castStatus || {})
+        );
         const applied = seasonMeta
-          ? applySeasonRecord({ ...seasonState, seasonId }, seasonMeta)
+          ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
           : { ...seasonState, seasonId };
         const nextState = normalizeGameState(applied);
         const serialized = JSON.stringify(nextState);

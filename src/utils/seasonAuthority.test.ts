@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { GameState, SeasonConfig } from "../../types";
+import { NEW_BLOOD_CAST_NAMES } from "../config/newBloodCast";
 import {
   applySeasonRecord,
   canPersistSeasonState,
+  hasForeignSeasonGameplay,
+  isolateSeasonGameplay,
   isFinaleResultsCertified,
   resetSeasonStateForClone,
+  rosterForSeason,
 } from "./seasonAuthority";
 
 const liveNewBlood: SeasonConfig = {
@@ -192,5 +196,158 @@ describe("resetSeasonStateForClone", () => {
     expect(cloned.weeklyScoreHistory).toEqual([]);
     expect(cloned.castStatus["Rob Rausch (Love Island USA)"]?.isWinner).toBe(false);
     expect(isFinaleResultsCertified(cloned)).toBe(false);
+  });
+});
+
+describe("isolateSeasonGameplay", () => {
+  const roster = rosterForSeason("traitors-new-blood-s1");
+
+  const poisonedBoard = (): GameState => ({
+    seasonId: "traitors-new-blood-s1",
+    players: [
+      {
+        id: "1768254430231",
+        name: "Robyn Taylor",
+        email: "robyn.taylor@universalorlando.com",
+        league: "main",
+        picks: [
+          { member: "Mark Ballas (DWTS)", rank: 1, role: "Faithful" },
+          { member: "Rob Rausch (Love Island USA)", rank: 2, role: "Traitor" },
+        ],
+        predFirstOut: "Michael Rapaport (Actor)",
+        predWinner: "Johnny Weir (Olympian)",
+        predTraitors: ["Lisa Rinna (RHOBH)"],
+        weeklyPredictions: {
+          nextBanished: "Rob Rausch (Love Island USA)",
+          nextMurdered: "Mark Ballas (DWTS)",
+          finalePredictions: {
+            finalWinner: "Johnny Weir (Olympian)",
+            lastFaithfulStanding: "Johnny Weir (Olympian)",
+            lastTraitorStanding: "Eric Nam (Singer/Host)",
+            finalPotEstimate: 215000,
+          },
+        },
+      },
+    ],
+    castStatus: {
+      "Abbey Benjamin": {
+        isWinner: false,
+        isFirstOut: false,
+        isTraitor: false,
+        isEliminated: false,
+        portraitUrl: null,
+      },
+      "Lisa Rinna (RHOBH)": {
+        isWinner: false,
+        isFirstOut: false,
+        isTraitor: true,
+        isEliminated: true,
+        portraitUrl: null,
+      },
+      "Rob Rausch (Love Island USA)": {
+        isWinner: true,
+        isFirstOut: false,
+        isTraitor: true,
+        isEliminated: false,
+        portraitUrl: null,
+      },
+    },
+    weeklyResults: {
+      weekId: "week-6",
+      finaleResults: season4FinaleResults,
+    },
+    weeklyScoreHistory: [
+      {
+        id: "week-11",
+        label: "Week 11",
+        createdAt: "2026-02-01T00:00:00.000Z",
+        totals: { "1768254430231": 6 },
+        weeklyResults: { nextBanished: "Lisa Rinna (RHOBH)" },
+      },
+    ],
+    weeklySubmissionHistory: [
+      {
+        id: "s1",
+        name: "Robyn Taylor",
+        email: "robyn.taylor@universalorlando.com",
+        mergedAt: "2026-02-01T00:00:00.000Z",
+      },
+    ],
+    scoreAdjustments: [],
+    finaleConfig: liveNewBlood.finaleConfig,
+    seasonConfig: liveNewBlood,
+  });
+
+  it("strips Season 4 archives, celebrity cast, and leftover picks from a live New Blood board", () => {
+    const isolated = isolateSeasonGameplay(poisonedBoard(), liveNewBlood, roster);
+
+    expect(hasForeignSeasonGameplay(poisonedBoard(), roster)).toBe(true);
+    expect(isolated.players).toHaveLength(1);
+    expect(isolated.players[0].name).toBe("Robyn Taylor");
+    expect(isolated.players[0].email).toBe("robyn.taylor@universalorlando.com");
+    expect(isolated.players[0].picks).toEqual([]);
+    expect(isolated.players[0].predWinner).toBe("");
+    expect(isolated.weeklyScoreHistory).toEqual([]);
+    expect(isolated.weeklySubmissionHistory).toEqual([]);
+    expect(isolated.weeklyResults?.weekId).toBe("week-1");
+    expect(isolated.weeklyResults?.finaleResults?.finalWinner).toBe("");
+    expect(Object.keys(isolated.castStatus)).toEqual([...NEW_BLOOD_CAST_NAMES]);
+    expect(isolated.castStatus["Lisa Rinna (RHOBH)"]).toBeUndefined();
+    expect(isolated.castStatus["Abbey Benjamin"]?.isEliminated).toBe(false);
+    expect(hasForeignSeasonGameplay(isolated, roster)).toBe(false);
+  });
+
+  it("leaves an archived Season 4 board intact so the old finale still reads", () => {
+    const isolated = isolateSeasonGameplay(poisonedBoard(), archivedLegacy, roster);
+
+    expect(isolated.weeklyScoreHistory?.[0]?.label).toBe("Week 11");
+    expect(isolated.players[0].predWinner).toBe("Johnny Weir (Olympian)");
+    expect(isolated.castStatus["Lisa Rinna (RHOBH)"]?.isTraitor).toBe(true);
+    expect(isolated.finaleConfig?.enabled).toBe(true);
+  });
+
+  it("does not wipe a clean New Blood week once the season is actually scoring", () => {
+    const clean: GameState = {
+      seasonId: "traitors-new-blood-s1",
+      players: [
+        {
+          id: "1",
+          name: "Robyn Taylor",
+          email: "robyn@example.com",
+          picks: [{ member: "Abbey Benjamin", rank: 1, role: "Faithful" }],
+          predFirstOut: "Abby Lee",
+          predWinner: "Xavier Scruggs",
+          predTraitors: ["Joe Vanella"],
+        },
+      ],
+      castStatus: Object.fromEntries(
+        NEW_BLOOD_CAST_NAMES.map((name) => [
+          name,
+          {
+            isWinner: false,
+            isFirstOut: false,
+            isTraitor: false,
+            isEliminated: name === "Abby Lee",
+            portraitUrl: null,
+          },
+        ])
+      ),
+      weeklyResults: { weekId: "week-1", nextBanished: "Abby Lee" },
+      weeklyScoreHistory: [
+        {
+          id: "nb-w1",
+          label: "Week 1",
+          createdAt: "2026-09-18T00:00:00.000Z",
+          totals: { "1": 3 },
+          weeklyResults: { nextBanished: "Abby Lee" },
+        },
+      ],
+    };
+
+    const isolated = isolateSeasonGameplay(clean, liveNewBlood, roster);
+
+    expect(isolated.weeklyScoreHistory?.[0]?.label).toBe("Week 1");
+    expect(isolated.players[0].picks[0]?.member).toBe("Abbey Benjamin");
+    expect(isolated.castStatus["Abby Lee"]?.isEliminated).toBe(true);
   });
 });
