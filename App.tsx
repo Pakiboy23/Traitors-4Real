@@ -35,6 +35,11 @@ import { adminAuthErrorMessage, applyAdminSessionResult } from "./src/utils/admi
 import { readForceClosedFromEnv, resolveDraftWindow } from "./src/utils/draftWindow";
 import { resolveHomeCountdown } from "./src/utils/homeCountdown";
 import { pickPreferredSeason } from "./src/utils/seasonSelection";
+import {
+  applySeasonRecord,
+  canPersistSeasonState,
+  isFinaleResultsCertified,
+} from "./src/utils/seasonAuthority";
 import { logger } from "./src/utils/logger";
 import {
   normalizeCastMemberStatus,
@@ -301,6 +306,7 @@ const App: React.FC = () => {
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
+  const [loadedSeasonId, setLoadedSeasonId] = useState<string | null>(null);
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
@@ -394,6 +400,16 @@ const App: React.FC = () => {
       setLastWriteError("No active season selected.");
       return;
     }
+    if (
+      seasonShellEnabled &&
+      !canPersistSeasonState({
+        activeSeasonId: scopedSeasonId,
+        loadedSeasonId,
+      })
+    ) {
+      setLastWriteError("Active season has not finished loading.");
+      return;
+    }
     try {
       const safeState = normalizeUndefined(gameState);
       const record =
@@ -414,7 +430,7 @@ const App: React.FC = () => {
       );
       logger.warn("Manual save failed:", error);
     }
-  }, [activeSeasonId, gameState, isAdminAuthenticated, seasonShellEnabled]);
+  }, [activeSeasonId, gameState, isAdminAuthenticated, loadedSeasonId, seasonShellEnabled]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
@@ -499,6 +515,10 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    setLoadedSeasonId(null);
+  }, [activeSeasonId]);
+
+  useEffect(() => {
     if (!seasonShellEnabled) return;
     const seasonId = normalizeWeekId(activeSeasonId);
     if (!seasonId) return;
@@ -508,25 +528,38 @@ const App: React.FC = () => {
       try {
         const seasonState = await fetchSeasonState(seasonId);
         if (cancelled) return;
+        const seasonMeta =
+          seasons.find((season) => season.seasonId === seasonId) ||
+          (seasonState?.seasonConfig
+            ? sanitizeSeasonConfig(seasonState.seasonConfig, seasonId)
+            : undefined);
         if (!seasonState) {
           hasRemoteSnapshotRef.current = true;
           remoteExistsRef.current = false;
-          lastRemoteStateRef.current = null;
+          if (!seasonMeta) {
+            lastRemoteStateRef.current = null;
+            return;
+          }
+          // Do not keep the previous season's board (or localStorage) on
+          // screen under this season's chip — that is the Home mismatch.
+          const empty = normalizeGameState(
+            applySeasonRecord({ players: [] }, seasonMeta)
+          );
+          lastRemoteStateRef.current = JSON.stringify(empty);
+          setGameState(empty);
+          setLoadedSeasonId(seasonId);
           return;
         }
-        const serialized = JSON.stringify(seasonState);
+        const applied = seasonMeta
+          ? applySeasonRecord({ ...seasonState, seasonId }, seasonMeta)
+          : { ...seasonState, seasonId };
+        const nextState = normalizeGameState(applied);
+        const serialized = JSON.stringify(nextState);
         hasRemoteSnapshotRef.current = true;
         remoteExistsRef.current = true;
         lastRemoteStateRef.current = serialized;
-        const seasonMeta =
-          seasons.find((season) => season.seasonId === seasonId) || undefined;
-        setGameState(
-          normalizeGameState({
-            ...seasonState,
-            seasonId,
-            seasonConfig: seasonMeta ?? seasonState.seasonConfig,
-          })
-        );
+        setGameState(nextState);
+        setLoadedSeasonId(seasonId);
       } catch (error) {
         logger.warn("Failed to load season state:", error);
       }
@@ -702,6 +735,15 @@ const App: React.FC = () => {
     if (!isAdminAuthenticated) return undefined;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
     if (seasonShellEnabled && !scopedSeasonId) return undefined;
+    if (
+      seasonShellEnabled &&
+      !canPersistSeasonState({
+        activeSeasonId: scopedSeasonId,
+        loadedSeasonId,
+      })
+    ) {
+      return undefined;
+    }
     if (!seasonShellEnabled && !hasRemoteSnapshotRef.current) return undefined;
     if (
       !seasonShellEnabled &&
@@ -753,7 +795,7 @@ const App: React.FC = () => {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [activeSeasonId, gameState, isAdminAuthenticated, seasonShellEnabled]);
+  }, [activeSeasonId, gameState, isAdminAuthenticated, loadedSeasonId, seasonShellEnabled]);
   useEffect(() => {
     let isMounted = true;
     const hydratePortraits = async () => {
@@ -913,14 +955,8 @@ const App: React.FC = () => {
   );
 
   const seasonFinalized = useMemo(
-    () =>
-      Boolean(
-        gameState.finaleConfig?.enabled &&
-          gameState.weeklyResults?.finaleResults?.finalWinner &&
-          gameState.weeklyResults?.finaleResults?.lastFaithfulStanding &&
-          gameState.weeklyResults?.finaleResults?.lastTraitorStanding
-      ),
-    [gameState.finaleConfig?.enabled, gameState.weeklyResults?.finaleResults]
+    () => isFinaleResultsCertified(gameState),
+    [gameState]
   );
 
   // Same resolver the Draft tab gates on, so the Home countdown and the
