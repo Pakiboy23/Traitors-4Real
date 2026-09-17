@@ -1,7 +1,7 @@
 import React from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import CountdownTimer from "../components/CountdownTimer";
-import { FinaleConfig, SeasonConfig, ShowConfig, UiVariant } from "../types";
+import { FinaleConfig, SeasonConfig, ShowConfig } from "../types";
 import {
   cardRevealVariants,
   pageRevealVariants,
@@ -58,7 +58,6 @@ interface WelcomeProps {
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
   onSeasonChange?: (seasonId: string) => void;
-  uiVariant: UiVariant;
 }
 
 const FINALE_OVERVIEW_CONFETTI_COUNT = 20;
@@ -120,10 +119,8 @@ const Welcome: React.FC<WelcomeProps> = ({
   seasons = [],
   activeSeasonId,
   onSeasonChange,
-  uiVariant,
 }) => {
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
   const cardHover = reduceMotion ? undefined : { y: -4, scale: 1.004 };
   const isFinaleMode = Boolean(finaleConfig?.enabled);
   const lockLabel =
@@ -248,7 +245,7 @@ const Welcome: React.FC<WelcomeProps> = ({
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-welcome" : ""} ${
+      className={`space-y-4 md:space-y-5 premium-page premium-welcome ${
         isFinaleMode ? "premium-welcome-finale" : ""
       }`}
       initial={reduceMotion ? undefined : "hidden"}

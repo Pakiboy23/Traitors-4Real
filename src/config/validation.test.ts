@@ -35,4 +35,9 @@ describe("sanitizeShowConfig", () => {
     // may carry the programme's mark.
     expect(JSON.stringify(config)).not.toMatch(/Traitors/i);
   });
+
+  it("drops the retired classic/premium UI variant field", () => {
+    const config = sanitizeShowConfig({ defaultUiVariant: "classic" });
+    expect(config).not.toHaveProperty("defaultUiVariant");
+  });
 });

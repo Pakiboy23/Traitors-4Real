@@ -23,7 +23,6 @@ import {
   ScoreAdjustment,
   SeasonConfig,
   ShowConfig,
-  UiVariant,
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
 } from "./types";
@@ -297,7 +296,6 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const [uiVariant, setUiVariant] = useState<UiVariant>("premium");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
   const confirmedAdminUserIdRef = useRef<string | null>(null);
@@ -336,18 +334,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const ui = params.get("ui");
     const tab = params.get("tab");
     const ref = params.get("ref");
     const league = params.get("league");
-
-    if (ui === "classic") {
-      setUiVariant("classic");
-    } else if (ui === "premium" || ui === "sora") {
-      setUiVariant("premium");
-    } else {
-      setUiVariant("premium");
-    }
 
     if (tab && ["home", "weekly", "leaderboard", "draft", "admin"].includes(tab)) {
       setActiveTab(tab);
@@ -471,7 +460,6 @@ const App: React.FC = () => {
         const config = await fetchShowConfig();
         if (!config || cancelled) return;
         setAuthoritativeShowConfig(config);
-        setUiVariant(config.defaultUiVariant || "premium");
         setGameState((prev) => {
           const next = normalizeGameState({
             ...prev,
@@ -1083,7 +1071,6 @@ const App: React.FC = () => {
             seasons={seasons}
             activeSeasonId={activeSeasonId || gameState.seasonId}
             onSeasonChange={handleSeasonChange}
-            uiVariant={uiVariant}
           />
         );
       case "draft":
@@ -1091,25 +1078,22 @@ const App: React.FC = () => {
           <DraftForm
             gameState={gameState}
             onAddEntry={handleAddEntry}
-            uiVariant={uiVariant}
           />
         );
       case "rules":
-        return <RulesGuide gameState={gameState} uiVariant={uiVariant} />;
+        return <RulesGuide gameState={gameState} />;
       case "weekly":
         return (
           <WeeklyCouncil
             gameState={gameState}
             onAddEntry={handleAddEntry}
             showConfig={gameState.showConfig}
-            uiVariant={uiVariant}
           />
         );
       case "leaderboard":
         return (
           <Leaderboard
             gameState={gameState}
-            uiVariant={uiVariant}
             seasons={seasons}
             activeSeasonId={activeSeasonId || gameState.seasonId}
             onSeasonChange={handleSeasonChange}
@@ -1131,13 +1115,11 @@ const App: React.FC = () => {
             seasons={seasons}
             activeSeasonId={activeSeasonId || gameState.seasonId}
             onSeasonChange={handleSeasonChange}
-            uiVariant={uiVariant}
           />
         ) : (
           <AdminAuth
             onAuthenticate={authenticateAdmin}
             authError={adminAuthError}
-            uiVariant={uiVariant}
           />
         );
       default:
@@ -1159,7 +1141,6 @@ const App: React.FC = () => {
             seasons={seasons}
             activeSeasonId={activeSeasonId || gameState.seasonId}
             onSeasonChange={handleSeasonChange}
-            uiVariant={uiVariant}
           />
         );
     }
@@ -1167,7 +1148,6 @@ const App: React.FC = () => {
     activeTab,
     actionQueue,
     leaguePulse,
-    uiVariant,
     gameState,
     handleAddEntry,
     adminAuthError,
@@ -1197,7 +1177,6 @@ const App: React.FC = () => {
         onTabChange={setActiveTab}
         lastSync={lastSavedAt ?? undefined}
         showConfig={gameState.showConfig}
-        uiVariant={uiVariant}
         isAdminAuthenticated={isAdminAuthenticated}
       >
         {content}

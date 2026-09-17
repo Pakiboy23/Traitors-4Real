@@ -6,7 +6,6 @@ import {
   normalizeWeekId,
   PlayerEntry,
   SeasonConfig,
-  UiVariant,
   WeeklyScoreSnapshot,
 } from "../types";
 import CastPortrait from "./CastPortrait";
@@ -31,7 +30,6 @@ import {
 
 interface LeaderboardProps {
   gameState: GameState;
-  uiVariant: UiVariant;
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
   onSeasonChange?: (seasonId: string) => void;
@@ -39,13 +37,11 @@ interface LeaderboardProps {
 
 const Leaderboard: React.FC<LeaderboardProps> = ({
   gameState,
-  uiVariant,
   seasons = [],
   activeSeasonId,
   onSeasonChange,
 }) => {
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
@@ -516,7 +512,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-leaderboard" : ""} ${
+      className={`space-y-4 md:space-y-5 premium-page premium-leaderboard ${
         isSeasonFinalized ? "premium-leaderboard-final" : ""
       }`}
       initial={reduceMotion ? undefined : "hidden"}

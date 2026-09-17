@@ -6,7 +6,6 @@ import {
   GameState,
   PlayerEntry,
   ShowConfig,
-  UiVariant,
 } from "../types";
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { logger } from "../src/utils/logger";
@@ -30,7 +29,6 @@ interface WeeklyCouncilProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
   showConfig?: ShowConfig;
-  uiVariant: UiVariant;
 }
 
 const normalize = (value: string) => value.trim().toLowerCase();
@@ -43,11 +41,9 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({
   gameState,
   onAddEntry,
   showConfig,
-  uiVariant,
 }) => {
   const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
   const seasonStatus = gameState.seasonConfig?.status;
   const isSeasonReadOnly =
     seasonStatus === "finalized" || seasonStatus === "archived";
@@ -440,10 +436,6 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({
       ref: name || "league-member",
     });
 
-    if (isPremiumUi) {
-      params.set("ui", "premium");
-    }
-
     const shareUrl = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     const shareText = `${
       name || "A league member"
@@ -485,7 +477,7 @@ const WeeklyCouncil: React.FC<WeeklyCouncilProps> = ({
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 ${isPremiumUi ? "premium-page premium-weekly" : ""} ${
+      className={`space-y-4 md:space-y-5 premium-page premium-weekly ${
         isFinaleMode ? "premium-finale-page" : ""
       }`}
       initial={reduceMotion ? undefined : "hidden"}

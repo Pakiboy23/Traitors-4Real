@@ -1,15 +1,12 @@
 import React, { useState } from "react";
-import { UiVariant } from "../types";
 import { PremiumButton, PremiumCard, PremiumField, PremiumPanelHeader } from "../src/ui/premium";
 
 interface AdminAuthProps {
   onAuthenticate: (email: string, password: string) => Promise<boolean>;
   authError?: string | null;
-  uiVariant: UiVariant;
 }
 
-const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError, uiVariant }) => {
-  const isPremiumUi = uiVariant === "premium";
+const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
@@ -34,7 +31,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError, uiVari
   };
 
   return (
-    <div className={`max-w-lg mx-auto mt-8 md:mt-12 ${isPremiumUi ? "premium-page premium-admin-auth" : ""}`}>
+    <div className="max-w-lg mx-auto mt-8 md:mt-12 premium-page premium-admin-auth">
       <PremiumCard className="premium-panel-pad premium-stack-md">
         <PremiumPanelHeader
           kicker="Restricted"

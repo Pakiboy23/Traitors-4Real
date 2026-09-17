@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { COUNCIL_LABELS, ShowConfig, UiVariant } from "../types";
+import { COUNCIL_LABELS, ShowConfig } from "../types";
 import {
   cardRevealVariants,
   pageRevealVariants,
   sectionStaggerVariants,
 } from "../src/ui/motion";
 import {
-  PremiumButton,
   PremiumStatusBadge,
   PremiumTabs,
 } from "../src/ui/premium";
@@ -26,7 +25,6 @@ interface LayoutProps {
   onTabChange: (tab: string) => void;
   lastSync?: number;
   showConfig?: ShowConfig;
-  uiVariant: UiVariant;
   isAdminAuthenticated?: boolean;
 }
 
@@ -36,33 +34,9 @@ const Layout: React.FC<LayoutProps> = ({
   onTabChange,
   lastSync,
   showConfig,
-  uiVariant,
   isAdminAuthenticated = false,
 }) => {
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
-  const [isLightMode, setIsLightMode] = useState(
-    () => localStorage.getItem("traitors_theme") === "light"
-  );
-
-  useEffect(() => {
-    document.body.classList.toggle("premium-ui", isPremiumUi);
-
-    if (isPremiumUi) {
-      document.body.classList.remove("light-mode");
-      localStorage.setItem("traitors_theme", "dark");
-      return;
-    }
-
-    if (isLightMode) {
-      document.body.classList.add("light-mode");
-      localStorage.setItem("traitors_theme", "light");
-      return;
-    }
-
-    document.body.classList.remove("light-mode");
-    localStorage.setItem("traitors_theme", "dark");
-  }, [isLightMode, isPremiumUi]);
 
   // Null until there is something to report. "No sync yet" told a player
   // nothing and was the first thing in frame on a cold load.
@@ -164,10 +138,9 @@ const Layout: React.FC<LayoutProps> = ({
       : []),
   ];
 
-
   return (
     <motion.div
-      className={`min-h-screen ${isPremiumUi ? "premium-shell" : ""}`}
+      className="min-h-screen premium-shell"
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "show"}
       variants={pageRevealVariants}
@@ -183,18 +156,6 @@ const Layout: React.FC<LayoutProps> = ({
             </div>
 
             <div className="premium-utility-right">
-              {!isPremiumUi && (
-                <PremiumButton
-                  onClick={() => setIsLightMode((prev) => !prev)}
-                  variant="ghost"
-                  className="px-4 text-xs md:text-sm"
-                  aria-label={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
-                  aria-pressed={isLightMode}
-                  title={isLightMode ? "Switch to dark mode" : "Switch to light mode"}
-                >
-                  {isLightMode ? "Dark" : "Light"}
-                </PremiumButton>
-              )}
               {/* Was a primary "Lock {weeklyLabel} Picks" button, which competed
                   with the home screen's own call to action and only jumped to a
                   tab already in the nav two rows below. Rules takes the slot

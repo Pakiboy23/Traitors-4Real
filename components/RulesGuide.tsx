@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import type { GameState, UiVariant } from "../types";
+import type { GameState } from "../types";
 import { getRulePackById } from "../src/config/rulePacks";
 import { buildRulesGuide, formatRulePoints } from "../src/utils/rulesGuide";
 import {
@@ -16,7 +16,6 @@ import {
 
 interface RulesGuideProps {
   gameState: GameState;
-  uiVariant: UiVariant;
 }
 
 /**
@@ -25,9 +24,8 @@ interface RulesGuideProps {
  * Every rule and number here is derived from the active rule pack, so the guide
  * cannot drift from the engine that awards the points.
  */
-const RulesGuide: React.FC<RulesGuideProps> = ({ gameState, uiVariant }) => {
+const RulesGuide: React.FC<RulesGuideProps> = ({ gameState }) => {
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
 
   const guide = useMemo(() => {
     const pack = getRulePackById(
@@ -40,7 +38,7 @@ const RulesGuide: React.FC<RulesGuideProps> = ({ gameState, uiVariant }) => {
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 pb-8 ${isPremiumUi ? "premium-page" : ""}`}
+      className="space-y-4 md:space-y-5 pb-8 premium-page"
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "show"}
       variants={pageRevealVariants}
