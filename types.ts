@@ -86,7 +86,6 @@ export interface WeeklyScoreSnapshot {
 }
 
 export type League = "main" | "jr";
-export type UiVariant = "classic" | "premium";
 export type SeasonStatus = "draft" | "live" | "finalized" | "archived";
 export type SubmissionStatus = "new" | "merged" | "skipped_late" | "skipped_stale";
 
@@ -133,7 +132,6 @@ export interface ShowConfig {
   leagueName: string;
   branding: ShowBranding;
   terminology: ShowTerminology;
-  defaultUiVariant: UiVariant;
   featureToggles: ShowFeatureToggles;
   castNames: string[];
 }

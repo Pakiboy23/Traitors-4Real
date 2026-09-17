@@ -24,7 +24,6 @@ export const DEFAULT_SHOW_CONFIG: ShowConfig = {
     adminLabel: "Admin",
     finaleLabelDefault: "Finale Gauntlet",
   },
-  defaultUiVariant: "premium",
   featureToggles: {
     draftEnabled: true,
     jrLeagueEnabled: true,

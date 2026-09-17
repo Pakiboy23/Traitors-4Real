@@ -13,7 +13,6 @@ import {
   ScoreAdjustment,
   SeasonConfig,
   ShowConfig,
-  UiVariant,
   DraftPick,
   WeeklySubmissionHistoryEntry,
   WeeklyScoreSnapshot,
@@ -83,7 +82,6 @@ interface AdminPanelProps {
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
   onSeasonChange?: (seasonId: string) => void;
-  uiVariant: UiVariant;
 }
 
 type ConfirmDialogState = {
@@ -109,9 +107,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   seasons = [],
   activeSeasonId,
   onSeasonChange,
-  uiVariant,
 }) => {
-  const isPremiumUi = uiVariant === "premium";
   // The roster comes from the game state, which has already resolved it for the
   // active season. Merging showConfig.castNames back in here re-created the bug
   // it was meant to fix: that record is the *global* default, so on a New Blood
@@ -2577,7 +2573,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className={`w-full space-y-4 ${isPremiumUi ? "premium-page premium-admin-shell" : ""}`}>
+    <div className="w-full space-y-4 premium-page premium-admin-shell">
       <PremiumCard className="premium-panel-pad premium-stack-sm">
         <PremiumPanelHeader
           kicker="Admin"

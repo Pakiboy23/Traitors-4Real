@@ -67,10 +67,6 @@ export const sanitizeShowConfig = (input: unknown): ShowConfig => {
         DEFAULT_SHOW_CONFIG.terminology.finaleLabelDefault
       ),
     },
-    defaultUiVariant:
-      source?.defaultUiVariant === "classic" || source?.defaultUiVariant === "premium"
-        ? source.defaultUiVariant
-        : DEFAULT_SHOW_CONFIG.defaultUiVariant,
     featureToggles: {
       draftEnabled: readBoolean(
         featureToggles?.draftEnabled,

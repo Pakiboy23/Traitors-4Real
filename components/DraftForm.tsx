@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { DraftPick, GameState, PlayerEntry, UiVariant } from "../types";
+import { DraftPick, GameState, PlayerEntry } from "../types";
 import ConfirmationCard from "./ConfirmationCard";
 import CastPortrait from "./CastPortrait";
 import CastPicker from "./CastPicker";
@@ -37,7 +37,6 @@ import { submitDraftEntry } from "../services/supabase";
 interface DraftFormProps {
   gameState: GameState;
   onAddEntry: (entry: PlayerEntry) => void;
-  uiVariant: UiVariant;
 }
 
 function shuffleArray<T>(array: T[]): T[] {
@@ -53,10 +52,9 @@ const DRAFT_SIZE = 10;
 const createEmptyPick = (): DraftPick => ({ member: "", rank: 1, role: "Faithful" });
 const createEmptyPicks = () => Array.from({ length: DRAFT_SIZE }, createEmptyPick);
 
-const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant }) => {
+const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry }) => {
   const { showToast } = useToast();
   const reduceMotion = useReducedMotion();
-  const isPremiumUi = uiVariant === "premium";
 
   const [playerName, setPlayerName] = useState("");
   const [playerEmail, setPlayerEmail] = useState("");
@@ -325,7 +323,6 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
     return (
       <ConfirmationCard
         playerName={playerName}
-        uiVariant={uiVariant}
         onReset={() => {
           setIsSubmitted(false);
           setPlayerName("");
@@ -342,7 +339,7 @@ const DraftForm: React.FC<DraftFormProps> = ({ gameState, onAddEntry, uiVariant 
 
   return (
     <motion.div
-      className={`space-y-4 md:space-y-5 pb-8 ${isPremiumUi ? "premium-page premium-draft" : ""}`}
+      className="space-y-4 md:space-y-5 pb-8 premium-page premium-draft"
       initial={reduceMotion ? undefined : "hidden"}
       animate={reduceMotion ? undefined : "show"}
       variants={pageRevealVariants}
