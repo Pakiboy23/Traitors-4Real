@@ -12,7 +12,7 @@ import type {
 import { normalizeWeekId } from "../types";
 import { supabase, supabaseUrl } from "../src/lib/supabase";
 import type { Database } from "../src/types/database";
-import { DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
+import { DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../src/config/validation";
 import {
   createAdminLookupGeneration,
@@ -207,13 +207,6 @@ export const saveShowConfig = async (config: ShowConfig, slug = DEFAULT_SHOW_SLU
       { onConflict: "slug" }
     );
   if (error) throw error;
-};
-
-export const ensureDefaultShowConfig = async (): Promise<ShowConfig> => {
-  const existing = await fetchShowConfig(DEFAULT_SHOW_SLUG);
-  if (existing) return existing;
-  await saveShowConfig(DEFAULT_SHOW_CONFIG, DEFAULT_SHOW_SLUG);
-  return DEFAULT_SHOW_CONFIG;
 };
 
 // ── seasons ───────────────────────────────────────────────────────────────────

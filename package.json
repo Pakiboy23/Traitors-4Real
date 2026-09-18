@@ -9,9 +9,7 @@
     "start": "next start",
     "native:web:build": "node scripts/build-native-web.mjs",
     "ios:sync:bundled": "npm run native:web:build && CAPACITOR_BUNDLED=1 npx cap sync ios",
-    "android:sync:bundled": "npm run native:web:build && CAPACITOR_BUNDLED=1 npx cap sync android",
     "ios:open": "npx cap open ios",
-    "android:bundle:release": "cd android && ./gradlew bundleRelease",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,7 +17,6 @@
     "screenshots:capture": "node scripts/screenshots/capture.mjs http://127.0.0.1:3222"
   },
   "dependencies": {
-    "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
     "@capacitor/ios": "^8.5.0",
     "@capacitor/push-notifications": "^8.1.2",
@@ -36,7 +33,6 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "autoprefixer": "^10.4.27",
-    "babel-plugin-react-compiler": "^1.0.0",
     "playwright": "^1.62.1",
     "postcss": "^8.5.26",
     "sharp": "^0.35.4",

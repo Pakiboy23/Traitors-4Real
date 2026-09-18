@@ -4,7 +4,5 @@ export { PremiumField, PremiumSelect, PremiumToggle } from "./PremiumField";
 export { default as PremiumKpiRow } from "./PremiumKpiRow";
 export type { PremiumKpiItem } from "./PremiumKpiRow";
 export { default as PremiumPanelHeader } from "./PremiumPanelHeader";
-export { PremiumRankRow, PremiumRankTable } from "./PremiumRankTable";
-export { default as PremiumShell } from "./PremiumShell";
 export { default as PremiumStatusBadge } from "./PremiumStatusBadge";
 export { default as PremiumTabs } from "./PremiumTabs";
