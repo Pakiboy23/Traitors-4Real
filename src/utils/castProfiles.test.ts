@@ -6,7 +6,6 @@ import {
   filterCastOptions,
   normalizeCastMemberStatus,
   resolveCastNames,
-  summariseCastMember,
   toCastOptions,
 } from "./castProfiles";
 
@@ -45,12 +44,6 @@ describe("describeCastMember", () => {
     expect(describeCastMember({ age: Number.NaN, occupation: "   ", hometown: "Boston, MA" })).toBe(
       "Boston, MA"
     );
-  });
-});
-
-describe("summariseCastMember", () => {
-  it("omits the hometown for the collapsed control", () => {
-    expect(summariseCastMember({ age: 26, occupation: "Designer" })).toBe("26 · Designer");
   });
 });
 

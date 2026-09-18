@@ -1,4 +1,4 @@
-import { TargetAndTransition, Variants } from "framer-motion";
+import { Variants } from "framer-motion";
 
 export const MOTION_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -40,20 +40,4 @@ export const cardRevealVariants: Variants = {
       ease: MOTION_EASE,
     },
   },
-};
-
-export const ctaPulseAnimation: TargetAndTransition = {
-  scale: [1, 1.02, 1],
-  boxShadow: [
-    "0 0 0 rgba(0,0,0,0)",
-    "0 0 20px rgba(16, 216, 231, 0.24)",
-    "0 0 0 rgba(0,0,0,0)",
-  ],
-};
-
-export const ctaPulseTransition = {
-  duration: 2.2,
-  ease: "easeInOut",
-  repeat: Infinity,
-  repeatDelay: 0.8,
 };

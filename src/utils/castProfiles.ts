@@ -28,17 +28,6 @@ export const describeCastMember = (
     .filter(Boolean)
     .join(" · ");
 
-/** Compact form for a collapsed control, where the hometown does not fit. */
-export const summariseCastMember = (
-  member: Pick<CastOption, "age" | "occupation">
-): string =>
-  [
-    typeof member.age === "number" && Number.isFinite(member.age) ? String(member.age) : null,
-    member.occupation?.trim() || null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
 export const toCastOptions = (
   castStatus: Record<string, CastMemberStatus>
 ): CastOption[] =>
