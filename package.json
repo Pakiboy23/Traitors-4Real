@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@capacitor/core": "^8.5.0",
-    "@capacitor/ios": "^8.5.0",
+    "@capacitor/ios": "^8.5.2",
     "@capacitor/push-notifications": "^8.1.2",
     "@supabase/supabase-js": "^2.98.0",
     "framer-motion": "^13.1.0",
