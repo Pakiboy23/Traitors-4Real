@@ -11,10 +11,12 @@ const capacitorConfig = readFileSync(path.join(repoRoot, "capacitor.config.ts"),
 const envProduction = readFileSync(path.join(repoRoot, ".env.production"), "utf8");
 const verifyScript = readFileSync(path.join(repoRoot, "ios/App/Scripts/verify-web-assets.sh"), "utf8");
 const packageSwift = readFileSync(path.join(repoRoot, "ios/App/CapApp-SPM/Package.swift"), "utf8");
+const appDelegate = readFileSync(path.join(repoRoot, "ios/App/App/AppDelegate.swift"), "utf8");
+const packageJson = readFileSync(path.join(repoRoot, "package.json"), "utf8");
 
-/** Repo identity after #163. 2.0 (35) is on the store; next archive is 2.0.1 (36). */
+/** Repo identity: 2.0 (35) is on the store; next TestFlight after builds 62+ is 2.0.1 (63). */
 const MARKETING_VERSION = "2.0.1";
-const MIN_BUILD_NUMBER = 36;
+const MIN_BUILD_NUMBER = 63;
 const BUNDLE_ID = "com.roundtabledraft.app";
 
 function appTargetSettings(name: "Debug" | "Release"): string {
@@ -31,7 +33,7 @@ function appTargetSettings(name: "Debug" | "Release"): string {
 
 describe("iOS 2.0.1 release identity", () => {
   it.each(["Debug", "Release"] as const)(
-    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 36 on App %s",
+    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 63 on App %s",
     (name) => {
       const settings = appTargetSettings(name);
       expect(settings).toMatch(new RegExp(`MARKETING_VERSION = ${MARKETING_VERSION};`));
@@ -88,6 +90,20 @@ describe("iOS release shipping guards", () => {
     expect(capacitorConfig).toContain('appName: "Round Table Draft"');
     expect(capacitorConfig).toContain("isBundledBuild");
     expect(capacitorConfig).toMatch(/isBundledBuild[\s\S]*server:/);
+  });
+
+  it("forwards APNs registration into Capacitor Push Notifications", () => {
+    // @capacitor/push-notifications 8.1.2 observes these names and does not
+    // swizzle UIApplicationDelegate. Dropping the posts leaves register()
+    // resolving with neither registration nor registrationError.
+    expect(packageJson).toContain('"@capacitor/push-notifications": "^8.1.2"');
+    expect(packageSwift).toContain("CapacitorPushNotifications");
+    expect(appDelegate).toContain("didRegisterForRemoteNotificationsWithDeviceToken");
+    expect(appDelegate).toContain(".capacitorDidRegisterForRemoteNotifications");
+    expect(appDelegate).toContain("didFailToRegisterForRemoteNotificationsWithError");
+    expect(appDelegate).toContain(".capacitorDidFailToRegisterForRemoteNotifications");
+    expect(pbxproj).toMatch(/com\.apple\.Push\s*=\s*\{\s*enabled = 1;/);
+    expect(entitlements).toContain("<key>aps-environment</key>");
   });
 
   it("ships push entitlements and the privacy manifest with the app target", () => {

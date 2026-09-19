@@ -46,4 +46,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // Capacitor 8's Push Notifications plugin (@capacitor/push-notifications 8.1.2)
+    // observes these NotificationCenter names; it does not swizzle
+    // UIApplicationDelegate. Without the posts, PushNotifications.register()
+    // resolves and we record register_invoked, but `registration` /
+    // `registrationError` never fire, so push_tokens stays empty.
+    // SceneDelegate is not involved — Capacitor 8.5 keeps APNs callbacks on
+    // the app delegate even after UIScene adoption.
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+
 }
