@@ -161,10 +161,6 @@ export const buildDemoState = () => ({
     },
     featureToggles: {
       draftEnabled: true,
-      jrLeagueEnabled: true,
-      finaleEnabled: true,
-      scoreAdjustmentsEnabled: true,
-      seasonArchivingEnabled: true,
     },
   },
 });

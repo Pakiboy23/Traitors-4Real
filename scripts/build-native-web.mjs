@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds the web assets that the Capacitor iOS/Android shells bundle into the
+ * Builds the web assets that the Capacitor iOS shell bundles into the
  * app binary.
  *
  * `capacitor.config.ts` points `webDir` at `native-web` when CAPACITOR_BUNDLED=1,

@@ -32,11 +32,6 @@ export const sanitizeShowConfig = (input: unknown): ShowConfig => {
     shortName: readString(source?.shortName, DEFAULT_SHOW_CONFIG.shortName),
     leagueName: readString(source?.leagueName, DEFAULT_SHOW_CONFIG.leagueName),
     branding: {
-      logoUrl:
-        typeof branding?.logoUrl === "string" && branding.logoUrl.trim()
-          ? branding.logoUrl.trim()
-          : null,
-      wordmark: readString(branding?.wordmark, DEFAULT_SHOW_CONFIG.branding.wordmark || ""),
       headerKicker: readString(
         branding?.headerKicker,
         DEFAULT_SHOW_CONFIG.branding.headerKicker || ""
@@ -71,22 +66,6 @@ export const sanitizeShowConfig = (input: unknown): ShowConfig => {
       draftEnabled: readBoolean(
         featureToggles?.draftEnabled,
         DEFAULT_SHOW_CONFIG.featureToggles.draftEnabled
-      ),
-      jrLeagueEnabled: readBoolean(
-        featureToggles?.jrLeagueEnabled,
-        DEFAULT_SHOW_CONFIG.featureToggles.jrLeagueEnabled
-      ),
-      finaleEnabled: readBoolean(
-        featureToggles?.finaleEnabled,
-        DEFAULT_SHOW_CONFIG.featureToggles.finaleEnabled
-      ),
-      scoreAdjustmentsEnabled: readBoolean(
-        featureToggles?.scoreAdjustmentsEnabled,
-        DEFAULT_SHOW_CONFIG.featureToggles.scoreAdjustmentsEnabled
-      ),
-      seasonArchivingEnabled: readBoolean(
-        featureToggles?.seasonArchivingEnabled,
-        DEFAULT_SHOW_CONFIG.featureToggles.seasonArchivingEnabled
       ),
     },
     castNames: readStringArray(source?.castNames, [...DEFAULT_SHOW_CONFIG.castNames]),

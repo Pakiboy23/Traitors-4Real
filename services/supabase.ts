@@ -67,9 +67,6 @@ export interface SubmissionRecord {
   payload?: unknown;
   created?: string;
   updated?: string;
-  collectionId?: string;
-  collectionName?: string;
-  expand?: Record<string, unknown>;
 }
 
 const rowToSubmissionRecord = (row: SubmissionRow): SubmissionRecord => ({
@@ -87,33 +84,7 @@ const rowToSubmissionRecord = (row: SubmissionRow): SubmissionRecord => ({
   payload: row.payload,
   created: row.created_at,
   updated: row.updated_at,
-  collectionId: "",
-  collectionName: "submissions",
-  expand: {},
 });
-
-// ── interfaces (type-compatibility shims) ─────────────────────────────────────
-
-export interface ShowConfigRecord {
-  slug: string;
-  config: ShowConfig;
-}
-
-export interface SeasonRecord extends SeasonConfig {}
-
-export interface SeasonStateRecord {
-  seasonId: string;
-  state: SeasonState;
-}
-
-export interface ScoreAdjustmentRecord {
-  seasonId: string;
-  playerId: string;
-  weekId?: string;
-  reason: string;
-  points: number;
-  createdBy?: string;
-}
 
 // ── auth ──────────────────────────────────────────────────────────────────────
 

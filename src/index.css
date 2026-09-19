@@ -29,8 +29,6 @@
   --radius-lg: 1rem;
   --radius-xl: 1.5rem;
   --radius-2xl: 2rem;
-  --tracking-title: 0.18em;
-  --tracking-label: 0.14em;
 
   /* iOS draws the web view edge to edge: the root layout sets
      viewportFit: "cover" and a black-translucent status bar, so y=0 is under
@@ -226,18 +224,6 @@ body {
 
   .animate-page-in {
     animation: pageIn 0.35s ease-out both;
-  }
-
-  .tracking-title {
-    letter-spacing: var(--tracking-title);
-  }
-
-  .tracking-label {
-    letter-spacing: var(--tracking-label);
-  }
-
-  .tracking-wide-custom {
-    letter-spacing: 0.2em;
   }
 }
 
@@ -2120,92 +2106,11 @@ body.premium-ui .premium-finale-rules-card {
   }
 }
 
-body.premium-ui .premium-rank-table {
-  display: grid;
-  gap: 0;
-}
-
-body.premium-ui .premium-rank-head {
-  display: grid;
-  grid-template-columns: 56px 1fr 116px;
-  gap: 0.4rem;
-  padding: 0.26rem 0.2rem 0.34rem;
-  border-bottom: 1px solid var(--line-muted);
-}
-
-body.premium-ui .premium-rank-head-cell {
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-dim);
-}
-
-body.premium-ui .premium-rank-head-cell-right {
-  text-align: right;
-}
-
-body.premium-ui .premium-rank-body {
-  display: grid;
-  gap: 0;
-}
-
-body.premium-ui .premium-rank-row {
-  border: none;
-  border-radius: 0;
-  background: transparent;
-}
-
-body.premium-ui .premium-rank-row + .premium-rank-row {
-  border-top: 1px solid var(--line-muted);
-}
-
-body.premium-ui .premium-rank-row-expanded {
-  background: var(--surface-row-active);
-}
-
-body.premium-ui .premium-rank-row-shell {
-  border-radius: 0;
-}
-
-body.premium-ui .premium-rank-row-button {
-  width: 100%;
-  border: none;
-  background: transparent;
-  display: grid;
-  grid-template-columns: 56px 1fr 116px;
-  gap: 0.4rem;
-  align-items: center;
-  text-align: left;
-  padding: 0.4rem 0.2rem;
-}
-
-body.premium-ui .premium-rank-cell-rank {
-  font-size: 0.74rem;
-  font-weight: 650;
-  color: var(--text-muted);
-}
-
-body.premium-ui .premium-rank-cell-player {
-  display: flex;
-  align-items: center;
-  gap: 0.48rem;
-  min-width: 0;
-}
-
-body.premium-ui .premium-rank-cell-score {
-  text-align: right;
-}
-
 body.premium-ui .premium-rank-total {
   margin: 0;
   font-size: 0.94rem;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-
-body.premium-ui .premium-rank-expanded {
-  padding: 0.1rem 0 0.4rem;
 }
 
 body.premium-ui .premium-top-leader-strip {
@@ -2530,8 +2435,7 @@ body.premium-ui .premium-cast-name {
   text-overflow: ellipsis;
 }
 
-body.premium-ui .premium-leader-summary,
-body.premium-ui .premium-rank-surface {
+body.premium-ui .premium-leader-summary {
   overflow: hidden;
 }
 
@@ -2820,11 +2724,6 @@ body.premium-ui .rounded-xl {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  body.premium-ui .premium-rank-head,
-  body.premium-ui .premium-rank-row-button {
-    grid-template-columns: 50px 1fr 92px;
-  }
-
   body.premium-ui .admin-console-shell {
     grid-template-columns: 1fr;
   }
@@ -2960,14 +2859,6 @@ body.premium-ui .rounded-xl {
     grid-template-columns: 1fr 1fr;
   }
 
-  body.premium-ui .premium-rank-head {
-    display: none;
-  }
-
-  body.premium-ui .premium-rank-row-button {
-    grid-template-columns: 38px 1fr 82px;
-  }
-
   body.premium-ui .admin-console-right {
     grid-template-columns: 1fr;
   }
@@ -2982,7 +2873,6 @@ body.premium-ui .rounded-xl {
 @media (prefers-reduced-motion: reduce) {
   body.premium-ui .premium-btn,
   body.premium-ui .premium-tab-item,
-  body.premium-ui .premium-rank-row,
   body.premium-ui .premium-draft-row,
   body.premium-ui .premium-overview-chip,
   body.premium-ui .premium-overview-stage-item,
