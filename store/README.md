@@ -1,7 +1,7 @@
 # App Store submission kit
 
 Copy, screenshots, privacy answers, and the Mac archive steps for
-**Round Table Draft**. Current native identity is **2.0.1 (build 36)**;
+**Round Table Draft**. Current native identity is **2.0.1 (build 63)**;
 **2.0 (35)** is the version on the App Store.
 
 `release_notes.txt` holds the What's New for the version currently being
@@ -58,9 +58,9 @@ branch):
    `ios/App/App/capacitor.config.json` has no `server.url`
 3. Discard a `CapApp-SPM/Package.swift` rewrite if `cap sync` changes
    platforms to iOS 17
-4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **36** /
+4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **63** /
    iPhone only
-5. Archive and upload **2.0.1 (36)** to App Store Connect
+5. Archive and upload **2.0.1 (63)** to App Store Connect
 6. Select that build on the 2.0.1 version record, paste `release_notes.txt`
    into What's New, then submit for review
 
