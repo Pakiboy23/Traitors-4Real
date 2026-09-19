@@ -40,4 +40,34 @@ describe("sanitizeShowConfig", () => {
     const config = sanitizeShowConfig({ defaultUiVariant: "classic" });
     expect(config).not.toHaveProperty("defaultUiVariant");
   });
+
+  it("keeps draftEnabled and drops unused feature toggles", () => {
+    const config = sanitizeShowConfig({
+      featureToggles: {
+        draftEnabled: false,
+        jrLeagueEnabled: false,
+        finaleEnabled: false,
+        scoreAdjustmentsEnabled: false,
+        seasonArchivingEnabled: false,
+      },
+    });
+    expect(config.featureToggles).toEqual({ draftEnabled: false });
+    expect(config.featureToggles).not.toHaveProperty("jrLeagueEnabled");
+    expect(config.featureToggles).not.toHaveProperty("finaleEnabled");
+    expect(config.featureToggles).not.toHaveProperty("scoreAdjustmentsEnabled");
+    expect(config.featureToggles).not.toHaveProperty("seasonArchivingEnabled");
+  });
+
+  it("drops unused branding fields that are never rendered", () => {
+    const config = sanitizeShowConfig({
+      branding: {
+        logoUrl: "https://example.invalid/logo.png",
+        wordmark: "WORDMARK",
+        headerKicker: "Round Table Draft",
+      },
+    });
+    expect(config.branding).not.toHaveProperty("logoUrl");
+    expect(config.branding).not.toHaveProperty("wordmark");
+    expect(config.branding.headerKicker).toBe("Round Table Draft");
+  });
 });

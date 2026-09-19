@@ -26,10 +26,6 @@ export const DEFAULT_SHOW_CONFIG: ShowConfig = {
   },
   featureToggles: {
     draftEnabled: true,
-    jrLeagueEnabled: true,
-    finaleEnabled: true,
-    scoreAdjustmentsEnabled: true,
-    seasonArchivingEnabled: true,
   },
   castNames: [...CAST_NAMES],
 };

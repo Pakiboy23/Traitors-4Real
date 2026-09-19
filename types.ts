@@ -95,8 +95,6 @@ export const COUNCIL_LABELS = {
 } as const;
 
 export interface ShowBranding {
-  logoUrl?: string | null;
-  wordmark?: string;
   headerKicker?: string;
   appTitle?: string;
   footerCopy?: string;
@@ -113,10 +111,6 @@ export interface ShowTerminology {
 
 export interface ShowFeatureToggles {
   draftEnabled: boolean;
-  jrLeagueEnabled: boolean;
-  finaleEnabled: boolean;
-  scoreAdjustmentsEnabled: boolean;
-  seasonArchivingEnabled: boolean;
 }
 
 export interface ShowConfig {
