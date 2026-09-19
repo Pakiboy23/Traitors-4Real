@@ -86,6 +86,39 @@ export type Database = {
         }
         Relationships: []
       }
+      push_registration_events: {
+        Row: {
+          app_build: string | null
+          app_version: string | null
+          created_at: string
+          detail: Json
+          event_type: string
+          id: string
+          platform: string
+          season_id: string | null
+        }
+        Insert: {
+          app_build?: string | null
+          app_version?: string | null
+          created_at?: string
+          detail?: Json
+          event_type: string
+          id?: string
+          platform: string
+          season_id?: string | null
+        }
+        Update: {
+          app_build?: string | null
+          app_version?: string | null
+          created_at?: string
+          detail?: Json
+          event_type?: string
+          id?: string
+          platform?: string
+          season_id?: string | null
+        }
+        Relationships: []
+      }
       push_tokens: {
         Row: {
           created_at: string
