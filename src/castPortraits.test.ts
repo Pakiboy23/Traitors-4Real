@@ -48,16 +48,24 @@ describe("getCastPortraitSrc", () => {
 
 /**
  * Files in public/cast-portraits/ ship in the web bundle and the native wrapper.
- * Missing current-season portraits are fine — CastPortrait falls back to initials.
- * Last-season celebrity stills are not: they would appear as the wrong faces.
+ * Last-season celebrity stills are not allowed: they would appear as the wrong faces.
+ * Every current-season name now has a still; missing files would regress to initials.
  */
 describe("public/cast-portraits only contains current-season slugs", () => {
   const dir = path.resolve(__dirname, "../public/cast-portraits");
   const allowed = new Set(NEW_BLOOD_CAST.map((member) => slugifyCastName(member.name)));
+  const pngs = readdirSync(dir).filter((file) => file.toLowerCase().endsWith(".png"));
+  const stems = new Set(pngs.map((file) => file.replace(/\.png$/i, "")));
 
   it("rejects any PNG whose stem is not a New Blood name", () => {
-    const pngs = readdirSync(dir).filter((file) => file.toLowerCase().endsWith(".png"));
     const unexpected = pngs.filter((file) => !allowed.has(file.replace(/\.png$/i, "")));
     expect(unexpected).toEqual([]);
+  });
+
+  it("has a PNG for every New Blood cast member", () => {
+    const missing = NEW_BLOOD_CAST
+      .map((member) => slugifyCastName(member.name))
+      .filter((slug) => !stems.has(slug));
+    expect(missing).toEqual([]);
   });
 });
