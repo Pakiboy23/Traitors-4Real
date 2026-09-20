@@ -49,18 +49,14 @@ import { registerForPush } from "./src/native/push";
 import {
   fetchShowConfig,
   fetchSeasonState,
-  fetchGameState,
   listSeasons,
-  listScoreAdjustments,
   fetchPlayerPortraits,
   normalizeEmail,
   onAdminAuthChange,
-  saveGameState,
   saveSeasonState,
   signInAdmin,
   signOutAdmin,
   submitGrowthEvent,
-  subscribeToGameState,
   fetchWeeklySubmissions,
 } from "./services/supabase";
 
@@ -310,7 +306,6 @@ const App: React.FC = () => {
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
   const writeTimerRef = useRef<number | null>(null);
-  const hasRemoteSnapshotRef = useRef(false);
   // show_configs is the authority for branding and terminology, but the game
   // and season snapshots each embed their own copy, frozen whenever they were
   // last written. Those snapshots arrive on a whole-state replace, so without
@@ -319,7 +314,6 @@ const App: React.FC = () => {
   // can land first.
   const [authoritativeShowConfig, setAuthoritativeShowConfig] =
     useState<ShowConfig | null>(null);
-  const remoteExistsRef = useRef<boolean | null>(null);
 
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
@@ -385,13 +379,15 @@ const App: React.FC = () => {
 
   const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated) return;
+    // Empty-league bootstrap stays in localStorage. Remote writes go to
+    // season_states only — the games row is unused once any season exists.
+    if (!seasonShellEnabled) return;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
-    if (seasonShellEnabled && !scopedSeasonId) {
+    if (!scopedSeasonId) {
       setLastWriteError("No active season selected.");
       return;
     }
     if (
-      seasonShellEnabled &&
       !canPersistSeasonState({
         activeSeasonId: scopedSeasonId,
         loadedSeasonId,
@@ -402,13 +398,7 @@ const App: React.FC = () => {
     }
     try {
       const safeState = normalizeUndefined(gameState);
-      const record =
-        seasonShellEnabled && scopedSeasonId
-          ? await saveSeasonState(
-              scopedSeasonId,
-              safeState as GameState
-            )
-          : await saveGameState(safeState as GameState);
+      const record = await saveSeasonState(scopedSeasonId, safeState as GameState);
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
@@ -523,8 +513,6 @@ const App: React.FC = () => {
             ? sanitizeSeasonConfig(seasonState.seasonConfig, seasonId)
             : undefined);
         if (!seasonState) {
-          hasRemoteSnapshotRef.current = true;
-          remoteExistsRef.current = false;
           if (!seasonMeta) {
             lastRemoteStateRef.current = null;
             return;
@@ -548,8 +536,6 @@ const App: React.FC = () => {
           : { ...seasonState, seasonId };
         const nextState = normalizeGameState(applied);
         const serialized = JSON.stringify(nextState);
-        hasRemoteSnapshotRef.current = true;
-        remoteExistsRef.current = true;
         lastRemoteStateRef.current = serialized;
         setGameState(nextState);
         setLoadedSeasonId(seasonId);
@@ -596,36 +582,10 @@ const App: React.FC = () => {
   }, [seasonShellEnabled]);
 
   useEffect(() => {
-    const seasonId =
-      normalizeWeekId(gameState.seasonId) ??
-      normalizeWeekId(gameState.seasonConfig?.seasonId);
-    if (!seasonId) return;
-    let cancelled = false;
-    const syncAdjustments = async () => {
-      try {
-        const records = await listScoreAdjustments(seasonId);
-        if (cancelled || !Array.isArray(records)) return;
-        setGameState((prev) => {
-          const previous = Array.isArray(prev.scoreAdjustments)
-            ? prev.scoreAdjustments
-            : [];
-          if (JSON.stringify(previous) === JSON.stringify(records)) return prev;
-          return normalizeGameState({
-            ...prev,
-            scoreAdjustments: records,
-          });
-        });
-      } catch (error) {
-        logger.warn("Failed to sync score adjustments:", error);
-      }
-    };
-    void syncAdjustments();
-    return () => {
-      cancelled = true;
-    };
-  }, [gameState.seasonConfig?.seasonId, gameState.seasonId]);
-
-  useEffect(() => {
+    if (!isAdminAuthenticated) {
+      setPendingSubmissions(null);
+      return;
+    }
     let cancelled = false;
 
     const loadPendingSubmissions = async () => {
@@ -670,78 +630,15 @@ const App: React.FC = () => {
     );
   }, [authoritativeShowConfig, gameState.showConfig]);
 
-  // Remote snapshots replace the whole state, and each carries its own embedded
-  // showConfig. Keep everything else from the snapshot; take branding and
-  // terminology from show_configs when we have it.
-  const withAuthoritativeShowConfig = useCallback((remoteState: unknown) => {
-    const authoritative = authoritativeShowConfig;
-    if (!authoritative || !remoteState || typeof remoteState !== "object") {
-      return remoteState;
-    }
-    return { ...(remoteState as Record<string, unknown>), showConfig: authoritative };
-  }, [authoritativeShowConfig]);
-
   useEffect(() => {
-    if (seasonShellEnabled) return () => undefined;
-    let isMounted = true;
-    const loadRemote = async () => {
-      try {
-        const remote = await fetchGameState();
-        hasRemoteSnapshotRef.current = true;
-        remoteExistsRef.current = !!remote;
-        if (!remote || !isMounted) return;
-        const serialized = JSON.stringify(remote.state);
-        lastRemoteStateRef.current = serialized;
-        setGameState(normalizeGameState(withAuthoritativeShowConfig(remote.state)));
-        if (typeof remote.updatedAt === "number") {
-          setLastSavedAt(remote.updatedAt);
-        }
-      } catch (error) {
-        // If initial unauthenticated sync fails, try again after admin auth.
-        if (isAdminAuthenticated && !hasRemoteSnapshotRef.current) {
-          hasRemoteSnapshotRef.current = true;
-          remoteExistsRef.current = false;
-        }
-        logger.warn("Supabase sync failed:", error);
-      }
-    };
-    void loadRemote();
-    const unsubscribe = subscribeToGameState((remoteState, updatedAt) => {
-      if (!isMounted) return;
-      hasRemoteSnapshotRef.current = true;
-      remoteExistsRef.current = true;
-      const serialized = JSON.stringify(remoteState);
-      lastRemoteStateRef.current = serialized;
-      setGameState(normalizeGameState(withAuthoritativeShowConfig(remoteState)));
-      if (typeof updatedAt === "number") {
-        setLastSavedAt(updatedAt);
-      }
-    });
-    return () => {
-      isMounted = false;
-      unsubscribe?.();
-    };
-  }, [isAdminAuthenticated, seasonShellEnabled]);
-
-
-  useEffect(() => {
-    if (!isAdminAuthenticated) return undefined;
+    if (!isAdminAuthenticated || !seasonShellEnabled) return undefined;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
-    if (seasonShellEnabled && !scopedSeasonId) return undefined;
+    if (!scopedSeasonId) return undefined;
     if (
-      seasonShellEnabled &&
       !canPersistSeasonState({
         activeSeasonId: scopedSeasonId,
         loadedSeasonId,
       })
-    ) {
-      return undefined;
-    }
-    if (!seasonShellEnabled && !hasRemoteSnapshotRef.current) return undefined;
-    if (
-      !seasonShellEnabled &&
-      remoteExistsRef.current &&
-      !lastRemoteStateRef.current
     ) {
       return undefined;
     }
@@ -758,14 +655,7 @@ const App: React.FC = () => {
     writeTimerRef.current = window.setTimeout(() => {
       pendingWriteRef.current = serialized;
       const safeState = normalizeUndefined(gameState);
-      const persistPromise =
-        seasonShellEnabled && scopedSeasonId
-          ? saveSeasonState(
-              scopedSeasonId,
-              safeState as GameState
-            )
-          : saveGameState(safeState as GameState);
-      persistPromise
+      saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
           lastRemoteStateRef.current = serialized;
           pendingWriteRef.current = null;
@@ -789,6 +679,7 @@ const App: React.FC = () => {
       }
     };
   }, [activeSeasonId, gameState, isAdminAuthenticated, loadedSeasonId, seasonShellEnabled]);
+
   useEffect(() => {
     let isMounted = true;
     const hydratePortraits = async () => {
