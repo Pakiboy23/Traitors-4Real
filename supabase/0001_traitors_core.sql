@@ -36,6 +36,9 @@ as $$
   );
 $$;
 
+-- Unused by the current client. Live play is seasons + season_states.
+-- Drop public.games (policies, trigger, realtime publication) after the
+-- client that removed fetchGameState / saveGameState / subscribeToGameState ships.
 create table if not exists public.games (
   slug text primary key,
   state jsonb not null default '{}'::jsonb,

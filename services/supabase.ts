@@ -1,7 +1,6 @@
 import type {
   DraftPick,
   FinalePredictions,
-  GameState,
   PlayerEntry,
   ScoreAdjustment,
   SeasonConfig,
@@ -24,8 +23,6 @@ import { logger } from "../src/utils/logger";
 import { resetSeasonStateForClone } from "../src/utils/seasonAuthority";
 
 export { supabaseUrl };
-
-const GAME_SLUG = DEFAULT_SHOW_SLUG;
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -347,60 +344,6 @@ export const deleteScoreAdjustment = async (id: string) => {
   if (error) throw error;
 };
 
-// ── game state ────────────────────────────────────────────────────────────────
-
-export const fetchGameState = async (): Promise<{ state: GameState; updatedAt?: number } | null> => {
-  try {
-    const { data, error } = await supabase
-      .from("games")
-      .select("state, updated_at")
-      .eq("slug", GAME_SLUG)
-      .single();
-    if (error) {
-      if (isNotFound(error)) return null;
-      throw error;
-    }
-    return {
-      state: data.state as unknown as GameState,
-      updatedAt: data.updated_at ? new Date(data.updated_at).getTime() : undefined,
-    };
-  } catch (error) {
-    if (isNotFound(error as { code?: string })) return null;
-    throw error;
-  }
-};
-
-export const saveGameState = async (state: GameState): Promise<{ updated: string }> => {
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("games")
-    .upsert(
-      { slug: GAME_SLUG, state: state as unknown as Database["public"]["Tables"]["games"]["Insert"]["state"], updated_at: now },
-      { onConflict: "slug" }
-    );
-  if (error) throw error;
-  return { updated: now };
-};
-
-export const subscribeToGameState = (handler: (state: GameState, updatedAt?: number) => void) => {
-  const channel = supabase
-    .channel("game-state-changes")
-    .on(
-      "postgres_changes",
-      { event: "UPDATE", schema: "public", table: "games", filter: `slug=eq.${GAME_SLUG}` },
-      (payload) => {
-        const record = payload.new as { state?: unknown; updated_at?: string };
-        if (!record?.state) return;
-        const updatedAt = record.updated_at ? new Date(record.updated_at).getTime() : undefined;
-        handler(record.state as unknown as GameState, updatedAt);
-      }
-    )
-    .subscribe((status) => {
-      if (status === "CHANNEL_ERROR") logger.warn("Supabase game state subscription failed");
-    });
-  return () => { supabase.removeChannel(channel); };
-};
-
 // ── player portraits ──────────────────────────────────────────────────────────
 
 export const fetchPlayerPortraits = async (): Promise<Record<string, string>> => {
@@ -437,39 +380,8 @@ export const savePlayerPortrait = async (email: string, name: string, portraitUr
 const sortSubmissions = (items: SubmissionRecord[]) =>
   [...items].sort((a, b) => (b.created || "").localeCompare(a.created || ""));
 
-const isWeeklySubmissionRecord = (item: SubmissionRecord): boolean => {
-  const kind = String(item.kind ?? "").trim().toLowerCase();
-  if (kind === "weekly") return true;
-  if (kind) return false;
-  const payload = item.payload as Record<string, unknown> | undefined;
-  const bonusGames =
-    (payload?.weeklyPredictions as Record<string, unknown> | undefined)?.bonusGames ??
-    payload?.bonusGames;
-  const finalePredictions =
-    (payload?.weeklyPredictions as Record<string, unknown> | undefined)?.finalePredictions ??
-    payload?.finalePredictions;
-  const hasWeeklyFields =
-    typeof item.weeklyBanished === "string" || typeof item.weeklyMurdered === "string";
-  const hasWeeklyPayload =
-    typeof (payload?.weeklyPredictions as Record<string, unknown> | undefined)?.nextBanished === "string" ||
-    typeof (payload?.weeklyPredictions as Record<string, unknown> | undefined)?.nextMurdered === "string";
-  const bg = bonusGames as Record<string, unknown> | undefined;
-  const hasBonusPayload =
-    typeof bg?.redemptionRoulette === "string" ||
-    typeof bg?.shieldGambit === "string" ||
-    Array.isArray(bg?.traitorTrio) ||
-    typeof bg?.doubleOrNothing === "boolean";
-  const fp = finalePredictions as Record<string, unknown> | undefined;
-  const hasFinalePayload =
-    typeof fp?.finalWinner === "string" ||
-    typeof fp?.lastFaithfulStanding === "string" ||
-    typeof fp?.lastTraitorStanding === "string" ||
-    typeof fp?.finalPotEstimate === "number";
-  return hasWeeklyFields || hasWeeklyPayload || hasBonusPayload || hasFinalePayload;
-};
-
 const normalizeWeeklySubmissions = (items: SubmissionRecord[]): SubmissionRecord[] =>
-  sortSubmissions(items.filter((item) => Boolean(item) && isWeeklySubmissionRecord(item)));
+  sortSubmissions(items.filter((item) => item?.kind === "weekly"));
 
 export const fetchWeeklySubmissions = async (input?: {
   seasonId?: string | null;
