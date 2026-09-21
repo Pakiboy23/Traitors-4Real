@@ -45,5 +45,8 @@ backups/
 # Claude Code session memory (local only)
 /MEMORY.md
 
+# Supabase CLI cache (project-ref, versions, pooler URL)
+supabase/.temp/
+
 # Next.js generated — regenerates differently after `next dev` vs `next build`
 next-env.d.ts

@@ -17,9 +17,8 @@ const clientFiles = () =>
   );
 
 /**
- * Live play is seasons + season_states. The games jsonb row is leftover
- * persistence: production always has a season, so fetchGameState / saveGameState
- * / subscribeToGameState never ran. The table stays until that client ships.
+ * Live play is seasons + season_states. #176 deleted the client helpers.
+ * 0004 drops the leftover table; this scan keeps the client path from returning.
  */
 describe("the unused games persistence path stays deleted", () => {
   it("does not fetch, save, or subscribe to public.games from the client", () => {
@@ -31,5 +30,25 @@ describe("the unused games persistence path stays deleted", () => {
     });
 
     expect(offenders).toEqual([]);
+  });
+
+  it("drops public.games in a forward migration instead of rewriting 0001", () => {
+    const sqlDir = path.join(repoRoot, "supabase");
+    const files = readdirSync(sqlDir).filter((name) => name.endsWith(".sql"));
+    expect(files).toContain("0001_traitors_core.sql");
+
+    const drop = /drop table if exists public\.games/i;
+    const forwardDrops = files.filter(
+      (name) =>
+        name !== "0001_traitors_core.sql" &&
+        drop.test(readFileSync(path.join(sqlDir, name), "utf8"))
+    );
+
+    expect(forwardDrops.length).toBeGreaterThan(0);
+  });
+
+  it("does not keep a games table in generated Database types", () => {
+    const source = readFileSync(path.join(repoRoot, "src/types/database.ts"), "utf8");
+    expect(source).not.toMatch(/^\s+games:\s*\{/m);
   });
 });

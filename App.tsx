@@ -380,7 +380,7 @@ const App: React.FC = () => {
   const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated) return;
     // Empty-league bootstrap stays in localStorage. Remote writes go to
-    // season_states only — the games row is unused once any season exists.
+    // season_states.
     if (!seasonShellEnabled) return;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
     if (!scopedSeasonId) {
