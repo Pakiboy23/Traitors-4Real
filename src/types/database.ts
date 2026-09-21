@@ -38,33 +38,11 @@ export type Database = {
         }
         Relationships: []
       }
-      games: {
-        Row: {
-          created_at: string
-          slug: string
-          state: Json
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          slug: string
-          state?: Json
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          slug?: string
-          state?: Json
-          updated_at?: string
-        }
-        Relationships: []
-      }
       player_portraits: {
         Row: {
           created_at: string
           email: string
           name: string | null
-          portrait_path: string | null
           portrait_url: string | null
           updated_at: string
         }
@@ -72,7 +50,6 @@ export type Database = {
           created_at?: string
           email: string
           name?: string | null
-          portrait_path?: string | null
           portrait_url?: string | null
           updated_at?: string
         }
@@ -80,7 +57,6 @@ export type Database = {
           created_at?: string
           email?: string
           name?: string | null
-          portrait_path?: string | null
           portrait_url?: string | null
           updated_at?: string
         }
