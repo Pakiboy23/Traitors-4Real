@@ -48,7 +48,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="premium-ui">{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

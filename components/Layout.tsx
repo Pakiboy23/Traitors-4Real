@@ -191,7 +191,7 @@ const Layout: React.FC<LayoutProps> = ({
           </motion.div>
         </motion.header>
 
-        <motion.main className="premium-main-shell animate-page-in" variants={sectionStaggerVariants}>
+        <motion.main className="premium-main-shell" variants={sectionStaggerVariants}>
           <div className="page-shell">{children}</div>
         </motion.main>
 
