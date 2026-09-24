@@ -32,6 +32,8 @@ interface RequestBody {
   title?: string;
   body?: string;
   dryRun?: boolean;
+  /** "all" sends to every registered iPhone. Omitted or "season" stays on one season. */
+  audience?: "season" | "all";
 }
 
 const json = (status: number, payload: unknown) =>
@@ -125,7 +127,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let query = supabase.from("push_tokens").select("token, platform");
-  if (seasonId) query = query.eq("season_id", seasonId);
+  if (payload.audience !== "all" && seasonId) query = query.eq("season_id", seasonId);
   const { data: tokens, error } = await query;
 
   if (error) {
@@ -140,10 +142,13 @@ Deno.serve(async (req: Request) => {
     payload.body ?? "Get your banishment and murder calls in before the lock.";
   const audience = (tokens ?? []).filter((row) => row.platform === "ios");
 
+  const scope = payload.audience === "all" ? "all" : "season";
+
   if (payload.dryRun) {
     return json(200, {
       dryRun: true,
       seasonId,
+      scope,
       audience: audience.length,
       notification: { title, body },
     });

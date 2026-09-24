@@ -22,6 +22,10 @@ describe("send-lock-reminder live-send guard", () => {
     expect(productionGuard).toBeGreaterThan(dryRun);
     expect(sendLoop).toBeGreaterThan(productionGuard);
   });
+
+  it("sends to every registered phone only when audience is all", () => {
+    expect(reminder).toMatch(/payload\.audience !== "all"/);
+  });
 });
 
 describe("CastPicker collapsed trigger", () => {
