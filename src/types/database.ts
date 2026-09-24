@@ -122,6 +122,32 @@ export type Database = {
         }
         Relationships: []
       }
+      season_state_emails: {
+        Row: {
+          emails: Json
+          season_id: string
+          updated_at: string
+        }
+        Insert: {
+          emails?: Json
+          season_id: string
+          updated_at?: string
+        }
+        Update: {
+          emails?: Json
+          season_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_state_emails_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: true
+            referencedRelation: "seasons"
+            referencedColumns: ["season_id"]
+          },
+        ]
+      }
       score_adjustments: {
         Row: {
           created_at: string
@@ -308,7 +334,31 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      player_portraits_public: {
+        Row: {
+          name: string | null
+          portrait_url: string | null
+          updated_at: string
+        }
+        Relationships: []
+      }
+      season_states_public: {
+        Row: {
+          created_at: string
+          season_id: string
+          state: Json
+          updated_at: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "season_states_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: true
+            referencedRelation: "seasons"
+            referencedColumns: ["season_id"]
+          },
+        ]
+      }
     }
     Functions: {
       is_traitors_admin: { Args: never; Returns: boolean }

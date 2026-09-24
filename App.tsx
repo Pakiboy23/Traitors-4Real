@@ -46,9 +46,11 @@ import {
   resolveCastNames,
 } from "./src/utils/castProfiles";
 import { registerForPush } from "./src/native/push";
+import { publicPortraitKey, redactPublicSeasonState } from "./src/utils/publicRedaction";
 import {
   fetchShowConfig,
   fetchSeasonState,
+  fetchAdminSeasonState,
   listSeasons,
   fetchPlayerPortraits,
   normalizeEmail,
@@ -293,6 +295,10 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  // Public season JSON has no emails. Autosave stays off until the admin
+  // read has merged season_state_emails back in, so a redacted board cannot
+  // be written over the archive.
+  const [adminSeasonReady, setAdminSeasonReady] = useState(false);
   const [adminAuthError, setAdminAuthError] = useState<string | null>(null);
   const confirmedAdminUserIdRef = useRef<string | null>(null);
   const [adminAuthPending, setAdminAuthPending] = useState(false);
@@ -318,7 +324,9 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return normalizeGameState(JSON.parse(saved));
+      if (saved) {
+        return redactPublicSeasonState(normalizeGameState(JSON.parse(saved)));
+      }
     } catch {
       // ignore corrupted localStorage
     }
@@ -378,7 +386,7 @@ const App: React.FC = () => {
   };
 
   const saveNow = useCallback(async () => {
-    if (!isAdminAuthenticated) return;
+    if (!isAdminAuthenticated || !adminSeasonReady) return;
     // Empty-league bootstrap stays in localStorage. Remote writes go to
     // season_states.
     if (!seasonShellEnabled) return;
@@ -410,10 +418,20 @@ const App: React.FC = () => {
       );
       logger.warn("Manual save failed:", error);
     }
-  }, [activeSeasonId, gameState, isAdminAuthenticated, loadedSeasonId, seasonShellEnabled]);
+  }, [
+    activeSeasonId,
+    adminSeasonReady,
+    gameState,
+    isAdminAuthenticated,
+    loadedSeasonId,
+    seasonShellEnabled,
+  ]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(redactPublicSeasonState(gameState))
+    );
   }, [gameState]);
 
   useEffect(() => {
@@ -428,6 +446,10 @@ const App: React.FC = () => {
       // always replace it.
       if (result.status === "query_error" || result.status === "admin") {
         setAdminAuthError(next.authError);
+      }
+      const wasAdmin = confirmedAdminUserIdRef.current !== null;
+      if (!next.isAuthenticated || !wasAdmin) {
+        setAdminSeasonReady(false);
       }
       confirmedAdminUserIdRef.current = next.confirmedUserId;
       setIsAdminAuthenticated(next.isAuthenticated);
@@ -504,8 +526,11 @@ const App: React.FC = () => {
     localStorage.setItem("traitors_active_season", seasonId);
     let cancelled = false;
     const loadSeasonState = async () => {
+      if (isAdminAuthenticated) setAdminSeasonReady(false);
       try {
-        const seasonState = await fetchSeasonState(seasonId);
+        const seasonState = isAdminAuthenticated
+          ? await fetchAdminSeasonState(seasonId)
+          : await fetchSeasonState(seasonId);
         if (cancelled) return;
         const seasonMeta =
           seasons.find((season) => season.seasonId === seasonId) ||
@@ -522,9 +547,13 @@ const App: React.FC = () => {
           const empty = normalizeGameState(
             isolateSeasonGameplay({ players: [] }, seasonMeta, rosterForSeason(seasonId))
           );
-          lastRemoteStateRef.current = JSON.stringify(empty);
-          setGameState(empty);
+          const nextEmpty = isAdminAuthenticated
+            ? empty
+            : redactPublicSeasonState(empty);
+          lastRemoteStateRef.current = JSON.stringify(nextEmpty);
+          setGameState(nextEmpty);
           setLoadedSeasonId(seasonId);
+          if (isAdminAuthenticated) setAdminSeasonReady(true);
           return;
         }
         const roster = rosterForSeason(
@@ -534,11 +563,15 @@ const App: React.FC = () => {
         const applied = seasonMeta
           ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
           : { ...seasonState, seasonId };
-        const nextState = normalizeGameState(applied);
+        const normalized = normalizeGameState(applied);
+        const nextState = isAdminAuthenticated
+          ? normalized
+          : redactPublicSeasonState(normalized);
         const serialized = JSON.stringify(nextState);
         lastRemoteStateRef.current = serialized;
         setGameState(nextState);
         setLoadedSeasonId(seasonId);
+        if (isAdminAuthenticated) setAdminSeasonReady(true);
       } catch (error) {
         logger.warn("Failed to load season state:", error);
       }
@@ -547,7 +580,7 @@ const App: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [activeSeasonId, seasonShellEnabled, seasons]);
+  }, [activeSeasonId, isAdminAuthenticated, seasonShellEnabled, seasons]);
 
   useEffect(() => {
     if (!seasonShellEnabled || seasons.length === 0) return;
@@ -631,7 +664,7 @@ const App: React.FC = () => {
   }, [authoritativeShowConfig, gameState.showConfig]);
 
   useEffect(() => {
-    if (!isAdminAuthenticated || !seasonShellEnabled) return undefined;
+    if (!isAdminAuthenticated || !adminSeasonReady || !seasonShellEnabled) return undefined;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
     if (!scopedSeasonId) return undefined;
     if (
@@ -678,7 +711,14 @@ const App: React.FC = () => {
         window.clearTimeout(writeTimerRef.current);
       }
     };
-  }, [activeSeasonId, gameState, isAdminAuthenticated, loadedSeasonId, seasonShellEnabled]);
+  }, [
+    activeSeasonId,
+    adminSeasonReady,
+    gameState,
+    isAdminAuthenticated,
+    loadedSeasonId,
+    seasonShellEnabled,
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -688,8 +728,8 @@ const App: React.FC = () => {
         if (!isMounted || Object.keys(portraits).length === 0) return;
         setGameState((prev) => {
           const updatedPlayers = prev.players.map((player) => {
-            const key = normalizeEmail(player.email || "");
-            const portraitUrl = portraits[key];
+            const key = publicPortraitKey(player.name || "");
+            const portraitUrl = key ? portraits[key] : undefined;
             return portraitUrl ? { ...player, portraitUrl } : player;
           });
           return { ...prev, players: updatedPlayers };

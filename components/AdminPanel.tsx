@@ -30,7 +30,7 @@ import {
   createScoreAdjustment,
   deleteScoreAdjustment,
   deleteSubmission,
-  fetchSeasonState,
+  fetchAdminSeasonState,
   fetchWeeklySubmissions,
   fetchDraftSubmissions,
   draftSubmissionToPlayerEntry,
@@ -1683,7 +1683,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleLoadSeason = async (seasonId: string) => {
     try {
-      const seasonState = await fetchSeasonState(seasonId);
+      const seasonState = await fetchAdminSeasonState(seasonId);
       if (!seasonState) {
         setMsg({ text: "No saved state found for this season.", type: "error" });
         return;
