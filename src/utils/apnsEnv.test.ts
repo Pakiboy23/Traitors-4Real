@@ -26,6 +26,11 @@ describe("send-lock-reminder live-send guard", () => {
   it("sends to every registered phone only when audience is all", () => {
     expect(reminder).toMatch(/payload\.audience !== "all"/);
   });
+
+  it("answers the browser preflight so the admin tab can call it", () => {
+    expect(reminder).toMatch(/req\.method === "OPTIONS"/);
+    expect(reminder).toMatch(/Access-Control-Allow-Origin/);
+  });
 });
 
 describe("CastPicker collapsed trigger", () => {
