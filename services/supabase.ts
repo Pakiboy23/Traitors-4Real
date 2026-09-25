@@ -8,7 +8,7 @@ import type {
   ShowConfig,
   SubmissionStatus,
 } from "../types";
-import { normalizeWeekId } from "../types";
+import { normalizeWeekId, resolveActiveWeekId } from "../types";
 import { supabase, supabaseUrl } from "../src/lib/supabase";
 import type { Database } from "../src/types/database";
 import { DEFAULT_SHOW_SLUG } from "../src/config/defaultShowConfig";
@@ -257,14 +257,15 @@ export const saveSeasonState = async (seasonId: string, state: SeasonState): Pro
     { onConflict: "season_id" }
   );
   if (error) throw error;
-  // Keep the seasons row in lockstep so the next load's overlay matches
-  // what admin just saved. The row is Home's lifecycle authority.
-  if (state.finaleConfig) {
-    try {
-      await updateSeason(seasonId, { finaleConfig: state.finaleConfig });
-    } catch (syncError) {
-      logger.warn("Failed to sync season finaleConfig:", syncError);
-    }
+  // The snapshot week is the running week. Copy it onto the seasons row
+  // (and finale config, which the row already owns) so the two cannot drift.
+  try {
+    await updateSeason(seasonId, {
+      activeWeekId: resolveActiveWeekId(state),
+      ...(state.finaleConfig ? { finaleConfig: state.finaleConfig } : {}),
+    });
+  } catch (syncError) {
+    logger.warn("Failed to sync season row from snapshot:", syncError);
   }
   return { updated: now };
 };

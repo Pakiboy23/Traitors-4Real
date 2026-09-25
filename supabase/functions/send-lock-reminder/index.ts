@@ -34,7 +34,38 @@ interface RequestBody {
   dryRun?: boolean;
   /** "all" sends to every registered iPhone. Omitted or "season" stays on one season. */
   audience?: "season" | "all";
+  /**
+   * Optional tap target. Only an https recap URL on the public site is
+   * forwarded, so this endpoint cannot be used to push an arbitrary link.
+   * The Admin Notifications form sends it on the same request as title and body.
+   * Example:
+   * {"title":"Week 2 recap","body":"Standings are up.","url":"https://traitorsfantasydraft.online/recap/traitors-new-blood-s1/week-2","dryRun":true}
+   */
+  url?: string;
 }
+
+const RECAP_HOSTS = new Set([
+  "traitorsfantasydraft.online",
+  "www.traitorsfantasydraft.online",
+]);
+
+/** Keep in step with sanitizePushDeepLink in src/utils/pushDeepLink.ts. */
+const sanitizeDeepLink = (input: unknown): string | null => {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (!RECAP_HOSTS.has(url.hostname)) return null;
+  if (!url.pathname.startsWith("/recap/")) return null;
+  url.hash = "";
+  return url.toString();
+};
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -151,6 +182,13 @@ Deno.serve(async (req: Request) => {
   const body =
     payload.body ?? "Get your banishment and murder calls in before the lock.";
   const audience = (tokens ?? []).filter((row) => row.platform === "ios");
+  const suppliedUrl = typeof payload.url === "string" ? payload.url.trim() : "";
+  const deepLink = suppliedUrl ? sanitizeDeepLink(suppliedUrl) : null;
+  if (suppliedUrl && !deepLink) {
+    return json(400, {
+      error: "url must be an https recap link on traitorsfantasydraft.online.",
+    });
+  }
 
   const scope = payload.audience === "all" ? "all" : "season";
 
@@ -160,7 +198,11 @@ Deno.serve(async (req: Request) => {
       seasonId,
       scope,
       audience: audience.length,
-      notification: { title, body },
+      notification: {
+        title,
+        body,
+        ...(deepLink ? { url: deepLink } : {}),
+      },
     });
   }
 
@@ -216,6 +258,7 @@ Deno.serve(async (req: Request) => {
       "interruption-level": "time-sensitive",
     },
     seasonId,
+    ...(deepLink ? { url: deepLink } : {}),
   });
 
   const stale: string[] = [];

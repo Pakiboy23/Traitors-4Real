@@ -1,6 +1,10 @@
 import React from "react";
 import { PlayerEntry } from "../../types";
 import CastPortrait from "../CastPortrait";
+import {
+  duplicateReasonLabel,
+  findLikelyDuplicatePlayers,
+} from "../../src/utils/duplicatePlayers";
 import { InlineEditMap } from "./types";
 
 interface RosterSectionProps {
@@ -25,6 +29,7 @@ interface RosterSectionProps {
   ) => void;
   saveInlineEdit: (player: PlayerEntry) => void;
   onDeletePlayer: (playerId: string) => void;
+  onMergeDuplicate: (keepId: string, dropId: string) => void;
   banishedOptions: string[];
   murderOptions: string[];
   pasteContent: string;
@@ -62,6 +67,7 @@ const RosterSection: React.FC<RosterSectionProps> = ({
   updateInlineEdit,
   saveInlineEdit,
   onDeletePlayer,
+  onMergeDuplicate,
   banishedOptions,
   murderOptions,
   pasteContent,
@@ -80,6 +86,10 @@ const RosterSection: React.FC<RosterSectionProps> = ({
   onOpenPlayerAvatarPrompt,
   castStatus,
 }) => {
+  const duplicateFlags = findLikelyDuplicatePlayers(players);
+  const flaggedIds = new Set(
+    duplicateFlags.flatMap((flag) => [flag.playerId, flag.otherPlayerId])
+  );
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] gap-5">
       <section className="soft-card rounded-3xl p-5 md:p-6 space-y-5">
@@ -87,6 +97,41 @@ const RosterSection: React.FC<RosterSectionProps> = ({
           <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">League Directory</p>
           <h3 className="headline text-2xl">Player roster</h3>
         </div>
+
+        {duplicateFlags.length > 0 ? (
+          <div className="duplicate-banner">
+            <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--warning)]">
+              Possible duplicates
+            </p>
+            <p className="text-sm text-[color:var(--text-muted)] mt-1">
+              Same or similar names on separate rows. Nothing is merged until you choose which row to keep.
+            </p>
+            {duplicateFlags.map((flag) => (
+              <div key={`${flag.playerId}-${flag.otherPlayerId}`} className="duplicate-pair">
+                <p className="text-sm font-semibold text-[color:var(--text)]">
+                  {flag.playerName} and {flag.otherName}
+                </p>
+                <p className="text-xs text-[color:var(--text-muted)]">{duplicateReasonLabel(flag.reason)}</p>
+                <div className="duplicate-actions">
+                  <button
+                    type="button"
+                    className="btn-secondary px-3 text-[10px]"
+                    onClick={() => onMergeDuplicate(flag.playerId, flag.otherPlayerId)}
+                  >
+                    Keep {flag.playerName}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary px-3 text-[10px]"
+                    onClick={() => onMergeDuplicate(flag.otherPlayerId, flag.playerId)}
+                  >
+                    Keep {flag.otherName}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
 
         <div className="space-y-2 max-h-[440px] overflow-y-auto pr-1">
           {players.map((player) => {
@@ -113,6 +158,11 @@ const RosterSection: React.FC<RosterSectionProps> = ({
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-[color:var(--text)] truncate">{player.name}</p>
                         <p className="text-xs text-[color:var(--text-muted)] truncate">{player.email || "No email"}</p>
+                        {flaggedIds.has(player.id) ? (
+                          <p className="text-[10px] uppercase tracking-[0.12em] text-[color:var(--warning)]">
+                            Possible duplicate
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                     <button

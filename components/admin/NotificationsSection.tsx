@@ -15,6 +15,7 @@ interface Preview {
   seasonId: string | null;
   title: string;
   body: string;
+  url?: string;
 }
 
 interface SendResult {
@@ -35,16 +36,17 @@ const errorMessage = (error: unknown, payload: unknown): string => {
   return "The notification could not be sent.";
 };
 
-const NotificationsSection: React.FC = () => {
+const NotificationsSection: React.FC<{ suggestedUrl?: string }> = ({ suggestedUrl }) => {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [url, setUrl] = useState("");
   const [audience, setAudience] = useState<PushAudience>("all");
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<SendResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<"preview" | "send" | null>(null);
 
-  const draft: PushDraft = { title, body, audience };
+  const draft: PushDraft = { title, body, audience, url };
   const draftKey = pushDraftKey(draft);
   const previewMatches = preview?.key === draftKey;
 
@@ -66,7 +68,11 @@ const NotificationsSection: React.FC = () => {
     setResult(null);
     try {
       const data = await invoke(true);
-      const notification = (data.notification ?? {}) as { title?: string; body?: string };
+      const notification = (data.notification ?? {}) as {
+        title?: string;
+        body?: string;
+        url?: string;
+      };
       setPreview({
         key: draftKey,
         audience: readCount(data.audience),
@@ -74,6 +80,7 @@ const NotificationsSection: React.FC = () => {
         seasonId: typeof data.seasonId === "string" ? data.seasonId : null,
         title: notification.title ?? title.trim(),
         body: notification.body ?? body.trim(),
+        url: typeof notification.url === "string" ? notification.url : undefined,
       });
     } catch (cause) {
       setPreview(null);
@@ -110,6 +117,7 @@ const NotificationsSection: React.FC = () => {
         <h3 className="headline text-2xl">Send a notification</h3>
         <p className="text-sm text-[color:var(--text-muted)]">
           Writes the lock-screen title and message, previews who would get it, then sends.
+          A recap link opens that page when the phone is on a build that handles it.
           {!supabaseUrl ? " Supabase is not configured in this build." : ""}
         </p>
       </div>
@@ -131,6 +139,21 @@ const NotificationsSection: React.FC = () => {
           onChange={(event) => setBody(event.target.value)}
         />
       </label>
+      <PremiumField
+        label="Opens this link"
+        value={url}
+        placeholder="https://traitorsfantasydraft.online/recap/…"
+        onChange={(event) => setUrl(event.target.value)}
+      />
+      {suggestedUrl && url.trim() !== suggestedUrl ? (
+        <button
+          type="button"
+          className="text-sm font-semibold text-[color:var(--accent-strong)]"
+          onClick={() => setUrl(suggestedUrl)}
+        >
+          Use this week's recap link
+        </button>
+      ) : null}
       <label className="premium-field-wrap">
         <span className="premium-field-label">Who receives it</span>
         <select
@@ -171,6 +194,7 @@ const NotificationsSection: React.FC = () => {
           {preview.audience}{" "}
           {preview.audience === 1 ? "phone would get" : "phones would get"} “{preview.title}” —{" "}
           {preview.body}
+          {preview.url ? ` Opens ${preview.url}.` : ""}
           {preview.scope === "season" && preview.seasonId
             ? ` Season ${preview.seasonId}.`
             : ""}

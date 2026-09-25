@@ -168,9 +168,11 @@ Reminders are sent by the `send-lock-reminder` Edge Function. It resolves the
 live season, collects that season's iOS tokens, sends through APNs, and prunes
 tokens Apple reports as gone. The same call sends any ad hoc message: pass
 `title` and `body`. `"audience":"all"` reaches every registered iPhone, including
-devices still stored under an older season id. Signed-in admins can do this
-from the Admin tab's Notifications section; Preview checks the audience before
-Send.
+devices still stored under an older season id. An optional `url` must be an
+https recap link on `traitorsfantasydraft.online`; tapping the notification
+opens that page on a build that handles it. Signed-in admins set the title,
+message, link, and audience from the Admin tab's Notifications section; Preview
+checks the audience before Send.
 
 ```bash
 # Resolve the audience and render the message without contacting Apple.
