@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Countdown and admin code fields use Tailwind's font-mono utility. Point it at
+   the self-hosted IBM Plex Mono face instead of the system mono stack. */
+@theme {
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
 
 @tailwind base;
 @tailwind components;
@@ -72,7 +77,7 @@ body {
     radial-gradient(940px 580px at 48% 120%, rgba(87, 52, 39, 0.34), transparent 76%),
     linear-gradient(160deg, #040408 0%, #090b13 46%, #111627 100%);
   color: var(--text);
-  font-family: "IBM Plex Sans", "Manrope", "Avenir Next", sans-serif;
+  font-family: var(--font-plex-sans), var(--font-manrope), "Avenir Next", sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -88,7 +93,7 @@ body {
   }
 
   .headline {
-    font-family: "Fraunces", serif;
+    font-family: var(--font-fraunces), serif;
     letter-spacing: 0.02em;
     color: var(--text);
   }
@@ -1090,7 +1095,7 @@ select.premium-input-table,
 
 .premium-overview-title {
   margin: 0;
-  font-family: "Fraunces", "IBM Plex Sans", serif;
+  font-family: var(--font-fraunces), var(--font-plex-sans), serif;
   font-size: clamp(1.46rem, 3.2vw, 2.34rem);
   line-height: 1.03;
   letter-spacing: 0.01em;
