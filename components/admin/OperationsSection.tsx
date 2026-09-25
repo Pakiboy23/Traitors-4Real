@@ -197,6 +197,7 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
               <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Recap</p>
               <p className="text-sm text-[color:var(--text-muted)] mt-1">
                 Public page for {recapWeekId}. It stays hidden until you publish it.
+                Send the link from Notifications.
               </p>
             </div>
             <span

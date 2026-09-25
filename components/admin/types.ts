@@ -5,7 +5,8 @@ export type AdminSection =
   | "submissions"
   | "roster"
   | "cast"
-  | "database";
+  | "database"
+  | "notifications";
 
 export interface AdminSectionTab {
   id: AdminSection;

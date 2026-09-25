@@ -240,7 +240,7 @@ describe("weekly recap records", () => {
 
 describe("published_weekly_recap migration", () => {
   const sql = readFileSync(
-    path.resolve(__dirname, "../../supabase/0005_published_weekly_recap.sql"),
+    path.resolve(__dirname, "../../supabase/0006_published_weekly_recap.sql"),
     "utf8"
   );
 

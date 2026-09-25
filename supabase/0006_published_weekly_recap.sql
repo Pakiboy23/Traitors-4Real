@@ -12,8 +12,9 @@
 -- otherwise falls back to the existing season_states read and strips the
 -- public projection before HTML.
 --
--- Apply in the Supabase SQL Editor or with the Supabase CLI.
--- Do not apply from this pull request.
+-- Numbered 0006 so it does not collide with the open email-redaction
+-- migration (0005_redact_public_emails.sql). Apply in the Supabase SQL
+-- Editor or with the Supabase CLI. Do not apply from this pull request.
 
 begin;
 

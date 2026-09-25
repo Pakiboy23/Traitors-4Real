@@ -32,11 +32,14 @@ interface RequestBody {
   title?: string;
   body?: string;
   dryRun?: boolean;
+  /** "all" sends to every registered iPhone. Omitted or "season" stays on one season. */
+  audience?: "season" | "all";
   /**
    * Optional tap target. Only an https recap URL on the public site is
    * forwarded, so this endpoint cannot be used to push an arbitrary link.
+   * The Admin Notifications form sends it on the same request as title and body.
    * Example:
-   * {"title":"Week 2 recap","body":"Standings are up.","url":"https://traitorsfantasydraft.online/recap/traitors-new-blood-s1/week-2"}
+   * {"title":"Week 2 recap","body":"Standings are up.","url":"https://traitorsfantasydraft.online/recap/traitors-new-blood-s1/week-2","dryRun":true}
    */
   url?: string;
 }
@@ -64,10 +67,16 @@ const sanitizeDeepLink = (input: unknown): string | null => {
   return url.toString();
 };
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload, null, 2), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
 const base64url = (bytes: Uint8Array) =>
@@ -125,6 +134,10 @@ const buildProviderToken = async (
 };
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return json(405, { error: "Use POST." });
   }
@@ -155,7 +168,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let query = supabase.from("push_tokens").select("token, platform");
-  if (seasonId) query = query.eq("season_id", seasonId);
+  if (payload.audience !== "all" && seasonId) query = query.eq("season_id", seasonId);
   const { data: tokens, error } = await query;
 
   if (error) {
@@ -177,10 +190,13 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  const scope = payload.audience === "all" ? "all" : "season";
+
   if (payload.dryRun) {
     return json(200, {
       dryRun: true,
       seasonId,
+      scope,
       audience: audience.length,
       notification: {
         title,

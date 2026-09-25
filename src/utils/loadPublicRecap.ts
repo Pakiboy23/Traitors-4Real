@@ -59,7 +59,10 @@ const fromRpcPayload = (
  * returns nothing useful until the week is published, and it is not granted
  * to anon. Until the migration is applied, or when the server key is unset,
  * falls back to season_states and strips the public projection in
- * buildPublicWeeklyRecap before anything is rendered.
+ * buildPublicWeeklyRecap before anything is rendered. That projection drops
+ * every email, pick, and prediction whether or not the row still stores them.
+ * Draft #183 moves the email strip into the database; this page does not
+ * wait on that view.
  */
 export const loadPublicWeeklyRecap = async (
   seasonId: string,

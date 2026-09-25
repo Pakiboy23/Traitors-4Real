@@ -67,6 +67,7 @@ import SubmissionsSection from './admin/SubmissionsSection';
 import RosterSection from './admin/RosterSection';
 import CastSection from './admin/CastSection';
 import DatabaseSection from './admin/DatabaseSection';
+import NotificationsSection from './admin/NotificationsSection';
 import { AdminSection, AdminSectionTab, InlineEditMap } from './admin/types';
 
 const withFinaleConfig = (prevState: GameState, finaleConfig: FinaleConfig): GameState => ({
@@ -1983,6 +1984,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: "roster", label: "Roster", summary: "Players, edits, and manual intake" },
     { id: "cast", label: "Cast", summary: "Status and portrait controls" },
     { id: "database", label: "Database", summary: "Backups and raw JSON tools" },
+    { id: "notifications", label: "Notifications", summary: "Ad hoc push to registered phones" },
   ];
 
   const saveStatus = lastWriteError
@@ -2666,8 +2668,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return renderCastSection();
       case "database":
         return renderDatabaseSection();
-      default:
-        return null;
+      case "notifications":
+        return (
+          <NotificationsSection
+            suggestedUrl={publicRecapUrl(
+              gameState.seasonId || gameState.seasonConfig?.seasonId || "season",
+              normalizeWeekId(gameState.weeklyResults?.weekId) ?? inferActiveWeekId(gameState)
+            )}
+          />
+        );
+      default: {
+        const unhandled: never = activeSection;
+        return unhandled;
+      }
     }
   };
 
