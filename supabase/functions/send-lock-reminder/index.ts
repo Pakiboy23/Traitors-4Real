@@ -32,12 +32,20 @@ interface RequestBody {
   title?: string;
   body?: string;
   dryRun?: boolean;
+  /** "all" sends to every registered iPhone. Omitted or "season" stays on one season. */
+  audience?: "season" | "all";
 }
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload, null, 2), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
 const base64url = (bytes: Uint8Array) =>
@@ -95,6 +103,10 @@ const buildProviderToken = async (
 };
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return json(405, { error: "Use POST." });
   }
@@ -125,7 +137,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let query = supabase.from("push_tokens").select("token, platform");
-  if (seasonId) query = query.eq("season_id", seasonId);
+  if (payload.audience !== "all" && seasonId) query = query.eq("season_id", seasonId);
   const { data: tokens, error } = await query;
 
   if (error) {
@@ -140,10 +152,13 @@ Deno.serve(async (req: Request) => {
     payload.body ?? "Get your banishment and murder calls in before the lock.";
   const audience = (tokens ?? []).filter((row) => row.platform === "ios");
 
+  const scope = payload.audience === "all" ? "all" : "season";
+
   if (payload.dryRun) {
     return json(200, {
       dryRun: true,
       seasonId,
+      scope,
       audience: audience.length,
       notification: { title, body },
     });
