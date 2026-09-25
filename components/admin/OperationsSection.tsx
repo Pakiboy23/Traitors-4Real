@@ -43,6 +43,13 @@ interface OperationsSectionProps {
     name: string;
     score: number;
   } | null;
+  recapWeekId: string;
+  recapIntro: string;
+  recapPublished: boolean;
+  recapUrl: string;
+  onRecapIntroChange: (value: string) => void;
+  onPublishRecap: () => void;
+  onUnpublishRecap: () => void;
 }
 
 const OperationsSection: React.FC<OperationsSectionProps> = ({
@@ -68,6 +75,13 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
   onToggleShowAllScoreHistory,
   onArchiveWeeklyScores,
   getScoreTopper,
+  recapWeekId,
+  recapIntro,
+  recapPublished,
+  recapUrl,
+  onRecapIntroChange,
+  onPublishRecap,
+  onUnpublishRecap,
 }) => {
   const toLocalDateTimeValue = (value: string) => {
     const parsed = Date.parse(value);
@@ -174,6 +188,47 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
                 ))}
               </select>
             </div>
+          </div>
+        </div>
+
+        <div className="soft-card soft-card-subtle rounded-2xl p-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Recap</p>
+              <p className="text-sm text-[color:var(--text-muted)] mt-1">
+                Public page for {recapWeekId}. It stays hidden until you publish it.
+              </p>
+            </div>
+            <span
+              className={`px-3 py-1 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
+                recapPublished ? "bg-[color:var(--accent)] text-black" : "btn-secondary"
+              }`}
+            >
+              {recapPublished ? "Published" : "Not published"}
+            </span>
+          </div>
+          <div>
+            <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+              Intro
+            </label>
+            <textarea
+              value={recapIntro}
+              onChange={(event) => onRecapIntroChange(event.target.value)}
+              className="field-soft w-full h-28 p-3 text-sm"
+              placeholder="A short note for the group chat."
+            />
+          </div>
+          <p className="text-xs break-all text-[color:var(--text-muted)]">{recapUrl}</p>
+          <div className="flex flex-wrap gap-2">
+            {recapPublished ? (
+              <button type="button" onClick={onUnpublishRecap} className="btn-secondary px-4 text-[11px]">
+                Unpublish
+              </button>
+            ) : (
+              <button type="button" onClick={onPublishRecap} className="btn-primary px-4 text-[11px]">
+                Publish
+              </button>
+            )}
           </div>
         </div>
 

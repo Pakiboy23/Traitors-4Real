@@ -15,6 +15,12 @@ import {
   getFinaleTieBreakDistance,
   resolveEffectiveWeeklyPredictionWeekId,
 } from "../src/utils/scoring";
+import {
+  compareStandingEntries,
+  leaderboardRankContext,
+  resolveDisplayTotal,
+  weeklyResultsAreLive,
+} from "../src/utils/standings";
 import { TIMING } from "../src/utils/scoringConstants";
 import {
   pageRevealVariants,
@@ -58,22 +64,11 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
     [gameState.castStatus]
   );
   const latestSnapshot = scoreHistory[scoreHistory.length - 1];
-  const latestSnapshotTotals = latestSnapshot?.totals ?? {};
 
-  const hasActiveWeeklyResults = useMemo(() => {
-    const weekly = gameState.weeklyResults;
-    return Boolean(
-      weekly?.nextBanished ||
-        weekly?.nextMurdered ||
-        weekly?.bonusGames?.redemptionRoulette ||
-        weekly?.bonusGames?.shieldGambit ||
-        weekly?.bonusGames?.traitorTrio?.length ||
-        weekly?.finaleResults?.finalWinner ||
-        weekly?.finaleResults?.lastFaithfulStanding ||
-        weekly?.finaleResults?.lastTraitorStanding ||
-        typeof weekly?.finaleResults?.finalPotValue === "number"
-    );
-  }, [gameState.weeklyResults]);
+  const hasActiveWeeklyResults = useMemo(
+    () => weeklyResultsAreLive(gameState.weeklyResults),
+    [gameState.weeklyResults]
+  );
 
   const detailWeeklyResults =
     !hasActiveWeeklyResults && latestSnapshot?.weeklyResults
@@ -102,43 +97,40 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
       detailWeeklyResults?.finaleResults?.lastFaithfulStanding &&
       detailWeeklyResults?.finaleResults?.lastTraitorStanding
   );
-  const isFinaleTieBreakActive =
-    Boolean(gameState.finaleConfig?.enabled) &&
-    typeof effectiveFinalePotValue === "number";
+  const rankContext = leaderboardRankContext(gameState);
+  const isFinaleTieBreakActive = rankContext.tieBreakActive;
 
   const scoredPlayers = gameState.players
     .map((player) => {
       const scoring = calculatePlayerScore(gameState, player);
       const detailScoring = calculatePlayerScore(detailGameState, player);
-      const archivedTotal = latestSnapshotTotals[player.id];
-      const displayTotal =
-        !hasActiveWeeklyResults && typeof archivedTotal === "number"
-          ? archivedTotal
-          : scoring.total;
+      const displayTotal = resolveDisplayTotal(gameState, player.id, scoring.total);
+      const tieBreakDistance =
+        isFinaleTieBreakActive && typeof effectiveFinalePotValue === "number"
+          ? getFinaleTieBreakDistance(player, effectiveFinalePotValue)
+          : null;
       return {
         ...player,
         scoring,
         detailScoring,
         displayTotal,
+        tieBreakDistance,
       };
     })
-    .sort((a, b) => {
-      const aTotal = a.displayTotal;
-      const bTotal = b.displayTotal;
-      if (bTotal !== aTotal) return bTotal - aTotal;
-
-      if (isFinaleTieBreakActive && typeof effectiveFinalePotValue === "number") {
-        const aDistance = getFinaleTieBreakDistance(a, effectiveFinalePotValue);
-        const bDistance = getFinaleTieBreakDistance(b, effectiveFinalePotValue);
-        if (aDistance === null && bDistance !== null) return 1;
-        if (aDistance !== null && bDistance === null) return -1;
-        if (typeof aDistance === "number" && typeof bDistance === "number" && aDistance !== bDistance) {
-          return aDistance - bDistance;
+    .sort((a, b) =>
+      compareStandingEntries(
+        {
+          name: a.name,
+          displayTotal: a.displayTotal,
+          tieBreakDistance: a.tieBreakDistance,
+        },
+        {
+          name: b.name,
+          displayTotal: b.displayTotal,
+          tieBreakDistance: b.tieBreakDistance,
         }
-      }
-
-      return a.name.localeCompare(b.name);
-    });
+      )
+    );
 
   const weeklyDeltaById = useMemo(() => {
     if (scoreHistory.length < 2) return {};

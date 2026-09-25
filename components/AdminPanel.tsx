@@ -18,6 +18,15 @@ import {
   WeeklyScoreSnapshot,
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
+import {
+  duplicateFlagsTouching,
+  formatDuplicateImportWarning,
+} from "../src/utils/duplicatePlayers";
+import {
+  publicRecapUrl,
+  recapRecordFor,
+  upsertWeeklyRecap,
+} from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
@@ -877,8 +886,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const updatedPlayers = [...gameState.players.filter(p => p.name.toLowerCase() !== playerName.toLowerCase()), newPlayer];
       updateGameState({ ...gameState, players: updatedPlayers });
+      const duplicateWarning = formatDuplicateImportWarning(
+        duplicateFlagsTouching(updatedPlayers, [newPlayer.id])
+      );
       
-      setMsg({ text: `Ritual Complete: ${playerName}'s entry has been inscribed.`, type: 'success' });
+      setMsg({ text: `Ritual Complete: ${playerName}'s entry has been inscribed.${duplicateWarning}`, type: 'success' });
       setPasteContent('');
     } catch (e: any) {
       setMsg({ text: `Parsing Error: ${e.message}`, type: 'error' });
@@ -1312,11 +1324,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       await Promise.all(mergedIds.map((id) => markDraftSubmissionMerged(id)));
       setDraftSubmissions((prev) => prev.filter((s) => !mergedIds.includes(s.id)));
+      const duplicateWarning = formatDuplicateImportWarning(
+        duplicateFlagsTouching(
+          [...existingPlayers, ...additions],
+          additions.map((entry) => entry.id)
+        )
+      );
       setMsg({
         text:
           `Merged ${additions.length} draft ${additions.length === 1 ? "entry" : "entries"}` +
           `${duplicates ? `, skipped ${duplicates} already on the roster` : ""}` +
-          `${empty ? `, skipped ${empty} with no picks` : ""}.`,
+          `${empty ? `, skipped ${empty} with no picks` : ""}.` +
+          duplicateWarning,
         type: "success",
       });
     } catch (err: any) {
@@ -1972,7 +1991,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     ? `Saved ${new Date(lastSavedAt).toLocaleTimeString()}`
     : "Not saved yet";
 
-  const renderOperationsSection = () => (
+  const renderOperationsSection = () => {
+    const recapWeekId =
+      normalizeWeekId(gameState.weeklyResults?.weekId) ?? inferActiveWeekId(gameState);
+    const recapRecord = recapRecordFor(gameState, recapWeekId);
+    return (
     <OperationsSection
       banishedOptions={BANISHED_OPTIONS}
       murderOptions={MURDER_OPTIONS}
@@ -2042,8 +2065,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       onToggleShowAllScoreHistory={() => setShowAllScoreHistory((prev) => !prev)}
       onArchiveWeeklyScores={archiveWeeklyScores}
       getScoreTopper={getScoreTopper}
+      recapWeekId={recapWeekId}
+      recapIntro={recapRecord?.intro ?? ""}
+      recapPublished={recapRecord?.published === true}
+      recapUrl={publicRecapUrl(
+        gameState.seasonId || gameState.seasonConfig?.seasonId || "season",
+        recapWeekId
+      )}
+      onRecapIntroChange={(value) =>
+        updateGameState((prevState) => {
+          const weekId =
+            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
+          const existing = recapRecordFor(prevState, weekId);
+          return {
+            ...prevState,
+            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
+              weekId,
+              intro: value,
+              published: existing?.published === true,
+              publishedAt: existing?.publishedAt ?? null,
+            }),
+          };
+        })
+      }
+      onPublishRecap={() =>
+        updateGameState((prevState) => {
+          const weekId =
+            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
+          const existing = recapRecordFor(prevState, weekId);
+          return {
+            ...prevState,
+            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
+              weekId,
+              intro: existing?.intro ?? "",
+              published: true,
+              publishedAt: existing?.publishedAt ?? new Date().toISOString(),
+            }),
+          };
+        })
+      }
+      onUnpublishRecap={() =>
+        updateGameState((prevState) => {
+          const weekId =
+            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
+          const existing = recapRecordFor(prevState, weekId);
+          return {
+            ...prevState,
+            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
+              weekId,
+              intro: existing?.intro ?? "",
+              published: false,
+              publishedAt: existing?.publishedAt ?? null,
+            }),
+          };
+        })
+      }
     />
-  );
+    );
+  };
 
   const renderSubmissionsSection = () => (
     <SubmissionsSection
@@ -2493,6 +2572,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           players: gameState.players.filter((p) => p.id !== playerId),
         });
         if (selectedPlayer?.id === playerId) setSelectedPlayer(null);
+      }}
+      onMergeDuplicate={(keepId, dropId) => {
+        const keep = gameState.players.find((player) => player.id === keepId);
+        const drop = gameState.players.find((player) => player.id === dropId);
+        if (!keep || !drop) return;
+        void (async () => {
+          const confirmed = await requestConfirm(
+            `Keep ${keep.name} and remove ${drop.name}? The removed row's picks are not copied over.`
+          );
+          if (!confirmed) return;
+          updateGameState((prevState) => ({
+            ...prevState,
+            players: prevState.players.filter((player) => player.id !== dropId),
+          }));
+          if (selectedPlayer?.id === dropId) setSelectedPlayer(keep);
+          setMsg({
+            text: `Kept ${keep.name} and removed ${drop.name}.`,
+            type: "success",
+          });
+        })();
       }}
       banishedOptions={BANISHED_OPTIONS}
       murderOptions={MURDER_OPTIONS}

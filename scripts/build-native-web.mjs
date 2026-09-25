@@ -18,7 +18,7 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, readFileSync, rmSync } from "node:fs";
+import { cpSync, existsSync, readFileSync, renameSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -98,16 +98,38 @@ console.log("[native:web:build] Cleaning previous output...");
 rmSync(exportDir, { recursive: true, force: true });
 rmSync(nativeWebDir, { recursive: true, force: true });
 
-console.log("[native:web:build] Building static export (CAPACITOR_BUNDLED=1)...");
-const build = spawnSync("npx", ["next", "build"], {
-  cwd: repoRoot,
-  stdio: "inherit",
-  env: { ...process.env, CAPACITOR_BUNDLED: "1" },
-  shell: process.platform === "win32",
-});
+// The public recap is rendered on the hosted site (request-time data, OG tags).
+// `output: "export"` cannot include that route. The bundled shell opens a
+// tapped notification from local season state instead of shipping the HTML.
+const recapDir = resolve(repoRoot, "src/app/recap");
+const recapHold = resolve("/tmp", "round-table-recap-hold");
+let recapStashed = false;
+if (existsSync(recapDir)) {
+  rmSync(recapHold, { recursive: true, force: true });
+  renameSync(recapDir, recapHold);
+  recapStashed = true;
+  console.log("[native:web:build] Left the hosted recap routes out of the static export.");
+}
 
-if (build.status !== 0) {
-  fail(`next build exited with code ${build.status ?? "unknown"}.`);
+console.log("[native:web:build] Building static export (CAPACITOR_BUNDLED=1)...");
+let buildStatus = 1;
+try {
+  const build = spawnSync("npx", ["next", "build"], {
+    cwd: repoRoot,
+    stdio: "inherit",
+    env: { ...process.env, CAPACITOR_BUNDLED: "1" },
+    shell: process.platform === "win32",
+  });
+  buildStatus = build.status ?? 1;
+} finally {
+  if (recapStashed) {
+    if (existsSync(recapDir)) rmSync(recapDir, { recursive: true, force: true });
+    renameSync(recapHold, recapDir);
+  }
+}
+
+if (buildStatus !== 0) {
+  fail(`next build exited with code ${buildStatus}.`);
 }
 
 if (!existsSync(exportDir)) {
