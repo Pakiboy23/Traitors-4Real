@@ -361,7 +361,6 @@ export type Database = {
       }
     }
     Functions: {
-      is_traitors_admin: { Args: never; Returns: boolean }
       published_weekly_recap: {
         Args: { p_season_id: string; p_week_id: string }
         Returns: Json
