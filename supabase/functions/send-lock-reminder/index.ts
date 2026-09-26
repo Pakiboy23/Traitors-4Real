@@ -1,11 +1,26 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  ADMIN_NOT_ADMIN_ERROR,
+  LOCK_REMINDER_UNAUTHORIZED,
+  LOCK_REMINDER_UNAVAILABLE,
+  accessTokenFromAuthorization,
+  adminMembershipQuery,
+  decideLockReminderCaller,
+  isProjectApiKey,
+} from "../../../src/utils/lockReminderAccess.ts";
 
 /**
  * Sends a weekly lock reminder to every registered device.
  *
  * The operational problem this solves: people forget to submit before the
  * council locks, and last season that meant chasing them by hand.
+ *
+ * The caller must be a signed-in admin. The gateway accepts the public anon
+ * key as a JWT, so this function verifies the bearer token with auth.getUser
+ * and checks admin_users — the same membership the Admin tab uses — before it
+ * reads a token, contacts Apple, or deletes a row. A missing or invalid JWT
+ * is 401. A signed-in user who is not an admin is 403.
  *
  * Credentials come from function secrets, never the request:
  *   APNS_KEY_ID       Key ID of the APNs auth key
@@ -15,8 +30,8 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *   APNS_ENV          Must be "production" for a live send. TestFlight and the
  *                     App Store both use the production APNs host. Sandbox is
  *                     only for Xcode-signed development builds. dryRun still
- *                     works with the secret unset, so the audience can be
- *                     checked before any key exists.
+ *                     works with the secret unset, so an admin can check the
+ *                     audience before any key exists.
  *
  * Call with {"dryRun": true} to resolve the audience and render the message
  * without contacting Apple.
@@ -142,17 +157,72 @@ Deno.serve(async (req: Request) => {
     return json(405, { error: "Use POST." });
   }
 
+  // The anon key is public and the gateway treats it as a valid JWT. Reject
+  // it, and the service-role key, before creating a client or touching a table.
+  const accessToken = accessTokenFromAuthorization(req.headers.get("Authorization"));
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? null;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? null;
+  if (!accessToken || isProjectApiKey(accessToken, anonKey, serviceRoleKey)) {
+    return json(401, { error: LOCK_REMINDER_UNAUTHORIZED });
+  }
+
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  // Pass the bearer token in. getUser() with no argument would look at the
+  // service-role session, which is not the caller.
+  const verified = await supabase.auth.getUser(accessToken);
+  const verifiedUserId = verified.data.user?.id ?? null;
+  let membership: ReturnType<typeof adminMembershipQuery> | null = null;
+  if (verified.error || !verifiedUserId) {
+    console.error(
+      "Verifying the caller failed:",
+      verified.error?.message ?? "no user"
+    );
+  } else {
+    const query = await supabase
+      .from("admin_users")
+      .select("user_id")
+      .eq("user_id", verifiedUserId)
+      .maybeSingle();
+    if (query.error) {
+      // Logged, not returned: Postgres error text can describe the schema.
+      console.error("Admin membership check failed:", query.error.message);
+    }
+    membership = adminMembershipQuery(query.data, query.error);
+  }
+
+  const decision = decideLockReminderCaller({
+    accessToken,
+    anonKey,
+    serviceRoleKey,
+    user: verifiedUserId ? { id: verifiedUserId } : null,
+    userError: Boolean(verified.error) || !verifiedUserId,
+    membership,
+  });
+
+  switch (decision.status) {
+    case "unauthorized":
+      return json(401, { error: LOCK_REMINDER_UNAUTHORIZED });
+    case "forbidden":
+      return json(403, { error: ADMIN_NOT_ADMIN_ERROR });
+    case "unavailable":
+      return json(500, { error: LOCK_REMINDER_UNAVAILABLE });
+    case "admin":
+      break;
+    default: {
+      const unreachable: never = decision;
+      throw new Error(`Unhandled caller decision: ${JSON.stringify(unreachable)}`);
+    }
+  }
+
   let payload: RequestBody = {};
   try {
     payload = (await req.json()) as RequestBody;
   } catch {
     // An empty body is fine; every field is optional.
   }
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
 
   // Default to the season currently in play rather than making the caller
   // know which one that is.
@@ -172,8 +242,7 @@ Deno.serve(async (req: Request) => {
   const { data: tokens, error } = await query;
 
   if (error) {
-    // Logged, not returned: Postgres error text can describe the schema, and
-    // the anon key is public so anyone can reach this endpoint.
+    // Logged, not returned: Postgres error text can describe the schema.
     console.error("Reading push tokens failed:", error.message);
     return json(500, { error: "Could not read the device list." });
   }
