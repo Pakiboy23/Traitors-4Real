@@ -267,6 +267,7 @@ export const isolateSeasonGameplay = <T extends Partial<GameState>>(
     activeWeekId: "week-1",
     weeklySubmissionHistory: [],
     weeklyScoreHistory: [],
+    weeklyRecaps: [],
     scoreAdjustments: [],
   };
 };
@@ -294,6 +295,7 @@ export const resetSeasonStateForClone = (
       activeWeekId: "week-1",
       weeklySubmissionHistory: [],
       weeklyScoreHistory: [],
+      weeklyRecaps: [],
       scoreAdjustments: [],
     },
     target

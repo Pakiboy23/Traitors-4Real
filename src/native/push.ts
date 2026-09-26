@@ -10,6 +10,7 @@ import {
   type PushRegistrationEventType,
 } from "../utils/pushRegistrationEvents";
 import { buildPushTokenRecord, type PushPlatform } from "../utils/pushTokens";
+import { parseRecapDeepLink, type RecapDeepLink } from "../utils/pushDeepLink";
 
 /**
  * Device push registration.
@@ -25,6 +26,40 @@ import { buildPushTokenRecord, type PushPlatform } from "../utils/pushTokens";
  */
 
 let registered = false;
+let deepLinkListening = false;
+
+export const RECAP_DEEP_LINK_EVENT = "roundtable:recap";
+
+const readNotificationUrl = (data: unknown): string => {
+  if (!data || typeof data !== "object") return "";
+  const record = data as Record<string, unknown>;
+  if (typeof record.url === "string") return record.url;
+  if (typeof record.link === "string") return record.link;
+  return "";
+};
+
+/**
+ * Tapping a lock reminder can open that week's recap. The payload carries an
+ * https recap URL. This listener only runs in the native shell; the installed
+ * binary has to include it, so App Store 2.0 does not deep link until the next
+ * archive. If the URL is not a recap, leave the app on its current screen.
+ */
+export const installPushDeepLinkHandler = async (): Promise<void> => {
+  if (!isNativePush() || deepLinkListening) return;
+  deepLinkListening = true;
+  try {
+    const { PushNotifications } = await import("@capacitor/push-notifications");
+    await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
+      const url = readNotificationUrl(action.notification?.data);
+      const parsed: RecapDeepLink | null = parseRecapDeepLink(url);
+      if (!parsed) return;
+      window.dispatchEvent(new CustomEvent(RECAP_DEEP_LINK_EVENT, { detail: parsed }));
+    });
+  } catch (error) {
+    deepLinkListening = false;
+    logger.warn("Push deep link listener failed:", error);
+  }
+};
 
 export const isNativePush = (): boolean => Capacitor.isNativePlatform();
 
@@ -221,4 +256,5 @@ export const registerForPush = async (
 /** Test seam: registration is remembered per session, which breaks test isolation. */
 export const resetPushRegistrationForTests = () => {
   registered = false;
+  deepLinkListening = false;
 };

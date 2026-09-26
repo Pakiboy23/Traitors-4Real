@@ -1,6 +1,45 @@
 import type { Metadata, Viewport } from "next";
+import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
 import "../index.css";
+
+/* Downloaded at build time and served from this app. Weights are the ones the
+   UI requests: Fraunces 500–800, IBM Plex Sans 400–700, IBM Plex Mono 500–700,
+   Manrope 400–800. */
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-fraunces",
+});
+
+const plexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-plex-sans",
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  variable: "--font-plex-mono",
+});
+
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-manrope",
+});
+
+const fontVariables = [
+  fraunces.variable,
+  plexSans.variable,
+  plexMono.variable,
+  manrope.variable,
+].join(" ");
 
 export const metadata: Metadata = {
   title: "Round Table Draft",
@@ -39,15 +78,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="en" className={fontVariables}>
       <body>{children}</body>
     </html>
   );

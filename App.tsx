@@ -18,6 +18,7 @@ import {
   GameState,
   inferActiveWeekId,
   normalizeWeekId,
+  resolveActiveWeekId,
   League,
   PlayerEntry,
   ScoreAdjustment,
@@ -45,8 +46,11 @@ import {
   normalizeCastMemberStatus,
   resolveCastNames,
 } from "./src/utils/castProfiles";
-import { registerForPush } from "./src/native/push";
+import { installPushDeepLinkHandler, RECAP_DEEP_LINK_EVENT, registerForPush } from "./src/native/push";
 import { publicPortraitKey, redactPublicSeasonState } from "./src/utils/publicRedaction";
+import { sanitizeWeeklyRecaps } from "./src/utils/weeklyRecap";
+import type { RecapDeepLink } from "./src/utils/pushDeepLink";
+import InAppRecap from "./components/InAppRecap";
 import {
   fetchShowConfig,
   fetchSeasonState,
@@ -143,8 +147,9 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
   const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
     ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
     : [];
-  const activeWeekId = inferActiveWeekId({
+  const activeWeekId = resolveActiveWeekId({
     activeWeekId: input?.activeWeekId,
+    seasonConfig: input?.seasonConfig,
     weeklyScoreHistory,
   });
 
@@ -281,7 +286,7 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     seasonConfig: {
       ...seasonConfig,
       seasonId,
-      activeWeekId: normalizeWeekId(seasonConfig.activeWeekId) ?? activeWeekId,
+      activeWeekId,
       rulePackId,
     },
     finaleConfig: normalizeFinaleConfig(input?.finaleConfig),
@@ -289,11 +294,13 @@ const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
     weeklyResults: normalizeWeeklyResults(input?.weeklyResults, activeWeekId),
     weeklySubmissionHistory: history,
     weeklyScoreHistory,
+    weeklyRecaps: sanitizeWeeklyRecaps(input?.weeklyRecaps),
   };
 };
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [recapDeepLink, setRecapDeepLink] = useState<RecapDeepLink | null>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   // Public season JSON has no emails. Autosave stays off until the admin
   // read has merged season_state_emails back in, so a redacted board cannot
@@ -464,6 +471,17 @@ const App: React.FC = () => {
   useEffect(() => {
     void registerForPush({ seasonId: activeSeasonId ?? gameState.seasonId ?? null });
   }, [activeSeasonId, gameState.seasonId]);
+
+  useEffect(() => {
+    void installPushDeepLinkHandler();
+    const onRecap = (event: Event) => {
+      const detail = (event as CustomEvent<RecapDeepLink>).detail;
+      if (!detail?.weekId) return;
+      setRecapDeepLink(detail);
+    };
+    window.addEventListener(RECAP_DEEP_LINK_EVENT, onRecap);
+    return () => window.removeEventListener(RECAP_DEEP_LINK_EVENT, onRecap);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1100,6 +1118,19 @@ const App: React.FC = () => {
     activeSeasonId,
     weeklyMvp,
   ]);
+
+  if (recapDeepLink) {
+    return (
+      <ToastProvider>
+        <InAppRecap
+          gameState={gameState}
+          link={recapDeepLink}
+          loadedSeasonId={activeSeasonId || gameState.seasonId || null}
+          onClose={() => setRecapDeepLink(null)}
+        />
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>

@@ -32,12 +32,51 @@ interface RequestBody {
   title?: string;
   body?: string;
   dryRun?: boolean;
+  /** "all" sends to every registered iPhone. Omitted or "season" stays on one season. */
+  audience?: "season" | "all";
+  /**
+   * Optional tap target. Only an https recap URL on the public site is
+   * forwarded, so this endpoint cannot be used to push an arbitrary link.
+   * The Admin Notifications form sends it on the same request as title and body.
+   * Example:
+   * {"title":"Week 2 recap","body":"Standings are up.","url":"https://traitorsfantasydraft.online/recap/traitors-new-blood-s1/week-2","dryRun":true}
+   */
+  url?: string;
 }
+
+const RECAP_HOSTS = new Set([
+  "traitorsfantasydraft.online",
+  "www.traitorsfantasydraft.online",
+]);
+
+/** Keep in step with sanitizePushDeepLink in src/utils/pushDeepLink.ts. */
+const sanitizeDeepLink = (input: unknown): string | null => {
+  if (typeof input !== "string") return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  let url: URL;
+  try {
+    url = new URL(trimmed);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (!RECAP_HOSTS.has(url.hostname)) return null;
+  if (!url.pathname.startsWith("/recap/")) return null;
+  url.hash = "";
+  return url.toString();
+};
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 const json = (status: number, payload: unknown) =>
   new Response(JSON.stringify(payload, null, 2), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
 const base64url = (bytes: Uint8Array) =>
@@ -95,6 +134,10 @@ const buildProviderToken = async (
 };
 
 Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method !== "POST") {
     return json(405, { error: "Use POST." });
   }
@@ -125,7 +168,7 @@ Deno.serve(async (req: Request) => {
   }
 
   let query = supabase.from("push_tokens").select("token, platform");
-  if (seasonId) query = query.eq("season_id", seasonId);
+  if (payload.audience !== "all" && seasonId) query = query.eq("season_id", seasonId);
   const { data: tokens, error } = await query;
 
   if (error) {
@@ -139,13 +182,27 @@ Deno.serve(async (req: Request) => {
   const body =
     payload.body ?? "Get your banishment and murder calls in before the lock.";
   const audience = (tokens ?? []).filter((row) => row.platform === "ios");
+  const suppliedUrl = typeof payload.url === "string" ? payload.url.trim() : "";
+  const deepLink = suppliedUrl ? sanitizeDeepLink(suppliedUrl) : null;
+  if (suppliedUrl && !deepLink) {
+    return json(400, {
+      error: "url must be an https recap link on traitorsfantasydraft.online.",
+    });
+  }
+
+  const scope = payload.audience === "all" ? "all" : "season";
 
   if (payload.dryRun) {
     return json(200, {
       dryRun: true,
       seasonId,
+      scope,
       audience: audience.length,
-      notification: { title, body },
+      notification: {
+        title,
+        body,
+        ...(deepLink ? { url: deepLink } : {}),
+      },
     });
   }
 
@@ -201,6 +258,7 @@ Deno.serve(async (req: Request) => {
       "interruption-level": "time-sensitive",
     },
     seasonId,
+    ...(deepLink ? { url: deepLink } : {}),
   });
 
   const stale: string[] = [];

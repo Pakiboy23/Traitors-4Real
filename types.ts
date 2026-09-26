@@ -85,6 +85,18 @@ export interface WeeklyScoreSnapshot {
   totals: Record<string, number>;
 }
 
+/**
+ * Admin copy and publish flag for one week's public recap.
+ * Stored on the season snapshot next to weeklyResults. Unpublished weeks
+ * stay off the public page.
+ */
+export interface WeeklyRecapRecord {
+  weekId: string;
+  intro: string;
+  published: boolean;
+  publishedAt?: string | null;
+}
+
 export type League = "main" | "jr";
 export type SeasonStatus = "draft" | "live" | "finalized" | "archived";
 export type SubmissionStatus = "new" | "merged" | "skipped_late" | "skipped_stale";
@@ -238,6 +250,7 @@ export interface GameState {
   scoreAdjustments?: ScoreAdjustment[];
   weeklySubmissionHistory?: WeeklySubmissionHistoryEntry[];
   weeklyScoreHistory?: WeeklyScoreSnapshot[];
+  weeklyRecaps?: WeeklyRecapRecord[];
 }
 
 export type SeasonState = GameState;
@@ -258,6 +271,26 @@ export const inferActiveWeekId = (input?: {
     ? input.weeklyScoreHistory.length
     : 0;
   return `week-${historyLength + 1}`;
+};
+
+/**
+ * The running week is `state.activeWeekId` — that is what Admin writes when
+ * it archives a week. `seasons.active_week_id` and `seasonConfig.activeWeekId`
+ * are copies and have drifted. When they disagree, the snapshot wins. A
+ * missing snapshot week falls back to the season row, then to history length.
+ */
+export const resolveActiveWeekId = (input?: {
+  activeWeekId?: string | null;
+  seasonConfig?: { activeWeekId?: string | null } | null;
+  weeklyScoreHistory?: WeeklyScoreSnapshot[] | null;
+} | null): string => {
+  const fromState = normalizeWeekId(input?.activeWeekId);
+  if (fromState) return fromState;
+  const fromConfig = normalizeWeekId(input?.seasonConfig?.activeWeekId);
+  if (fromConfig) return fromConfig;
+  return inferActiveWeekId({
+    weeklyScoreHistory: input?.weeklyScoreHistory ?? undefined,
+  });
 };
 
 /**

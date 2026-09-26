@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+/* Countdown and admin code fields use Tailwind's font-mono utility. Point it at
+   the self-hosted IBM Plex Mono face instead of the system mono stack. */
+@theme {
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+}
 
 @tailwind base;
 @tailwind components;
@@ -72,7 +77,7 @@ body {
     radial-gradient(940px 580px at 48% 120%, rgba(87, 52, 39, 0.34), transparent 76%),
     linear-gradient(160deg, #040408 0%, #090b13 46%, #111627 100%);
   color: var(--text);
-  font-family: "IBM Plex Sans", "Manrope", "Avenir Next", sans-serif;
+  font-family: var(--font-plex-sans), var(--font-manrope), "Avenir Next", sans-serif;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -88,7 +93,7 @@ body {
   }
 
   .headline {
-    font-family: "Fraunces", serif;
+    font-family: var(--font-fraunces), serif;
     letter-spacing: 0.02em;
     color: var(--text);
   }
@@ -1090,7 +1095,7 @@ select.premium-input-table,
 
 .premium-overview-title {
   margin: 0;
-  font-family: "Fraunces", "IBM Plex Sans", serif;
+  font-family: var(--font-fraunces), var(--font-plex-sans), serif;
   font-size: clamp(1.46rem, 3.2vw, 2.34rem);
   line-height: 1.03;
   letter-spacing: 0.01em;
@@ -2924,4 +2929,168 @@ select.premium-input-table,
   .premium-more-summary::after {
     transition: none;
   }
+}
+
+.recap-page {
+  box-sizing: border-box;
+  width: min(40rem, 100%);
+  margin: 0 auto;
+  padding: calc(1.25rem + var(--safe-top)) calc(1.1rem + var(--safe-right))
+    calc(2rem + var(--safe-bottom)) calc(1.1rem + var(--safe-left));
+}
+
+.recap-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.recap-title {
+  margin: 0.35rem 0 0;
+  font-size: 2.4rem;
+  line-height: 1.05;
+}
+
+.recap-season,
+.recap-intro {
+  color: var(--text-muted);
+}
+
+.recap-intro {
+  white-space: pre-wrap;
+  font-size: 1.05rem;
+}
+
+.recap-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.recap-result,
+.recap-standings {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  border-radius: var(--radius-xl);
+}
+
+.recap-result {
+  padding: 0.9rem 1rem;
+}
+
+.recap-result-label {
+  margin: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.recap-result-value {
+  margin: 0.35rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.recap-standings {
+  padding: 1rem 1rem 0.4rem;
+}
+
+.recap-standings-head h2 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.recap-standings-head p {
+  margin: 0.25rem 0 0.8rem;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.recap-table {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.recap-row {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: baseline;
+  padding: 0.72rem 0;
+  border-top: 1px solid var(--line-muted);
+}
+
+.recap-rank {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.recap-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 650;
+}
+
+.recap-score {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.recap-delta {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  min-width: 3.2rem;
+  text-align: right;
+}
+
+.recap-delta-up {
+  color: var(--success);
+}
+
+.recap-delta-down {
+  color: var(--danger);
+}
+
+.recap-home {
+  display: inline-block;
+  margin-top: 1.4rem;
+  color: var(--accent-strong);
+  font-weight: 650;
+}
+
+.recap-in-app-bar {
+  display: flex;
+  justify-content: flex-end;
+  padding: calc(0.6rem + var(--safe-top)) 1rem 0;
+}
+
+.recap-close {
+  padding: 0.45rem 0.8rem;
+}
+
+.duplicate-banner {
+  border: 1px solid rgba(224, 173, 99, 0.45);
+  background: rgba(224, 173, 99, 0.08);
+  border-radius: var(--radius-xl);
+  padding: 0.9rem 1rem;
+}
+
+.duplicate-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.duplicate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
