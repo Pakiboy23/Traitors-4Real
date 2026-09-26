@@ -20,6 +20,11 @@ import {
   type AdminMembershipResult,
 } from "../src/utils/adminAuth";
 import { logger } from "../src/utils/logger";
+import {
+  mergeArchivedEmails,
+  publicPortraitKey,
+  redactPublicSeasonState,
+} from "../src/utils/publicRedaction";
 import { resetSeasonStateForClone } from "../src/utils/seasonAuthority";
 
 export { supabaseUrl };
@@ -31,6 +36,20 @@ export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 // PGRST116 = no rows from .single(); 22P02 = invalid uuid input
 const isNotFound = (error: { code?: string } | null) =>
   error?.code === "PGRST116" || error?.code === "22P02";
+
+// PGRST205 = relation missing from the API schema cache; 42P01 = undefined_table.
+const isMissingRelation = (error: { code?: string; message?: string } | null) => {
+  if (!error) return false;
+  if (error.code === "PGRST205" || error.code === "42P01") return true;
+  const message = error.message ?? "";
+  return /schema cache/i.test(message) && /not found/i.test(message);
+};
+
+const seasonStateFromRow = (state: unknown, seasonId: string): SeasonState =>
+  redactPublicSeasonState({
+    ...(state as SeasonState),
+    seasonId,
+  });
 
 type SeasonRow = Database["public"]["Tables"]["seasons"]["Row"];
 type SubmissionRow = Database["public"]["Tables"]["submissions"]["Row"];
@@ -228,22 +247,89 @@ export const finalizeSeason = (seasonId: string) => updateSeason(seasonId, { sta
 
 // ── season state ──────────────────────────────────────────────────────────────
 
+const seasonStateResult = (
+  data: { state: unknown } | null,
+  error: { code?: string; message?: string } | null,
+  seasonId: string
+): { state: SeasonState | null; missing: boolean } => {
+  if (error) {
+    if (isNotFound(error)) return { state: null, missing: false };
+    if (isMissingRelation(error)) return { state: null, missing: true };
+    throw error;
+  }
+  return {
+    state: data ? { ...(data.state as SeasonState), seasonId } : null,
+    missing: false,
+  };
+};
+
+const readPublicSeasonState = async (seasonId: string) => {
+  const { data, error } = await supabase
+    .from("season_states_public")
+    .select("state")
+    .eq("season_id", seasonId)
+    .single();
+  return seasonStateResult(data, error, seasonId);
+};
+
+const readStoredSeasonState = async (seasonId: string) => {
+  const { data, error } = await supabase
+    .from("season_states")
+    .select("state")
+    .eq("season_id", seasonId)
+    .single();
+  return seasonStateResult(data, error, seasonId);
+};
+
+/**
+ * Public season read.
+ *
+ * Hits `season_states_public`, which strips emails in Postgres, then strips
+ * again before the value can reach UI state. If that view is not deployed
+ * yet, the fallback reads `season_states` and still strips before return —
+ * the response the app keeps has no email. `submissions` is a different
+ * read and still carries email for the admin merge.
+ */
 export const fetchSeasonState = async (seasonId: string): Promise<SeasonState | null> => {
   try {
-    const { data, error } = await supabase
-      .from("season_states")
-      .select("state")
-      .eq("season_id", seasonId)
-      .single();
-    if (error) {
-      if (isNotFound(error)) return null;
-      throw error;
+    const primary = await readPublicSeasonState(seasonId);
+    if (primary.missing) {
+      logger.warn(
+        "season_states_public is unavailable; stripping emails from season_states before use"
+      );
+      const fallback = await readStoredSeasonState(seasonId);
+      return fallback.state ? seasonStateFromRow(fallback.state, seasonId) : null;
     }
-    return { ...(data.state as unknown as SeasonState), seasonId };
+    return primary.state ? seasonStateFromRow(primary.state, seasonId) : null;
   } catch (error) {
     if (isNotFound(error as { code?: string })) return null;
     throw error;
   }
+};
+
+/**
+ * Admin season read. Restores emails from `season_state_emails` after the
+ * public JSON has been stripped. A missing archive table means the
+ * migration is not applied yet; the base row still has the addresses.
+ */
+export const fetchAdminSeasonState = async (seasonId: string): Promise<SeasonState | null> => {
+  const stored = await readStoredSeasonState(seasonId);
+  if (stored.missing) return null;
+  if (!stored.state) return null;
+  const base = stored.state;
+  const archived = await supabase
+    .from("season_state_emails")
+    .select("emails")
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (archived.error) {
+    if (!isMissingRelation(archived.error)) {
+      logger.warn("season_state_emails read failed:", archived.error);
+    }
+    return base;
+  }
+  if (!archived.data?.emails) return base;
+  return mergeArchivedEmails(base, archived.data.emails);
 };
 
 export const saveSeasonState = async (seasonId: string, state: SeasonState): Promise<{ updated: string }> => {
@@ -347,19 +433,33 @@ export const deleteScoreAdjustment = async (id: string) => {
 
 // ── player portraits ──────────────────────────────────────────────────────────
 
+const publicPortraitRows = () =>
+  supabase.from("player_portraits_public").select("name, portrait_url").limit(500);
+
+const storedPortraitRows = () =>
+  supabase.from("player_portraits").select("name, portrait_url").limit(500);
+
+/**
+ * Public portrait read, keyed by display name.
+ *
+ * The table's primary key is the email. This select never asks for it.
+ * `player_portraits_public` is the projection anon should use; the base
+ * table is only a fallback before that view exists, and still omits email.
+ */
 export const fetchPlayerPortraits = async (): Promise<Record<string, string>> => {
-  const { data, error } = await supabase
-    .from("player_portraits")
-    .select("email, portrait_url")
-    .limit(500);
-  if (error) {
-    logger.warn("fetchPlayerPortraits failed:", error);
+  const primary = await publicPortraitRows();
+  const result =
+    primary.error && isMissingRelation(primary.error)
+      ? await storedPortraitRows()
+      : primary;
+  if (result.error) {
+    logger.warn("fetchPlayerPortraits failed:", result.error);
     return {};
   }
   const portraits: Record<string, string> = {};
-  (data ?? []).forEach((row) => {
-    const email = normalizeEmail(row.email || "");
-    if (email && row.portrait_url) portraits[email] = row.portrait_url;
+  (result.data ?? []).forEach((row) => {
+    const name = publicPortraitKey(typeof row.name === "string" ? row.name : "");
+    if (name && row.portrait_url) portraits[name] = row.portrait_url;
   });
   return portraits;
 };

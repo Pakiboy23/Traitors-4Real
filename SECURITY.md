@@ -19,7 +19,11 @@ control. A leaked anon key is not a breach.
 - `SUPABASE_SERVICE_ROLE_KEY`
 - APNs `.p8` / `APNS_PRIVATE_KEY`
 - Admin session cookies
-- Anyone's email, push token, or draft picks
+- Anyone's email or push token
+
+Names, draft picks, and scores are on the leaderboard, which the anon key
+can read. Emails are not part of that read: public season state and player
+portraits are projected without them, and `submissions` stays admin-only.
 
 The service-role key, the APNs key, and admin session secrets never belong in
 the client, in git, or in a support email.

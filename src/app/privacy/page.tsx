@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "What Round Table Draft collects, why, and how to have it removed.",
 };
 
-const UPDATED = "20 August 2026";
+const UPDATED = "24 September 2026";
 
 /**
  * Privacy policy.
@@ -61,9 +61,10 @@ export default function PrivacyPolicy() {
       <h2>Where it goes</h2>
       <p>
         Data is stored in Supabase (Postgres, hosted in the United States) and
-        served through Vercel. Entries are readable only by the league
-        administrator; other players see scores and standings, never your email
-        address or notification token. Nothing is sold or shared with third
+        served through Vercel. Other players see the leaderboard: your name,
+        your picks, and your score. They do not see your email address or your
+        notification token. The submission tied to your email is readable only
+        by the league administrator. Nothing is sold or shared with third
         parties.
       </p>
 
