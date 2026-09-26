@@ -41,7 +41,7 @@ Schema lives in [`supabase/0001_traitors_core.sql`](supabase/0001_traitors_core.
 app subscribes to, and a public storage bucket for portraits.
 
 Admin access is granted by row in `public.admin_users`, checked through the
-`is_traitors_admin()` security-definer function. To grant it:
+`private.is_traitors_admin()` security-definer function. To grant it:
 
 ```sql
 insert into public.admin_users (user_id, email, display_name)
