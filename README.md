@@ -164,7 +164,11 @@ iPhone only; **2.0 (35)** is live on the App Store. Archive from a Mac after
 Devices register themselves on launch (`src/native/push.ts`) and tokens land in
 `public.push_tokens`, which is insert-only for anon and readable by admins.
 
-Reminders are sent by the `send-lock-reminder` Edge Function. It resolves the
+Reminders are sent by the `send-lock-reminder` Edge Function. The caller must
+be a signed-in admin: the function verifies that user's access token with
+`auth.getUser` and checks `admin_users` before it reads a token, contacts
+Apple, or deletes a row. A missing or invalid token is 401; a signed-in user
+who is not an admin is 403. The anon key is not a caller. It then resolves the
 live season, collects that season's iOS tokens, sends through APNs, and prunes
 tokens Apple reports as gone. The same call sends any ad hoc message: pass
 `title` and `body`. `"audience":"all"` reaches every registered iPhone, including
@@ -172,12 +176,18 @@ devices still stored under an older season id. An optional `url` must be an
 https recap link on `traitorsfantasydraft.online`; tapping the notification
 opens that page on a build that handles it. Signed-in admins set the title,
 message, link, and audience from the Admin tab's Notifications section; Preview
-checks the audience before Send.
+checks the audience before Send. That screen already sends the signed-in
+admin's access token.
 
 ```bash
 # Resolve the audience and render the message without contacting Apple.
+# ADMIN_ACCESS_TOKEN is an admin user's session access token, from
+# supabase.auth.getSession(), not the anon key. The anon key stays in apikey
+# so the gateway accepts the request.
 curl -X POST "$SUPABASE_URL/functions/v1/send-lock-reminder" \
-  -H "Authorization: Bearer $ANON_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
+  -H "apikey: $ANON_KEY" \
+  -H "Content-Type: application/json" \
   -d '{"dryRun": true}'
 ```
 
