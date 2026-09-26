@@ -2,7 +2,7 @@ import {
   ADMIN_NOT_ADMIN_ERROR,
   interpretAdminMembership,
   type AdminMembershipQuery,
-} from "./adminAuth";
+} from "./adminAuth.ts";
 
 export { ADMIN_NOT_ADMIN_ERROR };
 
