@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import type { GameState, PlayerEntry } from "../../types";
 import { calculatePlayerScore } from "./scoring";
 import {
+  activeRecapWeekId,
+  applyRecapEditorChange,
   buildPublicWeeklyRecap,
   publicRecapHasForbiddenKey,
   publicRecapUrl,
+  recapEditorWeeks,
   recapShareDescription,
   sanitizeWeeklyRecaps,
   upsertWeeklyRecap,
@@ -212,6 +215,166 @@ describe("buildPublicWeeklyRecap", () => {
   });
 });
 
+describe("recap editor weeks", () => {
+  it("lists archived snapshot weeks and the active week, defaulting to the active week", () => {
+    const source = {
+      activeWeekId: "week-3",
+      weeklyResults: { weekId: "week-3", nextBanished: "Current" },
+      weeklyScoreHistory: [
+        {
+          id: "snap-1",
+          label: "Premiere",
+          createdAt: "2026-09-18T00:00:00.000Z",
+          weeklyResults: { weekId: "week-1", nextBanished: "Week One" },
+          totals: {},
+        },
+        {
+          id: "snap-2",
+          label: "Week 2",
+          createdAt: "2026-09-25T00:00:00.000Z",
+          weeklyResults: { weekId: "week-2", nextBanished: "Week Two" },
+          totals: {},
+        },
+        {
+          id: "snap-blank",
+          label: "No week",
+          createdAt: "2026-09-26T00:00:00.000Z",
+          weeklyResults: { nextBanished: "Missing id" },
+          totals: {},
+        },
+      ],
+    };
+
+    expect(activeRecapWeekId(source)).toBe("week-3");
+    expect(recapEditorWeeks(source)).toEqual([
+      { weekId: "week-1", label: "Premiere (Week 1)" },
+      { weekId: "week-2", label: "Week 2" },
+      { weekId: "week-3", label: "Week 3" },
+    ]);
+  });
+
+  it("does not list the active week twice when it is already archived", () => {
+    const source = {
+      weeklyResults: { weekId: "week-2" },
+      weeklyScoreHistory: [
+        {
+          id: "snap-1",
+          label: "Week 1",
+          createdAt: "",
+          weeklyResults: { weekId: "week-1" },
+          totals: {},
+        },
+        {
+          id: "snap-2",
+          label: "Replay",
+          createdAt: "",
+          weeklyResults: { weekId: "week-1" },
+          totals: {},
+        },
+        {
+          id: "snap-3",
+          label: "Week 2",
+          createdAt: "",
+          weeklyResults: { weekId: "week-2" },
+          totals: {},
+        },
+      ],
+    };
+
+    expect(recapEditorWeeks(source).map((week) => week.weekId)).toEqual(["week-1", "week-2"]);
+    expect(recapEditorWeeks(source)[0]?.label).toBe("Week 1");
+  });
+
+  it("falls back to the inferred active week when results have no week id", () => {
+    const source = {
+      activeWeekId: "week-4",
+      weeklyScoreHistory: [
+        {
+          id: "snap-1",
+          label: "Week 1",
+          createdAt: "",
+          weeklyResults: { weekId: "week-1" },
+          totals: {},
+        },
+      ],
+    };
+
+    expect(activeRecapWeekId(source)).toBe("week-4");
+    expect(recapEditorWeeks(source).map((week) => week.weekId)).toEqual(["week-1", "week-4"]);
+  });
+});
+
+describe("applyRecapEditorChange", () => {
+  it("publishes an archived week without changing the active week's record", () => {
+    const active = {
+      weekId: "week-3",
+      intro: "Still drafting.",
+      published: false as const,
+      publishedAt: null,
+    };
+    const published = applyRecapEditorChange([active], {
+      kind: "publish",
+      weekId: "week-1",
+      publishedAt: "2026-09-20T00:00:00.000Z",
+    });
+
+    expect(published).toEqual([
+      active,
+      {
+        weekId: "week-1",
+        intro: "",
+        published: true,
+        publishedAt: "2026-09-20T00:00:00.000Z",
+      },
+    ]);
+    expect(JSON.stringify(published[1])).toContain('"published":true');
+
+    const withIntro = applyRecapEditorChange(published, {
+      kind: "intro",
+      weekId: "week-1",
+      intro: "Premiere night.",
+    });
+    expect(withIntro.find((record) => record.weekId === "week-1")).toEqual({
+      weekId: "week-1",
+      intro: "Premiere night.",
+      published: true,
+      publishedAt: "2026-09-20T00:00:00.000Z",
+    });
+    expect(withIntro.find((record) => record.weekId === "week-3")).toEqual(active);
+
+    const hidden = applyRecapEditorChange(withIntro, { kind: "unpublish", weekId: "week-1" });
+    const weekOne = hidden.find((record) => record.weekId === "week-1");
+    expect(weekOne?.published).toBe(false);
+    expect(weekOne?.publishedAt).toBe("2026-09-20T00:00:00.000Z");
+    expect(JSON.stringify(weekOne)).toContain('"published":false');
+
+    const republished = applyRecapEditorChange(hidden, {
+      kind: "publish",
+      weekId: "week-1",
+      publishedAt: "2026-10-01T00:00:00.000Z",
+    });
+    expect(republished.find((record) => record.weekId === "week-1")?.publishedAt).toBe(
+      "2026-09-20T00:00:00.000Z"
+    );
+  });
+
+  it("still publishes the active week in place", () => {
+    const next = applyRecapEditorChange(
+      [{ weekId: "week-3", intro: "Hello", published: false }],
+      { kind: "publish", weekId: "week-3", publishedAt: "2026-10-02T00:00:00.000Z" }
+    );
+
+    expect(next).toEqual([
+      {
+        weekId: "week-3",
+        intro: "Hello",
+        published: true,
+        publishedAt: "2026-10-02T00:00:00.000Z",
+      },
+    ]);
+  });
+});
+
 describe("weekly recap records", () => {
   it("keeps one record per week and ignores a blank week id", () => {
     const first = upsertWeeklyRecap([], {
@@ -235,6 +398,35 @@ describe("weekly recap records", () => {
       },
     ]);
     expect(sanitizeWeeklyRecaps([{ weekId: "  ", intro: "nope", published: true }])).toEqual([]);
+  });
+});
+
+describe("season save keeps weeklyRecaps", () => {
+  const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+  const types = readFileSync(path.resolve(__dirname, "../../types.ts"), "utf8");
+  const supabaseClient = readFileSync(path.resolve(__dirname, "../../services/supabase.ts"), "utf8");
+
+  const gameStateKeys = () => {
+    const start = types.indexOf("export interface GameState {");
+    const end = types.indexOf("\n}", start);
+    const body = types.slice(start, end);
+    return [...body.matchAll(/^\s{2}(\w+)\??:/gm)].map((match) => match[1]);
+  };
+
+  it("copies every GameState field, including weeklyRecaps, through normalize and save", () => {
+    const keys = gameStateKeys();
+    expect(keys).toEqual(
+      expect.arrayContaining(["weeklyRecaps", "weeklyScoreHistory", "players", "castStatus"])
+    );
+
+    const normalizerStart = app.indexOf("const normalizeGameState = ");
+    const normalizerEnd = app.indexOf("const App: React.FC", normalizerStart);
+    const normalizer = app.slice(normalizerStart, normalizerEnd);
+    for (const key of keys) {
+      expect(normalizer, key).toContain(key);
+    }
+    expect(normalizer).toContain("weeklyRecaps: sanitizeWeeklyRecaps(input?.weeklyRecaps)");
+    expect(supabaseClient).toContain("state: { ...state, seasonId }");
   });
 });
 

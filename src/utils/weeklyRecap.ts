@@ -4,7 +4,7 @@ import type {
   WeeklyResults,
   WeeklyScoreSnapshot,
 } from "../../types";
-import { normalizeWeekId, resolveActiveWeekId } from "../../types";
+import { inferActiveWeekId, normalizeWeekId, resolveActiveWeekId } from "../../types";
 import { currentStandings } from "./standings";
 
 export const RECAP_PUBLIC_ORIGIN = "https://traitorsfantasydraft.online";
@@ -107,6 +107,97 @@ export const upsertWeeklyRecap = (
     ...sanitizeWeeklyRecaps(existing).filter((record) => record.weekId !== weekId),
     { ...next, weekId },
   ]);
+};
+
+export interface RecapWeekOption {
+  weekId: string;
+  label: string;
+}
+
+type RecapWeekSource = Pick<GameState, "weeklyResults" | "activeWeekId" | "weeklyScoreHistory">;
+
+/**
+ * The week the recap editor opens on. Same source the editor used when it
+ * could only publish the running week: `weeklyResults.weekId`, then the
+ * inferred active week.
+ */
+export const activeRecapWeekId = (state: RecapWeekSource | null | undefined): string =>
+  normalizeWeekId(state?.weeklyResults?.weekId) ??
+  inferActiveWeekId({
+    activeWeekId: state?.activeWeekId,
+    weeklyScoreHistory: state?.weeklyScoreHistory,
+  });
+
+const recapOptionLabel = (weekId: string, snapshotLabel?: string | null): string => {
+  const plain = weekLabelFromId(weekId);
+  const labeled = weekLabelFromId(weekId, snapshotLabel);
+  if (labeled === plain || labeled === weekId) return plain;
+  return `${labeled} (${plain})`;
+};
+
+/**
+ * Weeks the admin can publish a recap for. Archived snapshots come first, in
+ * the order they were stored. The active week is added when it is not already
+ * one of those snapshots, so a finished week stays editable after archive.
+ */
+export const recapEditorWeeks = (state: RecapWeekSource | null | undefined): RecapWeekOption[] => {
+  const history = Array.isArray(state?.weeklyScoreHistory) ? state.weeklyScoreHistory : [];
+  const seen = new Set<string>();
+  const weeks: RecapWeekOption[] = [];
+  for (const snapshot of history) {
+    const weekId = normalizeWeekId(snapshot?.weeklyResults?.weekId);
+    if (!weekId || seen.has(weekId)) continue;
+    seen.add(weekId);
+    weeks.push({ weekId, label: recapOptionLabel(weekId, snapshot?.label) });
+  }
+  const active = activeRecapWeekId(state);
+  if (!seen.has(active)) {
+    weeks.push({ weekId: active, label: recapOptionLabel(active) });
+  }
+  return weeks;
+};
+
+export type RecapEditorChange =
+  | { kind: "intro"; weekId: string; intro: string }
+  | { kind: "publish"; weekId: string; publishedAt: string }
+  | { kind: "unpublish"; weekId: string };
+
+/**
+ * Intro, publish, and unpublish for one week. Other weeks' records stay put.
+ * `published` is a JSON boolean on the stored record.
+ */
+export const applyRecapEditorChange = (
+  recaps: WeeklyRecapRecord[] | null | undefined,
+  change: RecapEditorChange
+): WeeklyRecapRecord[] => {
+  const existing = recapRecordFor({ weeklyRecaps: recaps }, change.weekId);
+  switch (change.kind) {
+    case "intro":
+      return upsertWeeklyRecap(recaps, {
+        weekId: change.weekId,
+        intro: change.intro,
+        published: existing?.published === true,
+        publishedAt: existing?.publishedAt ?? null,
+      });
+    case "publish":
+      return upsertWeeklyRecap(recaps, {
+        weekId: change.weekId,
+        intro: existing?.intro ?? "",
+        published: true,
+        publishedAt: existing?.publishedAt ?? change.publishedAt,
+      });
+    case "unpublish":
+      return upsertWeeklyRecap(recaps, {
+        weekId: change.weekId,
+        intro: existing?.intro ?? "",
+        published: false,
+        publishedAt: existing?.publishedAt ?? null,
+      });
+    default: {
+      const _exhaustive: never = change;
+      return _exhaustive;
+    }
+  }
 };
 
 const historyOf = (state: GameState): WeeklyScoreSnapshot[] =>

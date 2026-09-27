@@ -23,9 +23,11 @@ import {
   formatDuplicateImportWarning,
 } from "../src/utils/duplicatePlayers";
 import {
+  activeRecapWeekId,
+  applyRecapEditorChange,
   publicRecapUrl,
+  recapEditorWeeks,
   recapRecordFor,
-  upsertWeeklyRecap,
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
 import { supabaseUrl } from "../src/lib/supabase";
@@ -161,6 +163,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [editWeeklyMurdered, setEditWeeklyMurdered] = useState("");
   const [showAllHistory, setShowAllHistory] = useState(false);
   const [showAllScoreHistory, setShowAllScoreHistory] = useState(false);
+  const [recapWeekChoice, setRecapWeekChoice] = useState<string | null>(null);
   const [inlineEdits, setInlineEdits] = useState<InlineEditMap>({});
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState | null>(null);
   const [promptDialog, setPromptDialog] = useState<PromptDialogState | null>(null);
@@ -1994,8 +1997,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     : "Not saved yet";
 
   const renderOperationsSection = () => {
+    const recapWeeks = recapEditorWeeks(gameState);
+    const activeWeek = activeRecapWeekId(gameState);
     const recapWeekId =
-      normalizeWeekId(gameState.weeklyResults?.weekId) ?? inferActiveWeekId(gameState);
+      recapWeekChoice && recapWeeks.some((week) => week.weekId === recapWeekChoice)
+        ? recapWeekChoice
+        : activeWeek;
     const recapRecord = recapRecordFor(gameState, recapWeekId);
     return (
     <OperationsSection
@@ -2067,6 +2074,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       onToggleShowAllScoreHistory={() => setShowAllScoreHistory((prev) => !prev)}
       onArchiveWeeklyScores={archiveWeeklyScores}
       getScoreTopper={getScoreTopper}
+      recapWeeks={recapWeeks}
       recapWeekId={recapWeekId}
       recapIntro={recapRecord?.intro ?? ""}
       recapPublished={recapRecord?.published === true}
@@ -2074,53 +2082,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         gameState.seasonId || gameState.seasonConfig?.seasonId || "season",
         recapWeekId
       )}
-      onRecapIntroChange={(value) =>
-        updateGameState((prevState) => {
-          const weekId =
-            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
-          const existing = recapRecordFor(prevState, weekId);
-          return {
-            ...prevState,
-            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
-              weekId,
-              intro: value,
-              published: existing?.published === true,
-              publishedAt: existing?.publishedAt ?? null,
-            }),
-          };
-        })
+      onRecapWeekChange={setRecapWeekChoice}
+      onRecapIntroChange={(weekId, value) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          weeklyRecaps: applyRecapEditorChange(prevState.weeklyRecaps, {
+            kind: "intro",
+            weekId,
+            intro: value,
+          }),
+        }))
       }
-      onPublishRecap={() =>
-        updateGameState((prevState) => {
-          const weekId =
-            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
-          const existing = recapRecordFor(prevState, weekId);
-          return {
-            ...prevState,
-            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
-              weekId,
-              intro: existing?.intro ?? "",
-              published: true,
-              publishedAt: existing?.publishedAt ?? new Date().toISOString(),
-            }),
-          };
-        })
+      onPublishRecap={(weekId) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          weeklyRecaps: applyRecapEditorChange(prevState.weeklyRecaps, {
+            kind: "publish",
+            weekId,
+            publishedAt: new Date().toISOString(),
+          }),
+        }))
       }
-      onUnpublishRecap={() =>
-        updateGameState((prevState) => {
-          const weekId =
-            normalizeWeekId(prevState.weeklyResults?.weekId) ?? inferActiveWeekId(prevState);
-          const existing = recapRecordFor(prevState, weekId);
-          return {
-            ...prevState,
-            weeklyRecaps: upsertWeeklyRecap(prevState.weeklyRecaps, {
-              weekId,
-              intro: existing?.intro ?? "",
-              published: false,
-              publishedAt: existing?.publishedAt ?? null,
-            }),
-          };
-        })
+      onUnpublishRecap={(weekId) =>
+        updateGameState((prevState) => ({
+          ...prevState,
+          weeklyRecaps: applyRecapEditorChange(prevState.weeklyRecaps, {
+            kind: "unpublish",
+            weekId,
+          }),
+        }))
       }
     />
     );
