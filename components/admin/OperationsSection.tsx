@@ -7,6 +7,7 @@ import {
 } from "../../types";
 import { LIMITS } from "../../src/utils/scoringConstants";
 import { formatScore } from "../../src/utils/scoring";
+import type { RecapWeekOption } from "../../src/utils/weeklyRecap";
 
 interface OperationsSectionProps {
   banishedOptions: string[];
@@ -43,13 +44,15 @@ interface OperationsSectionProps {
     name: string;
     score: number;
   } | null;
+  recapWeeks: RecapWeekOption[];
   recapWeekId: string;
   recapIntro: string;
   recapPublished: boolean;
   recapUrl: string;
-  onRecapIntroChange: (value: string) => void;
-  onPublishRecap: () => void;
-  onUnpublishRecap: () => void;
+  onRecapWeekChange: (weekId: string) => void;
+  onRecapIntroChange: (weekId: string, value: string) => void;
+  onPublishRecap: (weekId: string) => void;
+  onUnpublishRecap: (weekId: string) => void;
 }
 
 const OperationsSection: React.FC<OperationsSectionProps> = ({
@@ -75,10 +78,12 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
   onToggleShowAllScoreHistory,
   onArchiveWeeklyScores,
   getScoreTopper,
+  recapWeeks,
   recapWeekId,
   recapIntro,
   recapPublished,
   recapUrl,
+  onRecapWeekChange,
   onRecapIntroChange,
   onPublishRecap,
   onUnpublishRecap,
@@ -196,8 +201,8 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
             <div>
               <p className="text-xs uppercase tracking-[0.16em] text-[color:var(--text-muted)]">Recap</p>
               <p className="text-sm text-[color:var(--text-muted)] mt-1">
-                Public page for {recapWeekId}. It stays hidden until you publish it.
-                Send the link from Notifications.
+                Public page for {recapWeekId}. Choose an archived week or the active week.
+                It stays hidden until you publish it. Send the link from Notifications.
               </p>
             </div>
             <span
@@ -209,12 +214,36 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
             </span>
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2">
+            <label
+              htmlFor="recap-week"
+              className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2"
+            >
+              Week
+            </label>
+            <select
+              id="recap-week"
+              value={recapWeekId}
+              onChange={(event) => onRecapWeekChange(event.target.value)}
+              className="w-full field-soft p-3 text-sm"
+            >
+              {recapWeeks.map((week) => (
+                <option key={week.weekId} value={week.weekId}>
+                  {week.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="recap-intro"
+              className="block text-xs uppercase tracking-[0.14em] text-[color:var(--text-muted)] mb-2"
+            >
               Intro
             </label>
             <textarea
+              id="recap-intro"
               value={recapIntro}
-              onChange={(event) => onRecapIntroChange(event.target.value)}
+              onChange={(event) => onRecapIntroChange(recapWeekId, event.target.value)}
               className="field-soft w-full h-28 p-3 text-sm"
               placeholder="A short note for the group chat."
             />
@@ -222,11 +251,19 @@ const OperationsSection: React.FC<OperationsSectionProps> = ({
           <p className="text-xs break-all text-[color:var(--text-muted)]">{recapUrl}</p>
           <div className="flex flex-wrap gap-2">
             {recapPublished ? (
-              <button type="button" onClick={onUnpublishRecap} className="btn-secondary px-4 text-[11px]">
+              <button
+                type="button"
+                onClick={() => onUnpublishRecap(recapWeekId)}
+                className="btn-secondary px-4 text-[11px]"
+              >
                 Unpublish
               </button>
             ) : (
-              <button type="button" onClick={onPublishRecap} className="btn-primary px-4 text-[11px]">
+              <button
+                type="button"
+                onClick={() => onPublishRecap(recapWeekId)}
+                className="btn-primary px-4 text-[11px]"
+              >
                 Publish
               </button>
             )}
