@@ -58,7 +58,8 @@ describe("password reset redirect", () => {
     );
   });
 
-  it("sends a finished reset into the admin entry", () => {
+  it("sends a finished reset into the admin tab", () => {
+    expect(ADMIN_ENTRY_PATH).toBe("/?admin=1&tab=admin");
     expect(adminEntryUrl("https://traitorsfantasydraft.online")).toBe(
       `https://traitorsfantasydraft.online${ADMIN_ENTRY_PATH}`
     );

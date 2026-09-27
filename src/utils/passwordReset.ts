@@ -21,8 +21,8 @@ export const CANONICAL_SITE_ORIGIN = "https://traitorsfantasydraft.online";
 
 export const PASSWORD_RESET_PATH = "/reset-password";
 
-/** Same admin entry the web app already documents. */
-export const ADMIN_ENTRY_PATH = "/?admin=1";
+/** Same admin entry the web app already documents, and the tab it should open. */
+export const ADMIN_ENTRY_PATH = "/?admin=1&tab=admin";
 
 export const PASSWORD_RECOVERY_STORAGE_KEY = "traitors_password_recovery";
 
