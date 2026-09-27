@@ -1,4 +1,4 @@
-import type { GameState, PlayerEntry, WeeklyResults } from "../../types";
+import type { GameState, League, PlayerEntry, WeeklyResults } from "../../types";
 import {
   calculatePlayerScore,
   getFinaleTieBreakDistance,
@@ -112,4 +112,59 @@ export const currentStandings = (gameState: GameState): CurrentStanding[] => {
         { name: b.name, displayTotal: b.score, tieBreakDistance: b.tieBreakDistance }
       )
     );
+};
+
+export interface HomePodiumEntry {
+  name: string;
+  score: number;
+  portraitUrl?: string;
+  league: League;
+}
+
+export interface HomeSeasonMvp {
+  name: string;
+  score: number;
+  portraitUrl?: string;
+  label: "Season MVP";
+}
+
+export interface HomeStandingsBoard {
+  mvp: HomeSeasonMvp | null;
+  finalStandings: HomePodiumEntry[];
+}
+
+const leagueOf = (player: PlayerEntry | undefined): League =>
+  player?.league === "jr" ? "jr" : "main";
+
+/**
+ * Home Season MVP and podium. Order and scores are currentStandings, so a
+ * finale pot that remains only on the archived snapshot ranks Home with the
+ * Leaderboard and recap. Portrait and league still come from the player row.
+ */
+export const homeStandingsBoard = (gameState: GameState): HomeStandingsBoard => {
+  const playersById = new Map(gameState.players.map((player) => [player.id, player]));
+  const finalStandings = currentStandings(gameState)
+    .slice(0, 3)
+    .map((row) => {
+      const player = playersById.get(row.playerId);
+      const entry: HomePodiumEntry = {
+        name: row.name,
+        score: row.score,
+        league: leagueOf(player),
+      };
+      if (typeof player?.portraitUrl === "string") entry.portraitUrl = player.portraitUrl;
+      return entry;
+    });
+  const top = finalStandings[0];
+  return {
+    mvp: top
+      ? {
+          name: top.name,
+          score: top.score,
+          portraitUrl: top.portraitUrl,
+          label: "Season MVP",
+        }
+      : null,
+    finalStandings,
+  };
 };
