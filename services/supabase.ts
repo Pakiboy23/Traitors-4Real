@@ -19,6 +19,11 @@ import {
   settleAdminSignInMembership,
   type AdminMembershipResult,
 } from "../src/utils/adminAuth";
+import {
+  passwordResetRedirectUrl,
+  passwordResetRequestNotice,
+  type PasswordResetNotice,
+} from "../src/utils/passwordReset";
 import { logger } from "../src/utils/logger";
 import {
   mergeArchivedEmails,
@@ -163,6 +168,36 @@ export const signInAdmin = async (email: string, password: string): Promise<bool
 
 export const signOutAdmin = () => {
   supabase.auth.signOut();
+};
+
+/**
+ * Ask Supabase to email a recovery link. The notice is neutral when the
+ * address has no account, so the caller cannot tell those apart.
+ */
+export const requestAdminPasswordReset = async (
+  email: string,
+  origin?: string | null
+): Promise<PasswordResetNotice> => {
+  const redirectTo = passwordResetRedirectUrl(
+    origin ?? (typeof window !== "undefined" ? window.location.origin : null)
+  );
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), {
+      redirectTo,
+    });
+    return passwordResetRequestNotice(error);
+  } catch (error) {
+    const shaped =
+      error && typeof error === "object"
+        ? (error as { code?: string; message?: string })
+        : { message: "Could not send a reset email." };
+    return passwordResetRequestNotice(shaped);
+  }
+};
+
+export const updateAdminPassword = async (password: string): Promise<void> => {
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) throw error;
 };
 
 // ── show config ───────────────────────────────────────────────────────────────

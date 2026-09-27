@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import PasswordResetRequest from "./PasswordResetRequest";
 import { PremiumButton, PremiumCard, PremiumField, PremiumPanelHeader } from "../src/ui/premium";
 
 interface AdminAuthProps {
@@ -11,6 +12,7 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError }) => {
   const [password, setPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mode, setMode] = useState<"sign-in" | "forgot">("sign-in");
   const error = authError || localError;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,45 +37,60 @@ const AdminAuth: React.FC<AdminAuthProps> = ({ onAuthenticate, authError }) => {
       <PremiumCard className="premium-panel-pad premium-stack-md">
         <PremiumPanelHeader
           kicker="Restricted"
-          title="Admin Access"
-          description="Authenticate to manage submissions, cast status, and persistence controls."
+          title={mode === "sign-in" ? "Admin Access" : "Reset password"}
+          description={
+            mode === "sign-in"
+              ? "Authenticate to manage submissions, cast status, and persistence controls."
+              : "Enter the admin email to request a reset link."
+          }
         />
 
-        <form onSubmit={handleSubmit} className="space-y-2.5">
-          <PremiumField
-            id="admin-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Admin email"
-            autoComplete="email"
-            required
-            aria-invalid={Boolean(error)}
-            className="premium-input-compact"
+        {mode === "forgot" ? (
+          <PasswordResetRequest
+            idPrefix="admin-forgot"
+            initialEmail={email}
+            onCancel={() => setMode("sign-in")}
           />
-          <PremiumField
-            id="admin-password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            autoComplete="current-password"
-            required
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? "login-error" : undefined}
-            className="premium-input-compact"
-          />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-2.5">
+            <PremiumField
+              id="admin-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Admin email"
+              autoComplete="email"
+              required
+              aria-invalid={Boolean(error)}
+              className="premium-input-compact"
+            />
+            <PremiumField
+              id="admin-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              autoComplete="current-password"
+              required
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "login-error" : undefined}
+              className="premium-input-compact"
+            />
 
-          {error && (
-            <p id="login-error" className="text-xs uppercase tracking-[0.16em] text-[color:var(--danger)] font-semibold" role="alert">
-              {error}
-            </p>
-          )}
+            {error && (
+              <p id="login-error" className="text-xs uppercase tracking-[0.16em] text-[color:var(--danger)] font-semibold" role="alert">
+                {error}
+              </p>
+            )}
 
-          <PremiumButton type="submit" variant="primary" disabled={isSubmitting} className="w-full" aria-busy={isSubmitting}>
-            {isSubmitting ? "Verifying..." : "Sign In"}
-          </PremiumButton>
-        </form>
+            <PremiumButton type="submit" variant="primary" disabled={isSubmitting} className="w-full" aria-busy={isSubmitting}>
+              {isSubmitting ? "Verifying..." : "Sign In"}
+            </PremiumButton>
+            <PremiumButton type="button" variant="ghost" className="w-full" onClick={() => setMode("forgot")}>
+              Forgot password?
+            </PremiumButton>
+          </form>
+        )}
       </PremiumCard>
     </div>
   );
