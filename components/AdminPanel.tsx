@@ -1977,6 +1977,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const sectionTabs: AdminSectionTab[] = [
+    { id: "notifications", label: "Notifications", summary: "Send a push to registered phones" },
     { id: "operations", label: "Operations", summary: "Weekly outcomes and score archives" },
     { id: "seasons", label: "Seasons", summary: "Season wizard, lifecycle, and switching" },
     { id: "adjustments", label: "Adjustments", summary: "Manual score ledger and audit trail" },
@@ -1984,7 +1985,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { id: "roster", label: "Roster", summary: "Players, edits, and manual intake" },
     { id: "cast", label: "Cast", summary: "Status and portrait controls" },
     { id: "database", label: "Database", summary: "Backups and raw JSON tools" },
-    { id: "notifications", label: "Notifications", summary: "Ad hoc push to registered phones" },
   ];
 
   const saveStatus = lastWriteError
@@ -2690,10 +2690,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <PremiumPanelHeader
           kicker="Admin"
           title="Operations Console"
-          description="Manage weekly outcomes, intake queue, roster quality, cast status, and persistence."
-          rightSlot={<PremiumStatusBadge tone={lastWriteError ? "negative" : "accent"}>{saveStatus}</PremiumStatusBadge>}
+          description="Send a push, then manage weekly outcomes, intake, roster, cast, and persistence."
+          rightSlot={
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                className="premium-btn premium-btn-primary"
+                onClick={() => setActiveSection("notifications")}
+              >
+                Send a notification
+              </button>
+              <PremiumStatusBadge tone={lastWriteError ? "negative" : "accent"}>{saveStatus}</PremiumStatusBadge>
+            </div>
+          }
         />
-        <div className="lg:hidden">
+        <div className="admin-section-tabs">
           <PremiumTabs
             items={sectionTabs.map((tab) => ({ id: tab.id, label: tab.label }))}
             activeId={activeSection}
@@ -2703,7 +2714,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       </PremiumCard>
 
       <div className="admin-console-shell">
-        <aside className="admin-console-left hidden lg:block">
+        <aside className="admin-console-left">
           <PremiumCard className="premium-panel-pad-compact">
             <p className="premium-kicker mb-2">Sections</p>
             <nav className="space-y-1">
@@ -2764,6 +2775,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <PremiumCard className="premium-panel-pad-compact premium-stack-sm">
             <p className="premium-kicker">Quick Actions</p>
             <div className="grid grid-cols-1 gap-2">
+              <button
+                type="button"
+                className="premium-btn premium-btn-primary"
+                onClick={() => setActiveSection("notifications")}
+              >
+                Send a notification
+              </button>
               {onSaveNow && (
                 <button type="button" className="premium-btn premium-btn-primary" onClick={onSaveNow}>
                   Save Now

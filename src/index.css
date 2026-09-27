@@ -2294,6 +2294,13 @@ select.premium-input-table,
   gap: 0.66rem;
 }
 
+/* Shown only while the section sidebar is hidden. Tailwind's lg breakpoint
+   is 1024px, and this shell drops the sidebar at 1200px, so a lg:hidden tab
+   strip left 1024–1200px with no way to reach Notifications. */
+.admin-section-tabs {
+  display: none;
+}
+
 .admin-console-right {
   position: sticky;
   top: 0.66rem;
@@ -2407,6 +2414,10 @@ select.premium-input-table,
 
   .admin-console-left {
     display: none;
+  }
+
+  .admin-section-tabs {
+    display: block;
   }
 
   .admin-console-right {
