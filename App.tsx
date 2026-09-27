@@ -64,6 +64,7 @@ import {
   signOutAdmin,
   submitGrowthEvent,
   fetchWeeklySubmissions,
+  subscribeToSeasonState,
 } from "./services/supabase";
 
 const STORAGE_KEY = "traitors_db_v4";
@@ -595,8 +596,12 @@ const App: React.FC = () => {
       }
     };
     void loadSeasonState();
+    const unsubscribeSeasonState = subscribeToSeasonState(seasonId, () => {
+      if (!cancelled) void loadSeasonState();
+    });
     return () => {
       cancelled = true;
+      unsubscribeSeasonState();
     };
   }, [activeSeasonId, isAdminAuthenticated, seasonShellEnabled, seasons]);
 

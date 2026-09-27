@@ -57,6 +57,7 @@ import {
   savePlayerPortrait,
   SubmissionRecord,
   subscribeToWeeklySubmissions,
+  subscribeToAdminSubmissions,
 } from "../services/supabase";
 import {
   PremiumCard,
@@ -754,6 +755,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }, 30000);
     return () => {
       window.clearInterval(pollInterval);
+    };
+  }, [refreshSubmissions]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToAdminSubmissions(() => {
+      void refreshSubmissions();
+    });
+    return () => {
+      unsubscribe();
     };
   }, [refreshSubmissions]);
 
