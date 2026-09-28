@@ -761,11 +761,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   useEffect(() => {
     const unsubscribe = subscribeToAdminSubmissions(() => {
       void refreshSubmissions();
+      void refreshDraftSubmissions();
     });
     return () => {
       unsubscribe();
     };
-  }, [refreshSubmissions]);
+  }, [refreshDraftSubmissions, refreshSubmissions]);
 
   useEffect(() => {
     if (!selectedPlayer) {

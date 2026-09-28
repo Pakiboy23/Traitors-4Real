@@ -63,6 +63,7 @@ import {
   signOutAdmin,
   submitGrowthEvent,
   fetchWeeklySubmissions,
+  subscribeToAdminSubmissions,
   subscribeToSeasonState,
 } from "./services/supabase";
 
@@ -596,7 +597,23 @@ const App: React.FC = () => {
     };
     void loadSeasonState();
     const unsubscribeSeasonState = subscribeToSeasonState(seasonId, () => {
-      if (!cancelled) void loadSeasonState();
+      if (cancelled) return;
+      void loadSeasonState();
+      // seasons.status and lock_schedule are not inside season_states.
+      // Skip the write when the list is unchanged so this effect does not
+      // resubscribe on every board save. An empty result is left to the
+      // 45s poll: listSeasons returns [] on failure.
+      void (async () => {
+        try {
+          const records = await listSeasons();
+          if (cancelled || !Array.isArray(records) || records.length === 0) return;
+          setSeasons((current) =>
+            JSON.stringify(current) === JSON.stringify(records) ? current : records
+          );
+        } catch (error) {
+          logger.warn("Failed to refresh seasons:", error);
+        }
+      })();
     });
     return () => {
       cancelled = true;
@@ -660,10 +677,14 @@ const App: React.FC = () => {
 
     loadPendingSubmissions();
     const intervalId = window.setInterval(loadPendingSubmissions, 45000);
+    const unsubscribeSubmissions = subscribeToAdminSubmissions(() => {
+      if (!cancelled) void loadPendingSubmissions();
+    });
 
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      unsubscribeSubmissions();
     };
   }, [activeSeasonId, gameState.seasonId, isAdminAuthenticated, seasonShellEnabled]);
 

@@ -568,9 +568,11 @@ export const subscribeToWeeklySubmissions = (handler: (submission: SubmissionRec
   return () => { supabase.removeChannel(channel); };
 };
 
-// Broadcast events are a refresh signal. Coalesce bursts, and keep the
-// channel until the next turn so React StrictMode's setup/cleanup/setup
-// reuses one subscription instead of opening a second.
+// Broadcast events are a refresh signal. The payload is ignored; the
+// database sender (supabase/0009_realtime_broadcasts.sql) only says which
+// row changed. Coalesce bursts, and keep the channel until the next turn
+// so React StrictMode's setup/cleanup/setup reuses one subscription
+// instead of opening a second.
 const REALTIME_REFRESH_DEBOUNCE_MS = 300;
 
 type BroadcastListener = () => void;
