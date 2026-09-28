@@ -568,6 +568,138 @@ export const subscribeToWeeklySubmissions = (handler: (submission: SubmissionRec
   return () => { supabase.removeChannel(channel); };
 };
 
+// Broadcast events are a refresh signal. Coalesce bursts, and keep the
+// channel until the next turn so React StrictMode's setup/cleanup/setup
+// reuses one subscription instead of opening a second.
+const REALTIME_REFRESH_DEBOUNCE_MS = 300;
+
+type BroadcastListener = () => void;
+
+type BroadcastEntry = {
+  listeners: Set<BroadcastListener>;
+  channel: ReturnType<typeof supabase.channel> | null;
+  opening: Promise<void> | null;
+  removeTimer: ReturnType<typeof setTimeout> | null;
+  debounceTimer: ReturnType<typeof setTimeout> | null;
+  generation: number;
+};
+
+const broadcastEntries = new Map<string, BroadcastEntry>();
+const pendingRemovals = new Map<string, Promise<unknown>>();
+
+const subscribeBroadcast = (
+  topic: string,
+  event: string,
+  options: { private: boolean; authorize: boolean },
+  failureLabel: string,
+  onChange: BroadcastListener
+): (() => void) => {
+  let entry = broadcastEntries.get(topic);
+  if (!entry) {
+    entry = {
+      listeners: new Set(),
+      channel: null,
+      opening: null,
+      removeTimer: null,
+      debounceTimer: null,
+      generation: 0,
+    };
+    broadcastEntries.set(topic, entry);
+  }
+  const current = entry;
+  current.listeners.add(onChange);
+  if (current.removeTimer !== null) {
+    clearTimeout(current.removeTimer);
+    current.removeTimer = null;
+  }
+
+  const generation = current.generation;
+  if (!current.channel && !current.opening) {
+    current.opening = (async () => {
+      try {
+        if (options.authorize) {
+          try {
+            // No-arg setAuth reads the session via the client's access-token
+            // callback. Passing the token here would pin it and ignore refresh.
+            await supabase.realtime.setAuth();
+          } catch {
+            logger.warn("Supabase realtime auth failed");
+          }
+        }
+        const removal = pendingRemovals.get(topic);
+        if (removal) await removal;
+        if (generation !== current.generation || current.listeners.size === 0) return;
+        if (current.channel) return;
+        const channel = supabase
+          .channel(topic, { config: { private: options.private } })
+          .on("broadcast", { event }, () => {
+            if (current.debounceTimer !== null) clearTimeout(current.debounceTimer);
+            current.debounceTimer = setTimeout(() => {
+              current.debounceTimer = null;
+              current.listeners.forEach((listener) => listener());
+            }, REALTIME_REFRESH_DEBOUNCE_MS);
+          })
+          .subscribe((status) => {
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              logger.warn(`Supabase ${failureLabel} subscription failed`);
+            }
+          });
+        current.channel = channel;
+      } catch {
+        logger.warn(`Supabase ${failureLabel} subscription failed`);
+      }
+    })().finally(() => {
+      if (generation === current.generation) current.opening = null;
+    });
+  }
+
+  return () => {
+    current.listeners.delete(onChange);
+    if (current.listeners.size > 0) return;
+    if (current.removeTimer !== null) clearTimeout(current.removeTimer);
+    current.removeTimer = setTimeout(() => {
+      current.removeTimer = null;
+      if (current.listeners.size > 0) return;
+      if (current.debounceTimer !== null) {
+        clearTimeout(current.debounceTimer);
+        current.debounceTimer = null;
+      }
+      current.generation += 1;
+      const channel = current.channel;
+      current.channel = null;
+      current.opening = null;
+      broadcastEntries.delete(topic);
+      if (!channel) return;
+      const removal = supabase.removeChannel(channel);
+      pendingRemovals.set(topic, removal);
+      void removal.finally(() => {
+        if (pendingRemovals.get(topic) === removal) pendingRemovals.delete(topic);
+      });
+    }, 0);
+  };
+};
+
+export const subscribeToSeasonState = (seasonId: string, onChange: BroadcastListener) => {
+  const normalized = normalizeWeekId(seasonId);
+  if (!normalized) return () => {};
+  return subscribeBroadcast(
+    `season:${normalized}:state`,
+    "season_state_changed",
+    { private: false, authorize: false },
+    "season state",
+    onChange
+  );
+};
+
+export const subscribeToAdminSubmissions = (onChange: BroadcastListener) =>
+  subscribeBroadcast(
+    "admin:submissions",
+    "submission_changed",
+    { private: true, authorize: true },
+    "admin submissions",
+    onChange
+  );
+
 export const deleteSubmission = async (id: string) => {
   const { error } = await supabase.from("submissions").delete().eq("id", id);
   if (error) throw error;
