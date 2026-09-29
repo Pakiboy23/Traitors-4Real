@@ -4,7 +4,7 @@ export const TRAITORS_CLASSIC_RULE_PACK: RulePack = {
   id: "traitors-classic",
   name: "Traitors Classic",
   description:
-    "Winner/traitor forecasts, weekly banished+murdered calls, finale gauntlet, and finale pot tie-break.",
+    "Draft a roster, call each week's banish and murder, and optionally play side bets. Finale week has its own card.",
   supportedEvents: [
     "draft_winner",
     "pred_winner",
@@ -57,7 +57,7 @@ export const SURVIVOR_STYLE_RULE_PACK: RulePack = {
   id: "survivor-style",
   name: "Survivor Style",
   description:
-    "Survivor-like elimination predictions with no murdered call semantics and reduced bonus influence.",
+    "Elimination picks with no murdered-call scoring and smaller side-bet payouts.",
   points: {
     ...TRAITORS_CLASSIC_RULE_PACK.points,
     FINALE_WEEKLY_CORRECT: 2,
@@ -74,7 +74,7 @@ export const GENERIC_ELIMINATION_RULE_PACK: RulePack = {
   id: "generic-elimination",
   name: "Generic Elimination",
   description:
-    "Balanced elimination format for repurposing outside Traitors-specific season language.",
+    "Same weekly desk without Traitor-specific draft bonuses.",
   points: {
     ...TRAITORS_CLASSIC_RULE_PACK.points,
     PRED_WINNER: 8,

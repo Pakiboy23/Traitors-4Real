@@ -70,24 +70,24 @@ export const buildRulesGuide = (pack: RulePack): RulesGuide => {
 
   if (pack.bonusModules.doubleOrNothing) {
     notes.push(
-      `Double or Nothing multiplies your weekly calls by ${MULTIPLIERS.DOUBLE_OR_NOTHING} — the reward and the penalty alike. It is switched off during the finale.`
+      `Double or Nothing only multiplies your weekly banished and murdered calls by ${MULTIPLIERS.DOUBLE_OR_NOTHING} — both the hit and the miss. It does not touch draft points or side bets. It is switched off during the finale.`
     );
   }
 
   if (pack.bonusModules.traitorTrio) {
     notes.push(
-      "The Traitor Trio bonus needs all three names correct. A shorter correct list still pays the per-name rate, not the flat bonus."
+      "Traitor Trio: all three names correct pays the flat bonus instead of the per-name rate. One or two correct names still pay the per-name rate. Zero correct costs nothing."
     );
   }
 
   if (pack.tieBreakStrategy === "final_pot_distance") {
     notes.push(
-      "Level scores are separated by whoever guessed closest to the final prize pot."
+      "If two scores finish level, closest guess to the final prize pot wins the tie."
     );
   }
 
   notes.push(
-    "Admins can apply manual adjustments, which always show on your scorecard with a reason."
+    "A blank pick is skipped: no points, no penalty. Picks lock with the week. Manual adjustments from the commissioner show on your scorecard with a reason."
   );
 
   return {

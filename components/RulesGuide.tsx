@@ -57,10 +57,10 @@ const RulesGuide: React.FC<RulesGuideProps> = ({ gameState }) => {
             }
           />
           <p className="text-sm opacity-80 leading-relaxed">
-            Your score is the sum of three things: a one-off {draftLabel.toLowerCase()} you
-            set before the season, a call you make each week, and any bonus games you
-            choose to play. Every number below comes from this season&rsquo;s rules, so
-            what you read here is exactly what the scoreboard uses.
+            Highest score wins. Main Council does a one-off {draftLabel.toLowerCase()}
+            plus weekly picks. Jr Council skips the {draftLabel.toLowerCase()} and only
+            plays each week. Side bets are optional. Numbers below are the ones the
+            scoreboard uses.
           </p>
         </PremiumCard>
       </motion.section>

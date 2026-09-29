@@ -36,31 +36,32 @@ export interface RuleExplanation {
  */
 export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = {
   DRAFT_WINNER: {
-    label: "You drafted the winner",
+    label: "Winner on your roster",
     detail:
-      "For each person on your ten-pick roster who wins the season. Rank does not matter.",
+      "Each person on your ten-name list who wins the season. List order does not change this.",
     group: "draft",
     module: null,
     tone: "gain",
   },
   PRED_WINNER: {
-    label: "Called the winner",
-    detail: "Your single winner prediction, made before the season starts.",
+    label: "Your winner pick",
+    detail:
+      "The one name you locked as the season winner before play started. Separate from the ten-name list.",
     group: "draft",
     module: null,
     tone: "gain",
   },
   PRED_FIRST_OUT: {
-    label: "Called the first out",
-    detail: "Your prediction for the first person to leave the game.",
+    label: "Your first-out pick",
+    detail: "The one name you locked as the first person to leave.",
     group: "draft",
     module: null,
     tone: "gain",
   },
   TRAITOR_BONUS: {
-    label: "Unmasked a Traitor",
+    label: "A Traitor you named before the season",
     detail:
-      "For each of your three pre-season Traitor guesses who turns out to be a Traitor.",
+      "You name three people at draft. Each one who really is a Traitor pays this. Misses cost nothing.",
     group: "draft",
     module: null,
     tone: "gain",
@@ -68,15 +69,15 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   PROPHECY_REVERSED_PENALTY: {
     label: "Your winner went out first",
     detail:
-      "The reversed prophecy. Applies when the person you picked to win is instead the first out.",
+      "Only if the person you picked to win is also the first person out.",
     group: "draft",
     module: null,
     tone: "loss",
   },
   WEEKLY_CORRECT_BASE: {
-    label: "Correct weekly call",
+    label: "Right weekly call",
     detail:
-      "Each correct banishment or murder call. Doubled if you played Double or Nothing that week.",
+      "Each banished or murdered name you get right. Double or Nothing doubles this. Leave a line blank and it is skipped.",
     group: "weekly",
     module: null,
     tone: "gain",
@@ -84,52 +85,53 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   WEEKLY_INCORRECT_BASE: {
     label: "Wrong weekly call",
     detail:
-      "Each incorrect banishment or murder call. Also doubled under Double or Nothing, so the gamble cuts both ways.",
+      "Each banished or murdered name you get wrong. Double or Nothing doubles this hit too. A week with no murder skips that line.",
     group: "weekly",
     module: null,
     tone: "loss",
     subtracted: true,
   },
   FINALE_WEEKLY_CORRECT: {
-    label: "Correct finale-week call",
+    label: "Right finale-week call",
     detail:
-      "Weekly calls are worth more during the finale. Double or Nothing is switched off for this week.",
+      "Banished and murdered pay this instead of the normal weekly rate. Double or Nothing is off.",
     group: "finale",
     module: "finaleGauntlet",
     tone: "gain",
   },
   FINALE_WEEKLY_INCORRECT: {
     label: "Wrong finale-week call",
-    detail: "Finale-week misses cost more than an ordinary week.",
+    detail: "Finale-week misses on banished or murdered cost this. Bigger than a normal week.",
     group: "finale",
     module: "finaleGauntlet",
     tone: "loss",
     subtracted: true,
   },
   FINALE_FINAL_WINNER: {
-    label: "Called the final winner",
-    detail: "The single biggest award in the game. A miss costs nothing.",
+    label: "Final winner",
+    detail: "Biggest single payday in the game. Wrong costs nothing.",
     group: "finale",
     module: "finaleGauntlet",
     tone: "gain",
   },
   FINALE_LAST_FAITHFUL_STANDING: {
-    label: "Called the last Faithful standing",
-    detail: "A miss costs nothing.",
+    label: "Last Faithful standing",
+    detail: "Wrong costs nothing.",
     group: "finale",
     module: "finaleGauntlet",
     tone: "gain",
   },
   FINALE_LAST_TRAITOR_STANDING: {
-    label: "Called the last Traitor standing",
-    detail: "A miss costs nothing.",
+    label: "Last Traitor standing",
+    detail: "Wrong costs nothing.",
     group: "finale",
     module: "finaleGauntlet",
     tone: "gain",
   },
   REDEMPTION_ROULETTE_CORRECT: {
     label: "Redemption Roulette hit",
-    detail: "Your Redemption Roulette pick was right.",
+    detail:
+      "Optional. Pick one name still in the game. Pays this when it matches the official Roulette result. Not the same as your banished pick.",
     group: "bonus",
     module: "redemptionRoulette",
     tone: "gain",
@@ -137,21 +139,22 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   REDEMPTION_ROULETTE_CORRECT_NEGATIVE: {
     label: "Redemption Roulette hit from behind",
     detail:
-      "The same pick pays more if your score was below zero when the week's bonuses were worked out.",
+      "Same pick, bigger payday if your score was below zero before any bonus was added. Hitting Roulette does not change Shield's rate.",
     group: "bonus",
     module: "redemptionRoulette",
     tone: "gain",
   },
   REDEMPTION_ROULETTE_INCORRECT: {
     label: "Redemption Roulette miss",
-    detail: "The only bonus game that costs you points for guessing wrong.",
+    detail:
+      "You played Roulette and the name was wrong. This is the only bonus that costs points on a miss. Leave it blank and you get nothing either way.",
     group: "bonus",
     module: "redemptionRoulette",
     tone: "loss",
   },
   SHIELD_GAMBIT_CORRECT: {
     label: "Shield Gambit hit",
-    detail: "Your Shield Gambit pick was right. A miss costs nothing.",
+    detail: "Optional. Right name pays this. Wrong name costs nothing.",
     group: "bonus",
     module: "shieldGambit",
     tone: "gain",
@@ -159,15 +162,15 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   SHIELD_GAMBIT_CORRECT_NEGATIVE: {
     label: "Shield Gambit hit from behind",
     detail:
-      "Pays more if your score was below zero when the week's bonuses were worked out.",
+      "Pays this instead if your score was below zero before bonuses. That check is shared with Roulette and is taken once.",
     group: "bonus",
     module: "shieldGambit",
     tone: "gain",
   },
   TRAITOR_TRIO_PARTIAL: {
-    label: "Traitor Trio, per correct name",
+    label: "Traitor Trio, each correct name",
     detail:
-      "Awarded for each correct name when you do not get all three. Two right pays twice this.",
+      "Optional. Paid once per correct name when you do not hit all three. Two right pays this twice. Zero right costs nothing.",
     group: "bonus",
     module: "traitorTrio",
     tone: "gain",
@@ -175,7 +178,7 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   TRAITOR_TRIO_PERFECT: {
     label: "Traitor Trio, all three",
     detail:
-      "A flat award that replaces the per-name rate, and only when exactly three names are correct.",
+      "Flat payout when all three names match. Replaces the per-name rate — you do not get both.",
     group: "bonus",
     module: "traitorTrio",
     tone: "gain",
@@ -183,7 +186,7 @@ export const RULE_EXPLANATIONS: Record<keyof RulePackPoints, RuleExplanation> = 
   TRAITOR_TRIO_PERFECT_PER_MEMBER: {
     label: "Traitor Trio credit per name",
     detail:
-      "How a perfect Trio is attributed across the three names on your scorecard. It does not add to your total.",
+      "How a perfect Trio is split across the three names on your scorecard. It does not add to your total.",
     group: "bonus",
     module: "traitorTrio",
     tone: "gain",
@@ -200,24 +203,24 @@ export const RULE_GROUPS: Array<{
     id: "draft",
     title: "Your draft",
     blurb:
-      "Set once, before the season starts: ten ranked picks, a winner, a first out, and three Traitor guesses. These score as the season plays out.",
+      "Main Council only. Set once before the season: ten names, one winner, one first-out, three Traitor guesses. These pay as the show confirms them. Jr Council skips this section.",
   },
   {
     id: "weekly",
     title: "Every week",
     blurb:
-      "Call who gets banished at the Round Table and who gets murdered overnight. A week with no murder is not scored either way.",
+      "Before lock, name who gets banished and who gets murdered. Right pays. Wrong costs a little. No murder that week means the murder line is skipped. Blank is skipped.",
   },
   {
     id: "bonus",
-    title: "Bonus games",
+    title: "Side bets",
     blurb:
-      "Optional side bets each week. Two of them pay extra if you are below zero when the week is worked out — that check is taken once, before any bonus is applied, so hitting one does not reduce the other.",
+      "Optional. Skip all of them if you want. Roulette and Shield pay extra if you are below zero after the weekly calls — that check happens once, before any bonus is added, so one hit does not shrink the other.",
   },
   {
     id: "finale",
     title: "The finale",
     blurb:
-      "The last week runs on its own scale. Weekly calls are worth more, Double or Nothing is switched off, and finale misses cost nothing.",
+      "Last week only. Weekly calls pay more. Double or Nothing and the side bets are off. Extra finale questions pay if you are right and cost nothing if you are wrong.",
   },
 ];
