@@ -6,8 +6,13 @@ import { calculatePlayerScore } from "./scoring";
 import {
   activeRecapWeekId,
   applyRecapEditorChange,
+  buildPublicRecapIndex,
   buildPublicWeeklyRecap,
+  emptyPublicRecapIndex,
+  formatRecapPublishedAt,
+  isShortRecapWeek,
   publicRecapHasForbiddenKey,
+  publicRecapHubUrl,
   publicRecapUrl,
   recapEditorWeeks,
   recapShareDescription,
@@ -212,6 +217,118 @@ describe("buildPublicWeeklyRecap", () => {
     expect(publicRecapUrl("traitors-new-blood-s1", "week-2")).toBe(
       "https://traitorsfantasydraft.online/recap/traitors-new-blood-s1/week-2"
     );
+  });
+});
+
+describe("buildPublicRecapIndex", () => {
+  it("lists published weeks in episode order and links to the week pages", () => {
+    const game = state({
+      weeklyRecaps: [
+        { weekId: "week-10", intro: "Double digits.", published: true, publishedAt: "2026-11-20T00:00:00.000Z" },
+        { weekId: "week-2", intro: "  Second episode.  ", published: true, publishedAt: "2026-09-25T00:00:00.000Z" },
+        { weekId: "week-1", intro: "Premiere night.", published: true, publishedAt: "2026-09-18T00:00:00.000Z" },
+        { weekId: "finale-night", intro: "Not a numbered week.", published: true },
+      ],
+    });
+    const before = structuredClone(game.weeklyRecaps);
+    const index = buildPublicRecapIndex(game, "traitors-new-blood-s1");
+
+    expect(index?.seasonLabel).toBe("New Blood");
+    expect(index?.leagueName).toBe("UPRV Fantasy League");
+    expect(index?.weeks.map((week) => week.weekId)).toEqual([
+      "week-1",
+      "week-2",
+      "week-10",
+      "finale-night",
+    ]);
+    expect(index?.weeks[0]).toEqual({
+      weekId: "week-1",
+      weekLabel: "Premiere",
+      href: "/recap/traitors-new-blood-s1/week-1",
+      intro: "Premiere night.",
+      publishedAt: "2026-09-18T00:00:00.000Z",
+    });
+    expect(index?.weeks[1]?.weekLabel).toBe("Week 2");
+    expect(index?.weeks[1]?.intro).toBe("Second episode.");
+    expect(index?.weeks[1]?.href).toBe("/recap/traitors-new-blood-s1/week-2");
+    expect(formatRecapPublishedAt(index?.weeks[1]?.publishedAt)).toBe("Sep 25, 2026");
+    expect(formatRecapPublishedAt("not-a-date")).toBeNull();
+    expect(publicRecapHubUrl("traitors-new-blood-s1")).toBe(
+      "https://traitorsfantasydraft.online/recap/traitors-new-blood-s1"
+    );
+    expect(publicRecapHasForbiddenKey(index)).toBe(false);
+    expect(game.weeklyRecaps).toEqual(before);
+  });
+
+  it("omits unpublished and missing weeks, including their intros", () => {
+    const index = buildPublicRecapIndex(
+      state({
+        weeklyRecaps: [
+          { weekId: "week-1", intro: "Public premiere.", published: true },
+          { weekId: "week-2", intro: "secret@example.com spoiler", published: false },
+          { weekId: "week-3", intro: "Still drafting.", published: false, publishedAt: "2026-10-02T00:00:00.000Z" },
+        ],
+      }),
+      "traitors-new-blood-s1"
+    );
+
+    expect(index?.weeks.map((week) => week.weekId)).toEqual(["week-1"]);
+    expect(JSON.stringify(index)).not.toContain("secret@example.com");
+    expect(JSON.stringify(index)).not.toContain("alex@example.com");
+    expect(JSON.stringify(index)).not.toContain("Still drafting");
+    expect(JSON.stringify(index)).not.toContain("Abbey Benjamin");
+  });
+
+  it("includes a newly published week without a fixed week list", () => {
+    const hidden = buildPublicRecapIndex(
+      state({ weeklyRecaps: [{ weekId: "week-4", intro: "Not yet.", published: false }] }),
+      "traitors-new-blood-s1"
+    );
+    expect(hidden?.weeks).toEqual([]);
+
+    const published = buildPublicRecapIndex(
+      state({
+        weeklyRecaps: [
+          { weekId: "week-4", intro: "Now live.", published: true, publishedAt: "2026-10-16T00:00:00.000Z" },
+        ],
+      }),
+      "traitors-new-blood-s1"
+    );
+    expect(published?.weeks).toEqual([
+      {
+        weekId: "week-4",
+        weekLabel: "Week 4",
+        href: "/recap/traitors-new-blood-s1/week-4",
+        intro: "Now live.",
+        publishedAt: "2026-10-16T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("rejects a blank season id and the week short-link segment", () => {
+    expect(buildPublicRecapIndex(state(), "  ")).toBeNull();
+    expect(buildPublicRecapIndex(state(), "week-2")).toBeNull();
+    expect(isShortRecapWeek("week-2")).toBe(true);
+    expect(isShortRecapWeek("Week-12")).toBe(true);
+    expect(isShortRecapWeek("traitors-new-blood-s1")).toBe(false);
+    expect(emptyPublicRecapIndex("traitors-new-blood-s1", " New Blood ")).toEqual({
+      seasonId: "traitors-new-blood-s1",
+      seasonLabel: "New Blood",
+      leagueName: "Round Table Draft",
+      weeks: [],
+    });
+  });
+});
+
+describe("recap hub route", () => {
+  const page = readFileSync(path.resolve(__dirname, "../app/recap/[seasonId]/page.tsx"), "utf8");
+
+  it("keeps /recap/week-N as a short link and loads the season hub otherwise", () => {
+    expect(page).toContain("isShortRecapWeek(segment)");
+    expect(page).toContain("loadLiveSeasonId()");
+    expect(page).toContain("redirect(recapPath(liveSeasonId, segment))");
+    expect(page).toContain("loadPublicRecapIndex(segment)");
+    expect(page).toContain("RecapHubView");
   });
 });
 

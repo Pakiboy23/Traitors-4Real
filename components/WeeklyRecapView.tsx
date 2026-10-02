@@ -58,7 +58,13 @@ export const RecapUnavailable = ({
   </main>
 );
 
-const WeeklyRecapView = ({ recap }: { recap: PublicWeeklyRecap }) => {
+const WeeklyRecapView = ({
+  recap,
+  hubHref,
+}: {
+  recap: PublicWeeklyRecap;
+  hubHref?: string;
+}) => {
   if (!recap.published) {
     return (
       <RecapUnavailable
@@ -114,9 +120,20 @@ const WeeklyRecapView = ({ recap }: { recap: PublicWeeklyRecap }) => {
         ) : null}
       </section>
 
-      <a className="recap-home" href="/">
-        Open Round Table Draft
-      </a>
+      {hubHref ? (
+        <div className="recap-links">
+          <a className="recap-home" href={hubHref}>
+            All recaps
+          </a>
+          <a className="recap-home" href="/">
+            Open Round Table Draft
+          </a>
+        </div>
+      ) : (
+        <a className="recap-home" href="/">
+          Open Round Table Draft
+        </a>
+      )}
     </main>
   );
 };

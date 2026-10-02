@@ -5,6 +5,7 @@ import { loadPublicWeeklyRecap } from "../../../../../src/utils/loadPublicRecap"
 import { RECAP_FIXTURE } from "../../../../../src/utils/recapFixture";
 import {
   publicRecapUrl,
+  recapHubPath,
   recapShareDescription,
   type PublicWeeklyRecap,
 } from "../../../../../src/utils/weeklyRecap";
@@ -90,7 +91,7 @@ export default async function RecapPage({
 }) {
   const [{ seasonId, weekId }, query] = await Promise.all([params, searchParams]);
   const fixture = devFixture(seasonId, weekId, query.fixture);
-  if (fixture) return <WeeklyRecapView recap={fixture} />;
+  if (fixture) return <WeeklyRecapView recap={fixture} hubHref={recapHubPath(fixture.seasonId)} />;
   const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
   if (loaded.status === "error") {
     return (
@@ -101,5 +102,5 @@ export default async function RecapPage({
     );
   }
   if (loaded.status !== "published") notFound();
-  return <WeeklyRecapView recap={loaded.recap} />;
+  return <WeeklyRecapView recap={loaded.recap} hubHref={recapHubPath(loaded.recap.seasonId)} />;
 }

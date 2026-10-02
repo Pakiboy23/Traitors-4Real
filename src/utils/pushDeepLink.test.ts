@@ -43,6 +43,12 @@ describe("parseRecapDeepLink", () => {
       url: "https://traitorsfantasydraft.online/recap/week-2",
     });
   });
+
+  it("does not treat the season hub as a week deep link", () => {
+    expect(
+      parseRecapDeepLink("https://traitorsfantasydraft.online/recap/traitors-new-blood-s1")
+    ).toBeNull();
+  });
 });
 
 describe("send-lock-reminder deep link", () => {

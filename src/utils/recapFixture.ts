@@ -1,4 +1,4 @@
-import type { PublicWeeklyRecap } from "./weeklyRecap";
+import type { PublicRecapIndex, PublicWeeklyRecap } from "./weeklyRecap";
 
 /** Dev-only sample so the recap layout can be opened without publishing a real week. */
 export const RECAP_FIXTURE: PublicWeeklyRecap = {
@@ -21,5 +21,28 @@ export const RECAP_FIXTURE: PublicWeeklyRecap = {
     { rank: 3, name: "Casey Morgan", score: 15, weekDelta: 0, rankDelta: 0 },
     { rank: 4, name: "Devon Blake", score: 9, weekDelta: 4, rankDelta: 1 },
     { rank: 5, name: "Eden Brooks", score: 7, weekDelta: null, rankDelta: null },
+  ],
+};
+
+/** Dev-only sample so the recap hub layout can be opened without a live season. */
+export const RECAP_HUB_FIXTURE: PublicRecapIndex = {
+  seasonId: "traitors-new-blood-s1",
+  seasonLabel: "New Blood",
+  leagueName: "UPRV Fantasy League",
+  weeks: [
+    {
+      weekId: "week-1",
+      weekLabel: "Week 1",
+      href: "/recap/traitors-new-blood-s1/week-1",
+      intro: "",
+      publishedAt: "2026-09-18T00:00:00.000Z",
+    },
+    {
+      weekId: "week-2",
+      weekLabel: "Week 2",
+      href: "/recap/traitors-new-blood-s1/week-2",
+      intro: RECAP_FIXTURE.intro,
+      publishedAt: "2026-09-25T00:00:00.000Z",
+    },
   ],
 };

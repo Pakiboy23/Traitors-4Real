@@ -39,6 +39,22 @@ export interface PublicWeeklyRecap {
   standings: RecapStanding[];
 }
 
+/** One published week on the public recap hub. Unpublished weeks never appear. */
+export interface PublicRecapWeek {
+  weekId: string;
+  weekLabel: string;
+  href: string;
+  intro: string;
+  publishedAt: string | null;
+}
+
+export interface PublicRecapIndex {
+  seasonId: string;
+  seasonLabel: string;
+  leagueName: string;
+  weeks: PublicRecapWeek[];
+}
+
 const emptyResults = (): RecapEpisodeResults => ({
   banished: null,
   murdered: null,
@@ -57,6 +73,15 @@ export const recapPath = (seasonId: string, weekId: string): string =>
 
 export const publicRecapUrl = (seasonId: string, weekId: string): string =>
   `${RECAP_PUBLIC_ORIGIN}${recapPath(seasonId, weekId)}`;
+
+export const recapHubPath = (seasonId: string): string =>
+  `/recap/${encodeURIComponent(seasonId)}`;
+
+export const publicRecapHubUrl = (seasonId: string): string =>
+  `${RECAP_PUBLIC_ORIGIN}${recapHubPath(seasonId)}`;
+
+/** `/recap/week-2` is a short link onto the live season, not a season hub. */
+export const isShortRecapWeek = (segment: string): boolean => /^week-\d+$/i.test(segment);
 
 export const weekLabelFromId = (weekId: string, snapshotLabel?: string | null): string => {
   const label = typeof snapshotLabel === "string" ? snapshotLabel.trim() : "";
@@ -96,6 +121,86 @@ export const recapRecordFor = (
   weekId: string
 ): WeeklyRecapRecord | null =>
   sanitizeWeeklyRecaps(state?.weeklyRecaps).find((record) => record.weekId === weekId) ?? null;
+
+const weekSortKey = (weekId: string): number => {
+  const match = /^week-(\d+)$/i.exec(weekId);
+  return match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+};
+
+const compareRecapWeeks = (left: string, right: string): number => {
+  const leftKey = weekSortKey(left);
+  const rightKey = weekSortKey(right);
+  const leftNumeric = Number.isFinite(leftKey);
+  const rightNumeric = Number.isFinite(rightKey);
+  if (leftNumeric && rightNumeric && leftKey !== rightKey) return leftKey - rightKey;
+  if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
+  return left.localeCompare(right);
+};
+
+const snapshotLabelFor = (
+  history: GameState["weeklyScoreHistory"],
+  weekId: string
+): string | null => {
+  if (!Array.isArray(history)) return null;
+  const snapshot = history.find(
+    (entry) => normalizeWeekId(entry?.weeklyResults?.weekId) === weekId
+  );
+  return snapshot?.label ?? null;
+};
+
+export const formatRecapPublishedAt = (value: string | null | undefined): string | null => {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+};
+
+export const emptyPublicRecapIndex = (seasonId: string, seasonLabel?: string | null): PublicRecapIndex => ({
+  seasonId,
+  seasonLabel: seasonLabel?.trim() || seasonId,
+  leagueName: "Round Table Draft",
+  weeks: [],
+});
+
+/**
+ * Published weeks for the public hub. Week pages use the same `published`
+ * flag: a week shows up here only when `weeklyRecaps` marks it published.
+ * Adding a week to that array is enough — nothing here lists week numbers.
+ */
+export const buildPublicRecapIndex = (
+  state: Pick<
+    GameState,
+    "seasonId" | "seasonConfig" | "showConfig" | "weeklyRecaps" | "weeklyScoreHistory"
+  > | null | undefined,
+  seasonIdInput: string
+): PublicRecapIndex | null => {
+  const seasonId = seasonIdInput.trim();
+  if (!seasonId || isShortRecapWeek(seasonId)) return null;
+  const weeks = sanitizeWeeklyRecaps(state?.weeklyRecaps)
+    .filter((record) => record.published)
+    .map((record) => ({
+      weekId: record.weekId,
+      weekLabel: weekLabelFromId(
+        record.weekId,
+        snapshotLabelFor(state?.weeklyScoreHistory, record.weekId)
+      ),
+      href: recapPath(seasonId, record.weekId),
+      intro: record.intro.trim(),
+      publishedAt: record.publishedAt ?? null,
+    }))
+    .sort((left, right) => compareRecapWeeks(left.weekId, right.weekId));
+  return {
+    seasonId,
+    seasonLabel: state?.seasonConfig?.label?.trim() || seasonId,
+    leagueName: state?.showConfig?.leagueName?.trim() || "Round Table Draft",
+    weeks,
+  };
+};
 
 export const upsertWeeklyRecap = (
   existing: WeeklyRecapRecord[] | null | undefined,

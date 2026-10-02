@@ -2,7 +2,11 @@ import type { GameState } from "../../types";
 import { supabase } from "../lib/supabase";
 import { createSupabaseAdmin } from "../lib/supabaseAdmin";
 import {
+  buildPublicRecapIndex,
   buildPublicWeeklyRecap,
+  emptyPublicRecapIndex,
+  isShortRecapWeek,
+  type PublicRecapIndex,
   type PublicWeeklyRecap,
 } from "./weeklyRecap";
 
@@ -112,5 +116,92 @@ export const loadLiveSeasonId = async (): Promise<string | null> => {
     return data[0].season_id;
   } catch {
     return null;
+  }
+};
+
+export type LoadedPublicRecapIndex =
+  | { status: "ready"; index: PublicRecapIndex }
+  | { status: "missing" }
+  | { status: "error" };
+
+const relationIsMissing = (error: { code?: string; message?: string } | null): boolean => {
+  if (!error) return false;
+  if (error.code === "PGRST205" || error.code === "42P01") return true;
+  const message = error.message ?? "";
+  return /schema cache/i.test(message) && /not found/i.test(message);
+};
+
+const stateFromRow = (value: unknown): GameState | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as GameState;
+};
+
+/**
+ * Season row the public recap hub reads.
+ *
+ * Week pages call published_weekly_recap() for one week. That function reads
+ * the same season_states JSON and returns nothing until weeklyRecaps marks
+ * the week published. The hub needs every published week, so it reads
+ * season_states_public (emails already stripped) and projects with
+ * buildPublicRecapIndex. A missing view falls back to season_states, the
+ * same fallback the week page uses. The returned index is only week labels,
+ * intros, and dates — players, picks, and emails stay off it.
+ */
+const readRecapIndexState = async (
+  seasonId: string
+): Promise<{ status: "ready"; state: GameState } | { status: "missing" } | { status: "error" }> => {
+  const primary = await supabase
+    .from("season_states_public")
+    .select("state")
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (!primary.error) {
+    const state = stateFromRow(primary.data?.state);
+    return state ? { status: "ready", state } : { status: "missing" };
+  }
+  if (!relationIsMissing(primary.error)) return { status: "error" };
+
+  const fallback = await supabase
+    .from("season_states")
+    .select("state")
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (fallback.error) return { status: "error" };
+  const state = stateFromRow(fallback.data?.state);
+  return state ? { status: "ready", state } : { status: "missing" };
+};
+
+const readSeasonLabel = async (
+  seasonId: string
+): Promise<{ status: "ready"; label: string } | { status: "missing" } | { status: "error" }> => {
+  const { data, error } = await supabase
+    .from("seasons")
+    .select("label")
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (error) return { status: "error" };
+  if (!data) return { status: "missing" };
+  const label = typeof data.label === "string" ? data.label.trim() : "";
+  return { status: "ready", label: label || seasonId };
+};
+
+export const loadPublicRecapIndex = async (
+  seasonIdInput: string
+): Promise<LoadedPublicRecapIndex> => {
+  const seasonId = seasonIdInput.trim();
+  if (!seasonId || isShortRecapWeek(seasonId)) return { status: "missing" };
+  try {
+    const loaded = await readRecapIndexState(seasonId);
+    if (loaded.status === "error") return { status: "error" };
+    if (loaded.status === "ready") {
+      const index = buildPublicRecapIndex(loaded.state, seasonId);
+      return index ? { status: "ready", index } : { status: "missing" };
+    }
+    const season = await readSeasonLabel(seasonId);
+    if (season.status === "error") return { status: "error" };
+    if (season.status === "missing") return { status: "missing" };
+    return { status: "ready", index: emptyPublicRecapIndex(seasonId, season.label) };
+  } catch {
+    return { status: "error" };
   }
 };
