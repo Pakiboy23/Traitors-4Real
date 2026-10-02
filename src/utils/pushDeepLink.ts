@@ -1,4 +1,4 @@
-import { RECAP_PUBLIC_ORIGIN } from "./weeklyRecap";
+import { isShortRecapWeek, RECAP_PUBLIC_ORIGIN } from "./weeklyRecap";
 
 const RECAP_HOSTS = new Set([
   "traitorsfantasydraft.online",
@@ -44,7 +44,11 @@ const decodeSegment = (value: string): string | null => {
   }
 };
 
-/** Pull season and week out of a recap URL. A one-segment path is week-only. */
+/**
+ * Pull season and week out of a recap URL. A one-segment path is a week
+ * short link (`/recap/week-2`). The season hub (`/recap/<seasonId>`) is not
+ * a week, so it does not open the in-app recap.
+ */
 export const parseRecapDeepLink = (input: unknown): RecapDeepLink | null => {
   const sanitized = sanitizePushDeepLink(input);
   if (!sanitized) return null;
@@ -53,7 +57,7 @@ export const parseRecapDeepLink = (input: unknown): RecapDeepLink | null => {
   if (segments[0] !== "recap") return null;
   if (segments.length === 2) {
     const weekId = decodeSegment(segments[1] ?? "");
-    if (!weekId) return null;
+    if (!weekId || !isShortRecapWeek(weekId)) return null;
     return { seasonId: null, weekId, url: sanitized };
   }
   if (segments.length === 3) {
