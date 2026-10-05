@@ -234,30 +234,29 @@ old stack in its body — it carries a correction header.
   field, currently `UPRV Fantasy League`. The two are deliberately distinct —
   only one is public on the App Store.
 - Bundle id `com.roundtabledraft.app`. **Locks permanently at first submission.**
-- **2.0 (35) is on the App Store.** Native identity in the repo is now
-  **2.0.1 (36)**, not yet archived. Listing copy, screenshots, privacy
+- **2.0 (35) is the released App Store version.** App Store Connect already
+  has **2.0.1 (101)**. Native identity in the repo is **2.0.1 (102)** — do
+  not archive 101 or anything lower. Listing copy, screenshots, privacy
   answers, and review notes live in `store/`; the update workflow (bump
-  `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, archive, add a version in
-  App Store Connect, select build, submit) is in `store/README.md`. The App
-  target is **iPhone only**.
+  `CURRENT_PROJECT_VERSION` above the highest build App Store Connect has,
+  archive, select that build on the 2.0.1 version, submit) is in
+  `store/README.md`. The App target is **iPhone only**.
 - iOS target has the push entitlement, the `remote-notification` background
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
-- `send-lock-reminder` Edge Function is deployed (v3) and exercised. Real APNs
-  delivery is untested. It needs three secrets that are not set yet:
-  `APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY`. Live send **refuses**
+- `send-lock-reminder` Edge Function is deployed (v10). Live send **refuses**
   anything other than `APNS_ENV=production` — TestFlight and the App Store both
   use the production APNs host; sandbox is only for Xcode-signed development
   builds. `dryRun` still works with the secret unset. A sandbox/production
   mismatch returns `BadDeviceToken`, which the function treats as a stale token
   and deletes; it cannot tell a mismatch from a dead device. `push_tokens` is
-  currently empty, so secrets alone will not deliver anything — a physical
-  device has to register first.
+  not empty — devices have registered — so a bad send can delete live tokens.
 
 **Shipping already.** App Store Connect record, App ID, and signing are all
 done — do not describe them as outstanding. TestFlight groups `DrafTers`
 (internal) and `DrafTers2` (external) exist, and Xcode Cloud is wired to the
-App target. **2.0 (35)** is released. Next archive is **2.0.1 (36)** from a
-Mac — see `store/README.md`.
+App target. **2.0 (35)** is the released store version. App Store Connect
+already has **2.0.1 (101)**. Next archive is **2.0.1 (102)** from a Mac —
+see `store/README.md`.
 
 **Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
 iOS 26+ (no UIScene adoption — UIKit calls
@@ -265,8 +264,8 @@ iOS 26+ (no UIScene adoption — UIKit calls
 That is the most likely cause and the timing fits, but it is not confirmed
 against the crash logs. Build 3 was created after #133 merged.
 
-**Not done:** cast photos. The Mac archive / App Store Connect submit of
-2.0.1 (36).
+**Not done:** the Mac archive of **2.0.1 (102)**. App Store Connect already
+has 2.0.1 (101); uploading 102 is how the next binary gets a free build number.
 
 The `DEVELOPMENT` badge is gated on `NODE_ENV` and is dead-code-eliminated from
 a production build; the `NO SYNC YET` chip no longer exists (`syncLabel` is
