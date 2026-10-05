@@ -1,8 +1,9 @@
 # App Store submission kit
 
 Copy, screenshots, privacy answers, and the Mac archive steps for
-**Round Table Draft**. Current native identity is **2.0.1 (build 63)**;
-**2.0 (35)** is the version on the App Store.
+**Round Table Draft**. Current native identity is **2.0.1 (build 102)**.
+App Store Connect already has **2.0.1 (101)**. **2.0 (35)** is the version
+released on the App Store. Do not archive 101 or anything lower.
 
 `release_notes.txt` holds the What's New for the version currently being
 shipped — rewrite it for each update, it is not a changelog.
@@ -58,15 +59,15 @@ branch):
    `ios/App/App/capacitor.config.json` has no `server.url`
 3. Discard a `CapApp-SPM/Package.swift` rewrite if `cap sync` changes
    platforms to iOS 17
-4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **63** /
+4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **102** /
    iPhone only
-5. Archive and upload **2.0.1 (63)** to App Store Connect
+5. Archive and upload **2.0.1 (102)** to App Store Connect
 6. Select that build on the 2.0.1 version record, paste `release_notes.txt`
    into What's New, then submit for review
 
 Set `APNS_ENV=production` on the `send-lock-reminder` Edge Function before
-the first production push. `push_tokens` is empty until a device registers;
-that is not a submission blocker.
+the first production push. Devices have already registered tokens, so a live
+send can reach phones. That is not a submission blocker.
 
 ## Shipping an update to a live app
 
@@ -80,8 +81,9 @@ things have to change in the repo per update, both in
   version on the store (`2.0` → `2.0.1`). Apple compares this numerically per
   component, so `2.0.1 > 2.0` and `2.1 > 2.0.1`.
 - `CURRENT_PROJECT_VERSION` — the build number. Must be higher than any
-  build ever uploaded for this app (`35` → `36`), across TestFlight and the
-  store. App Store Connect rejects a reused build number at upload.
+  build ever uploaded for this app. App Store Connect already has **101**, so
+  the repo is **102**. Apple rejects a reused build number at upload, across
+  TestFlight and the store.
 
 Then, on a Mac:
 

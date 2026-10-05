@@ -14,9 +14,9 @@ const packageSwift = readFileSync(path.join(repoRoot, "ios/App/CapApp-SPM/Packag
 const appDelegate = readFileSync(path.join(repoRoot, "ios/App/App/AppDelegate.swift"), "utf8");
 const packageJson = readFileSync(path.join(repoRoot, "package.json"), "utf8");
 
-/** Repo identity: 2.0 (35) is on the store; next TestFlight after builds 62+ is 2.0.1 (63). */
+/** App Store Connect already has 2.0.1 (101). The next upload is 2.0.1 (102). */
 const MARKETING_VERSION = "2.0.1";
-const MIN_BUILD_NUMBER = 63;
+const MIN_BUILD_NUMBER = 102;
 const BUNDLE_ID = "com.roundtabledraft.app";
 
 function appTargetSettings(name: "Debug" | "Release"): string {
@@ -33,7 +33,7 @@ function appTargetSettings(name: "Debug" | "Release"): string {
 
 describe("iOS 2.0.1 release identity", () => {
   it.each(["Debug", "Release"] as const)(
-    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 63 on App %s",
+    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 102 on App %s",
     (name) => {
       const settings = appTargetSettings(name);
       expect(settings).toMatch(new RegExp(`MARKETING_VERSION = ${MARKETING_VERSION};`));
