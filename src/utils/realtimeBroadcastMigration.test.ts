@@ -117,6 +117,13 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(app).toContain("window.setInterval(refreshSeasons, 45000)");
   });
 
+  it("does not let a season_state_changed echo overwrite unsaved admin edits", () => {
+    expect(app).toContain("decideAdminSeasonRefresh");
+    expect(app).toContain("appliedSeasonIdRef");
+    expect(app).toContain("hasDebouncedSave: writeTimerRef.current !== null");
+    expect(app).toContain("hasPendingWrite: pendingWriteRef.current !== null");
+  });
+
   it("keeps the weekly poll and postgres_changes listener, and refreshes draft entries too", () => {
     expect(admin).toContain("subscribeToWeeklySubmissions");
     expect(admin).toMatch(/window\.setInterval\(\(\) => \{\s*refreshSubmissions\(\);\s*\}, 30000\)/);

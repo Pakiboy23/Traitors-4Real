@@ -34,6 +34,7 @@ import { adminAuthErrorMessage, applyAdminSessionResult } from "./src/utils/admi
 import { readForceClosedFromEnv, resolveDraftWindow } from "./src/utils/draftWindow";
 import { resolveHomeCountdown } from "./src/utils/homeCountdown";
 import { pickPreferredSeason } from "./src/utils/seasonSelection";
+import { decideAdminSeasonRefresh } from "./src/utils/adminSeasonRefresh";
 import {
   canPersistSeasonState,
   isolateSeasonGameplay,
@@ -320,6 +321,7 @@ const App: React.FC = () => {
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
   const writeTimerRef = useRef<number | null>(null);
+  const appliedSeasonIdRef = useRef<string | null>(null);
   // show_configs is the authority for branding and terminology, but the game
   // and season snapshots each embed their own copy, frozen whenever they were
   // last written. Those snapshots arrive on a whole-state replace, so without
@@ -536,6 +538,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setLoadedSeasonId(null);
+    appliedSeasonIdRef.current = null;
   }, [activeSeasonId]);
 
   useEffect(() => {
@@ -544,8 +547,26 @@ const App: React.FC = () => {
     if (!seasonId) return;
     localStorage.setItem("traitors_active_season", seasonId);
     let cancelled = false;
+    const refreshDecision = () =>
+      decideAdminSeasonRefresh({
+        isAdminAuthenticated,
+        isBackgroundRefresh: appliedSeasonIdRef.current === seasonId,
+        hasDebouncedSave: writeTimerRef.current !== null,
+        hasPendingWrite: pendingWriteRef.current !== null,
+      });
+    const commitRemoteState = (nextState: GameState) => {
+      if (!refreshDecision().applyRemote) {
+        if (isAdminAuthenticated) setAdminSeasonReady(true);
+        return;
+      }
+      lastRemoteStateRef.current = JSON.stringify(nextState);
+      setGameState(nextState);
+      appliedSeasonIdRef.current = seasonId;
+      setLoadedSeasonId(seasonId);
+      if (isAdminAuthenticated) setAdminSeasonReady(true);
+    };
     const loadSeasonState = async () => {
-      if (isAdminAuthenticated) setAdminSeasonReady(false);
+      if (refreshDecision().resetAdminReady) setAdminSeasonReady(false);
       try {
         const seasonState = isAdminAuthenticated
           ? await fetchAdminSeasonState(seasonId)
@@ -558,7 +579,7 @@ const App: React.FC = () => {
             : undefined);
         if (!seasonState) {
           if (!seasonMeta) {
-            lastRemoteStateRef.current = null;
+            if (refreshDecision().applyRemote) lastRemoteStateRef.current = null;
             return;
           }
           // Do not keep the previous season's board (or localStorage) on
@@ -566,13 +587,9 @@ const App: React.FC = () => {
           const empty = normalizeGameState(
             isolateSeasonGameplay({ players: [] }, seasonMeta, rosterForSeason(seasonId))
           );
-          const nextEmpty = isAdminAuthenticated
-            ? empty
-            : redactPublicSeasonState(empty);
-          lastRemoteStateRef.current = JSON.stringify(nextEmpty);
-          setGameState(nextEmpty);
-          setLoadedSeasonId(seasonId);
-          if (isAdminAuthenticated) setAdminSeasonReady(true);
+          commitRemoteState(
+            isAdminAuthenticated ? empty : redactPublicSeasonState(empty)
+          );
           return;
         }
         const roster = rosterForSeason(
@@ -583,14 +600,9 @@ const App: React.FC = () => {
           ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
           : { ...seasonState, seasonId };
         const normalized = normalizeGameState(applied);
-        const nextState = isAdminAuthenticated
-          ? normalized
-          : redactPublicSeasonState(normalized);
-        const serialized = JSON.stringify(nextState);
-        lastRemoteStateRef.current = serialized;
-        setGameState(nextState);
-        setLoadedSeasonId(seasonId);
-        if (isAdminAuthenticated) setAdminSeasonReady(true);
+        commitRemoteState(
+          isAdminAuthenticated ? normalized : redactPublicSeasonState(normalized)
+        );
       } catch (error) {
         logger.warn("Failed to load season state:", error);
       }
