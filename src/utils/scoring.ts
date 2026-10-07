@@ -32,6 +32,10 @@ export interface PlayerScore {
   total: number;
   breakdown: ScoreBreakdown;
   achievements: ScoreAchievement[];
+  /** Draft picks and draft predictions. These persist across weeks. */
+  draftPredictionPoints: number;
+  /** This week's council, bonus, and finale calls, including Double or Nothing. */
+  weeklyCallPoints: number;
 }
 
 export interface CalculatePlayerScoreInput {
@@ -233,6 +237,8 @@ export const calculatePlayerScore = (
       : MULTIPLIERS.NORMAL;
 
   let score = 0;
+  let draftPredictionPoints = 0;
+  let weeklyCallPoints = 0;
   const achievements: ScoreAchievement[] = [];
   const breakdown: ScoreBreakdown = {
     draftWinners: [],
@@ -257,6 +263,7 @@ export const calculatePlayerScore = (
     const status = seasonState.castStatus[pick.member];
     if (status?.isWinner) {
       score += scoringPoints.DRAFT_WINNER;
+      draftPredictionPoints += scoringPoints.DRAFT_WINNER;
       breakdown.draftWinners.push(pick.member);
       achievements.push({
         member: pick.member,
@@ -269,6 +276,7 @@ export const calculatePlayerScore = (
 
   if (seasonState.castStatus[player.predWinner]?.isWinner) {
     score += scoringPoints.PRED_WINNER;
+    draftPredictionPoints += scoringPoints.PRED_WINNER;
     breakdown.predWinner = true;
     achievements.push({
       member: player.predWinner,
@@ -280,6 +288,7 @@ export const calculatePlayerScore = (
 
   if (seasonState.castStatus[player.predFirstOut]?.isFirstOut) {
     score += scoringPoints.PRED_FIRST_OUT;
+    draftPredictionPoints += scoringPoints.PRED_FIRST_OUT;
     breakdown.predFirstOut = true;
     achievements.push({
       member: player.predFirstOut,
@@ -296,6 +305,7 @@ export const calculatePlayerScore = (
     countedTraitorGuessKeys.add(guessKey);
     if (seasonState.castStatus[guess]?.isTraitor) {
       score += scoringPoints.TRAITOR_BONUS;
+      draftPredictionPoints += scoringPoints.TRAITOR_BONUS;
       breakdown.traitorBonus.push(guess);
       achievements.push({
         member: guess,
@@ -308,6 +318,7 @@ export const calculatePlayerScore = (
 
   if (seasonState.castStatus[player.predWinner]?.isFirstOut) {
     score += scoringPoints.PROPHECY_REVERSED_PENALTY;
+    draftPredictionPoints += scoringPoints.PROPHECY_REVERSED_PENALTY;
     breakdown.penalty = true;
   }
 
@@ -344,6 +355,7 @@ export const calculatePlayerScore = (
   ) {
     if (weeklyResults.nextBanished === weeklyPredictions.nextBanished) {
       score += weeklyCorrectPoints;
+      weeklyCallPoints += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Banished", result: "correct" });
       achievements.push({
         member: weeklyPredictions.nextBanished,
@@ -353,6 +365,7 @@ export const calculatePlayerScore = (
       });
     } else {
       score -= weeklyIncorrectPoints;
+      weeklyCallPoints -= weeklyIncorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Banished", result: "incorrect" });
     }
   }
@@ -365,6 +378,7 @@ export const calculatePlayerScore = (
   ) {
     if (weeklyResults.nextMurdered === weeklyPredictions.nextMurdered) {
       score += weeklyCorrectPoints;
+      weeklyCallPoints += weeklyCorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "correct" });
       achievements.push({
         member: weeklyPredictions.nextMurdered,
@@ -374,6 +388,7 @@ export const calculatePlayerScore = (
       });
     } else {
       score -= weeklyIncorrectPoints;
+      weeklyCallPoints -= weeklyIncorrectPoints;
       breakdown.weeklyCouncil.push({ label: "Next Murdered", result: "incorrect" });
     }
   }
@@ -389,6 +404,7 @@ export const calculatePlayerScore = (
   ) {
     if (finaleResults.finalWinner === finalePredictions.finalWinner) {
       score += scoringPoints.FINALE_FINAL_WINNER;
+      weeklyCallPoints += scoringPoints.FINALE_FINAL_WINNER;
       breakdown.finaleGauntlet.push({
         label: "Final Winner",
         result: "correct",
@@ -417,6 +433,7 @@ export const calculatePlayerScore = (
   ) {
     if (finaleResults.lastFaithfulStanding === finalePredictions.lastFaithfulStanding) {
       score += scoringPoints.FINALE_LAST_FAITHFUL_STANDING;
+      weeklyCallPoints += scoringPoints.FINALE_LAST_FAITHFUL_STANDING;
       breakdown.finaleGauntlet.push({
         label: "Last Faithful Standing",
         result: "correct",
@@ -445,6 +462,7 @@ export const calculatePlayerScore = (
   ) {
     if (finaleResults.lastTraitorStanding === finalePredictions.lastTraitorStanding) {
       score += scoringPoints.FINALE_LAST_TRAITOR_STANDING;
+      weeklyCallPoints += scoringPoints.FINALE_LAST_TRAITOR_STANDING;
       breakdown.finaleGauntlet.push({
         label: "Last Traitor Standing",
         result: "correct",
@@ -479,6 +497,7 @@ export const calculatePlayerScore = (
         ? scoringPoints.REDEMPTION_ROULETTE_CORRECT_NEGATIVE
         : scoringPoints.REDEMPTION_ROULETTE_CORRECT;
       score += points;
+      weeklyCallPoints += points;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
         result: "correct",
@@ -492,6 +511,7 @@ export const calculatePlayerScore = (
       });
     } else {
       score += scoringPoints.REDEMPTION_ROULETTE_INCORRECT;
+      weeklyCallPoints += scoringPoints.REDEMPTION_ROULETTE_INCORRECT;
       breakdown.bonusGames.push({
         label: "Redemption Roulette",
         result: "incorrect",
@@ -510,6 +530,7 @@ export const calculatePlayerScore = (
         ? scoringPoints.SHIELD_GAMBIT_CORRECT_NEGATIVE
         : scoringPoints.SHIELD_GAMBIT_CORRECT;
       score += points;
+      weeklyCallPoints += points;
       breakdown.bonusGames.push({
         label: "Shield Gambit",
         result: "correct",
@@ -554,6 +575,7 @@ export const calculatePlayerScore = (
           ? scoringPoints.TRAITOR_TRIO_PERFECT_PER_MEMBER
           : scoringPoints.TRAITOR_TRIO_PARTIAL;
       score += points;
+      weeklyCallPoints += points;
       breakdown.bonusGames.push({
         label: "Traitor Trio Challenge",
         result: correctCount === 3 ? "correct" : "partial",
@@ -589,6 +611,7 @@ export const calculatePlayerScore = (
     })
     .forEach((adjustment) => {
       score += adjustment.points;
+      if (normalizeWeekId(adjustment.weekId)) weeklyCallPoints += adjustment.points;
       breakdown.adjustments.push({
         reason: adjustment.reason,
         points: adjustment.points,
@@ -602,5 +625,5 @@ export const calculatePlayerScore = (
       });
     });
 
-  return { total: score, breakdown, achievements };
+  return { total: score, breakdown, achievements, draftPredictionPoints, weeklyCallPoints };
 };

@@ -5,7 +5,7 @@ import type {
   WeeklyScoreSnapshot,
 } from "../../types";
 import { inferActiveWeekId, normalizeWeekId, resolveActiveWeekId } from "../../types";
-import { currentStandings } from "./standings";
+import { currentStandings, runningTotalsRecord } from "./standings";
 
 export const RECAP_PUBLIC_ORIGIN = "https://traitorsfantasydraft.online";
 const INTRO_LIMIT = 2000;
@@ -371,9 +371,9 @@ const movementFor = (
   const active = resolveActiveWeekId(state);
 
   if (index >= 0) {
-    const currentTotals = history[index]?.totals ?? {};
+    const currentTotals = runningTotalsRecord(history, index, namesById.keys());
     const current = currentTotals[playerId];
-    const previousTotals = index > 0 ? history[index - 1]?.totals ?? {} : null;
+    const previousTotals = index > 0 ? runningTotalsRecord(history, index - 1, namesById.keys()) : null;
     const weekDelta =
       typeof current !== "number"
         ? null
@@ -393,7 +393,7 @@ const movementFor = (
   }
 
   if (weekId !== active || history.length === 0) return { weekDelta: null, rankDelta: null };
-  const previousTotals = history[history.length - 1]?.totals ?? {};
+  const previousTotals = runningTotalsRecord(history, history.length - 1, namesById.keys());
   const previous = previousTotals[playerId];
   const weekDelta = typeof previous === "number" ? liveScore - previous : null;
   const previousRank = rankByTotals(namesById, previousTotals).get(playerId);
