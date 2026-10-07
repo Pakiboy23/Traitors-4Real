@@ -17,8 +17,10 @@ import {
 } from "../src/utils/scoring";
 import {
   compareStandingEntries,
+  displayedWeekDelta,
   leaderboardRankContext,
   resolveDisplayTotal,
+  seasonTimeline,
   weeklyResultsAreLive,
 } from "../src/utils/standings";
 import { TIMING } from "../src/utils/scoringConstants";
@@ -104,7 +106,10 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
     .map((player) => {
       const scoring = calculatePlayerScore(gameState, player);
       const detailScoring = calculatePlayerScore(detailGameState, player);
-      const displayTotal = resolveDisplayTotal(gameState, player.id, scoring.total);
+      const displayTotal = resolveDisplayTotal(gameState, player.id, scoring.total, {
+        draftPredictionPoints: scoring.draftPredictionPoints,
+        weeklyCallPoints: scoring.weeklyCallPoints,
+      });
       const tieBreakDistance =
         isFinaleTieBreakActive && typeof effectiveFinalePotValue === "number"
           ? getFinaleTieBreakDistance(player, effectiveFinalePotValue)
@@ -115,6 +120,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
         detailScoring,
         displayTotal,
         tieBreakDistance,
+        weekDelta: displayedWeekDelta(gameState, player.id, displayTotal),
       };
     })
     .sort((a, b) =>
@@ -131,31 +137,6 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
         }
       )
     );
-
-  const weeklyDeltaById = useMemo(() => {
-    if (scoreHistory.length < 2) return {};
-    const last = scoreHistory[scoreHistory.length - 1]?.totals ?? {};
-    const prev = scoreHistory[scoreHistory.length - 2]?.totals ?? {};
-    const delta: Record<string, number> = {};
-
-    Object.keys(last).forEach((id) => {
-      if (typeof last[id] !== "number" || typeof prev[id] !== "number") return;
-      delta[id] = Number(last[id]) - Number(prev[id]);
-    });
-
-    return delta;
-  }, [scoreHistory]);
-
-  const getHistoryLabel = (snapshot: WeeklyScoreSnapshot) =>
-    snapshot.label?.trim() || new Date(snapshot.createdAt).toLocaleDateString();
-
-  const getPlayerTimeline = (playerId: string) =>
-    scoreHistory
-      .map((snapshot) => ({
-        label: getHistoryLabel(snapshot),
-        total: snapshot.totals?.[playerId],
-      }))
-      .filter((entry) => typeof entry.total === "number");
 
   const getPenaltyEntries = (
     contextState: GameState,
@@ -479,6 +460,9 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
     ? scoredPlayers.reduce((sum, player) => sum + player.displayTotal, 0) / scoredPlayers.length
     : 0;
 
+  const getHistoryLabel = (snapshot: WeeklyScoreSnapshot) =>
+    snapshot.label?.trim() || new Date(snapshot.createdAt).toLocaleDateString();
+
   const latestArchive = scoreHistory.length > 0 ? getHistoryLabel(scoreHistory[scoreHistory.length - 1]) : "None";
 
   const kpiItems: PremiumKpiItem[] = [
@@ -620,16 +604,16 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
                   </div>
                   <div className="premium-podium-score-row">
                     <p className="premium-row-title">{formatScore(player.displayTotal)}</p>
-                    {typeof weeklyDeltaById[player.id] === "number" && (
+                    {typeof player.weekDelta === "number" && (
                       <p
                         className={
-                          weeklyDeltaById[player.id] >= 0
+                          player.weekDelta >= 0
                             ? "premium-value-positive"
                             : "premium-value-negative"
                         }
                       >
-                        {weeklyDeltaById[player.id] >= 0 ? "+" : ""}
-                        {formatScore(weeklyDeltaById[player.id])}
+                        {player.weekDelta >= 0 ? "+" : ""}
+                        {formatScore(player.weekDelta)}
                       </p>
                     )}
                   </div>
@@ -664,8 +648,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
               effectiveFinalePotValue
             );
             const total = player.displayTotal;
-            const weeklyDelta = weeklyDeltaById[player.id];
-            const timeline = getPlayerTimeline(player.id).slice(-6);
+            const weeklyDelta = player.weekDelta;
+            const timeline = seasonTimeline(
+              gameState,
+              player.id,
+              player.scoring.draftPredictionPoints
+            ).slice(-6);
             const impactFeed = [
               ...player.detailScoring.achievements.map((achievement, idx) => ({
                 id: `ach-${idx}`,

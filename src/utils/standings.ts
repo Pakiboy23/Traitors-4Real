@@ -1,7 +1,8 @@
-import type { GameState, League, PlayerEntry, WeeklyResults } from "../../types";
+import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types";
 import {
   calculatePlayerScore,
   getFinaleTieBreakDistance,
+  type PlayerScore,
 } from "./scoring";
 
 /**
@@ -21,18 +22,184 @@ export const weeklyResultsAreLive = (weekly?: WeeklyResults | null): boolean =>
       typeof weekly?.finaleResults?.finalPotValue === "number"
   );
 
-/** Leaderboard number: live calculatePlayerScore, or the archive when the week has no results yet. */
+export interface DisplayScoreParts {
+  draftPredictionPoints: number;
+  weeklyCallPoints: number;
+}
+
+const historyOf = (gameState: GameState): WeeklyScoreSnapshot[] =>
+  Array.isArray(gameState.weeklyScoreHistory) ? gameState.weeklyScoreHistory : [];
+
+/** Snapshots archived before running totals have no per-week call split. */
+export const isComponentSnapshot = (
+  snapshot: WeeklyScoreSnapshot | null | undefined
+): boolean =>
+  Boolean(snapshot?.weeklyCallPoints && typeof snapshot.weeklyCallPoints === "object");
+
+export const componentSnapshotStart = (history: WeeklyScoreSnapshot[]): number =>
+  history.findIndex((snapshot) => isComponentSnapshot(snapshot));
+
+const finite = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+/**
+ * Season total as of one archived week.
+ * Legacy weeks return the published snapshot total.
+ * Later weeks return the latest legacy total plus call points since then,
+ * with draft points taken from that snapshot so a change counts once.
+ */
+export const runningTotalAtSnapshot = (
+  history: WeeklyScoreSnapshot[],
+  index: number,
+  playerId: string
+): number | null => {
+  if (index < 0 || index >= history.length) return null;
+  const start = componentSnapshotStart(history);
+  if (start === -1 || index < start) return finite(history[index]?.totals?.[playerId]);
+
+  const baselineIndex = start - 1;
+  const baselineTotal = baselineIndex >= 0 ? finite(history[baselineIndex]?.totals?.[playerId]) : null;
+  let calls = 0;
+  for (let cursor = start; cursor <= index; cursor += 1) {
+    calls += finite(history[cursor]?.weeklyCallPoints?.[playerId]) ?? 0;
+  }
+  const draftHere = finite(history[index]?.draftPredictionPoints?.[playerId]) ?? 0;
+  if (baselineTotal === null) return calls + draftHere;
+
+  const anchor = finite(history[start]?.draftPredictionPoints?.[playerId]);
+  const draftDelta = anchor === null ? 0 : draftHere - anchor;
+  return baselineTotal + calls + draftDelta;
+};
+
+const withCurrentDraft = (
+  history: WeeklyScoreSnapshot[],
+  playerId: string,
+  archivedTotal: number,
+  currentDraft: number
+): number => {
+  const start = componentSnapshotStart(history);
+  if (start === -1) return archivedTotal;
+  const lastIndex = history.length - 1;
+  const draftAtLast = finite(history[lastIndex]?.draftPredictionPoints?.[playerId]) ?? 0;
+  const baselineTotal =
+    start > 0 ? finite(history[start - 1]?.totals?.[playerId]) : null;
+  if (baselineTotal === null) return archivedTotal - draftAtLast + currentDraft;
+  const anchor = finite(history[start]?.draftPredictionPoints?.[playerId]);
+  if (anchor === null) return archivedTotal;
+  return archivedTotal - (draftAtLast - anchor) + (currentDraft - anchor);
+};
+
+/**
+ * Leaderboard number.
+ * Legacy history (weeks archived before the call split) still shows the latest
+ * published snapshot. Once a snapshot carries `weeklyCallPoints`, the total is
+ * that baseline plus every later week's calls, plus the draft-point change
+ * since the first of those snapshots.
+ */
 export const resolveDisplayTotal = (
   gameState: GameState,
   playerId: string,
-  scoringTotal: number
+  scoringTotal: number,
+  parts?: DisplayScoreParts
 ): number => {
-  if (weeklyResultsAreLive(gameState.weeklyResults)) return scoringTotal;
-  const history = Array.isArray(gameState.weeklyScoreHistory)
-    ? gameState.weeklyScoreHistory
-    : [];
-  const archived = history[history.length - 1]?.totals?.[playerId];
-  return typeof archived === "number" ? archived : scoringTotal;
+  const history = historyOf(gameState);
+  const start = componentSnapshotStart(history);
+  const live = weeklyResultsAreLive(gameState.weeklyResults);
+  if (start === -1) {
+    if (live) return scoringTotal;
+    const archived = history[history.length - 1]?.totals?.[playerId];
+    return typeof archived === "number" ? archived : scoringTotal;
+  }
+
+  const atLast = runningTotalAtSnapshot(history, history.length - 1, playerId);
+  if (atLast === null) return scoringTotal;
+  const currentDraft = parts?.draftPredictionPoints ?? 0;
+  let total = withCurrentDraft(history, playerId, atLast, currentDraft);
+  if (live) total += parts?.weeklyCallPoints ?? 0;
+  return total;
+};
+
+/** Points added between the previous archive and the number on the board. */
+export const displayedWeekDelta = (
+  gameState: GameState,
+  playerId: string,
+  displayTotal: number
+): number | null => {
+  const history = historyOf(gameState);
+  if (history.length < 2) return null;
+  if (componentSnapshotStart(history) === -1) {
+    const last = finite(history[history.length - 1]?.totals?.[playerId]);
+    const prev = finite(history[history.length - 2]?.totals?.[playerId]);
+    if (last === null || prev === null) return null;
+    return last - prev;
+  }
+  const previous = runningTotalAtSnapshot(history, history.length - 2, playerId);
+  if (previous === null) return null;
+  return displayTotal - previous;
+};
+
+export interface SeasonTimelinePoint {
+  label: string;
+  total: number;
+}
+
+const timelineLabel = (snapshot: WeeklyScoreSnapshot): string =>
+  snapshot.label?.trim() || new Date(snapshot.createdAt).toLocaleDateString();
+
+/** Per-player archive strip. Legacy chips stay on the published number. */
+export const seasonTimeline = (
+  gameState: GameState,
+  playerId: string,
+  currentDraft?: number
+): SeasonTimelinePoint[] => {
+  const history = historyOf(gameState);
+  const live = weeklyResultsAreLive(gameState.weeklyResults);
+  const points: SeasonTimelinePoint[] = [];
+  history.forEach((snapshot, index) => {
+    const archived = runningTotalAtSnapshot(history, index, playerId);
+    if (archived === null) return;
+    const isLast = index === history.length - 1;
+    const total =
+      isLast && !live && typeof currentDraft === "number"
+        ? withCurrentDraft(history, playerId, archived, currentDraft)
+        : archived;
+    points.push({ label: timelineLabel(snapshot), total });
+  });
+  return points;
+};
+
+/** Totals map used for recap movement, in the same units as the leaderboard. */
+export const runningTotalsRecord = (
+  history: WeeklyScoreSnapshot[],
+  index: number,
+  playerIds: Iterable<string>
+): Record<string, number> => {
+  const totals: Record<string, number> = {};
+  for (const playerId of playerIds) {
+    const total = runningTotalAtSnapshot(history, index, playerId);
+    if (typeof total === "number") totals[playerId] = total;
+  }
+  return totals;
+};
+
+/** Fields Archive Week writes onto a new snapshot. */
+export const snapshotScoreRecords = (
+  state: GameState
+): {
+  totals: Record<string, number>;
+  weeklyCallPoints: Record<string, number>;
+  draftPredictionPoints: Record<string, number>;
+} => {
+  const totals: Record<string, number> = {};
+  const weeklyCallPoints: Record<string, number> = {};
+  const draftPredictionPoints: Record<string, number> = {};
+  for (const player of state.players) {
+    const scored: PlayerScore = calculatePlayerScore(state, player);
+    totals[player.id] = scored.total;
+    weeklyCallPoints[player.id] = scored.weeklyCallPoints;
+    draftPredictionPoints[player.id] = scored.draftPredictionPoints;
+  }
+  return { totals, weeklyCallPoints, draftPredictionPoints };
 };
 
 export interface StandingSortKey {
@@ -102,7 +269,10 @@ export const currentStandings = (gameState: GameState): CurrentStanding[] => {
       return {
         playerId: player.id,
         name: player.name,
-        score: resolveDisplayTotal(gameState, player.id, scoring.total),
+        score: resolveDisplayTotal(gameState, player.id, scoring.total, {
+          draftPredictionPoints: scoring.draftPredictionPoints,
+          weeklyCallPoints: scoring.weeklyCallPoints,
+        }),
         tieBreakDistance: tieBreakDistanceFor(player, context),
       };
     })

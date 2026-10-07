@@ -82,7 +82,17 @@ export interface WeeklyScoreSnapshot {
   label: string;
   createdAt: string;
   weeklyResults?: WeeklyResults;
+  /**
+   * Published total at archive time. Weeks archived before running totals
+   * (no `weeklyCallPoints`) keep the number players already saw.
+   * Newer snapshots still store the raw week score here; the standings
+   * total is derived from `weeklyCallPoints` and `draftPredictionPoints`.
+   */
   totals: Record<string, number>;
+  /** This week's call points only. Absent on snapshots archived before running totals. */
+  weeklyCallPoints?: Record<string, number>;
+  /** Draft-prediction points when this week was archived. Absent on older snapshots. */
+  draftPredictionPoints?: Record<string, number>;
 }
 
 /**
