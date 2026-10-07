@@ -3,12 +3,14 @@ import type {
   CastMemberStatus,
   GameState,
   PlayerEntry,
+  ScoreAdjustment,
   WeeklyResults,
 } from "../../types";
 import { calculatePlayerScore, getFinaleTieBreakDistance } from "./scoring";
 import {
   compareStandingEntries,
   currentStandings,
+  displayedWeekDelta,
   homeStandingsBoard,
   leaderboardRankContext,
   resolveDisplayTotal,
@@ -645,5 +647,174 @@ describe("running season totals", () => {
     });
 
     expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 1);
+  });
+});
+
+describe("season-wide adjustments on the running total", () => {
+  const adjustment = (overrides: Partial<ScoreAdjustment> = {}): ScoreAdjustment => ({
+    id: "adj-season",
+    seasonId: "traitors-new-blood-s1",
+    playerId: "serena",
+    reason: "Ruling",
+    points: 3,
+    createdBy: "admin",
+    createdAt: "2026-09-26T00:00:00.000Z",
+    ...overrides,
+  });
+
+  const week3 = {
+    id: "week-3-snap",
+    label: "Week 3",
+    createdAt: "2026-10-02T00:00:00.000Z",
+    weeklyResults: { weekId: "week-3", nextBanished: "Arisa Thomas" },
+    totals: { serena: 4.5 },
+    weeklyCallPoints: { serena: 4 },
+    draftPredictionPoints: { serena: 0 },
+  };
+
+  it("keeps a no-week adjustment once after the legacy baseline", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      castStatus: {},
+      scoreAdjustments: [
+        adjustment(),
+        adjustment({
+          id: "adj-old",
+          points: 10,
+          createdAt: "2026-09-01T00:00:00.000Z",
+        }),
+        adjustment({ id: "adj-week", weekId: "week-3", points: 9 }),
+        adjustment({ id: "adj-other", playerId: "connor", points: 8 }),
+        adjustment({ id: "adj-season", seasonId: "other-season", points: 7 }),
+      ],
+      weeklyScoreHistory: [...publishedWeeks(), week3],
+    });
+
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 4 + 3);
+    expect(displayedWeekDelta(game, "serena", 0.5 + 4 + 3)).toBe(4 + 3);
+    expect(homeStandingsBoard(game).mvp?.score).toBe(0.5 + 4 + 3);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([
+      -1, 0.5, 7.5,
+    ]);
+
+    const later = runningSeason({
+      players: game.players,
+      activeWeekId: "week-5",
+      weeklyResults: clearedWeek("week-5"),
+      castStatus: {},
+      scoreAdjustments: game.scoreAdjustments,
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        week3,
+        {
+          id: "week-4-snap",
+          label: "Week 4",
+          createdAt: "2026-10-09T00:00:00.000Z",
+          weeklyResults: { weekId: "week-4" },
+          totals: { serena: 3.5 },
+          weeklyCallPoints: { serena: -1 },
+          draftPredictionPoints: { serena: 0 },
+        },
+      ],
+    });
+    expect(currentStandings(later)[0]?.score).toBe(0.5 + 4 + -1 + 3);
+    expect(displayedWeekDelta(later, "serena", 0.5 + 4 + -1 + 3)).toBe(-1);
+    expect(seasonTimeline(later, "serena").map((point) => point.total)).toEqual([
+      -1, 0.5, 7.5, 6.5,
+    ]);
+  });
+
+  it("shows a correction entered after the latest archive without stacking it", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      castStatus: {},
+      scoreAdjustments: [adjustment({ createdAt: "2026-10-03T00:00:00.000Z", points: -2 })],
+      weeklyScoreHistory: [...publishedWeeks(), week3],
+    });
+
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 4 + -2);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([
+      -1, 0.5, 2.5,
+    ]);
+  });
+
+  it("counts a season-wide adjustment when history starts on call splits", () => {
+    const game: GameState = {
+      seasonId: "traitors-new-blood-s1",
+      activeWeekId: "week-2",
+      players: [player({ id: "serena", name: "Serena" })],
+      castStatus: {},
+      weeklyResults: clearedWeek("week-2"),
+      scoreAdjustments: [adjustment({ createdAt: "2026-10-01T00:00:00.000Z" })],
+      weeklyScoreHistory: [
+        {
+          id: "week-1-snap",
+          label: "Week 1",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          totals: { serena: 5 },
+          weeklyCallPoints: { serena: 2 },
+          draftPredictionPoints: { serena: 0 },
+        },
+      ],
+    };
+
+    expect(currentStandings(game)[0]?.score).toBe(2 + 3);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([5]);
+  });
+});
+
+describe("open week movement", () => {
+  it("counts only the live week against the latest archive", () => {
+    const game = runningSeason({
+      players: [
+        player({
+          id: "serena",
+          name: "Serena",
+          weeklyPredictions: {
+            weekId: "week-4",
+            nextBanished: "Arisa Thomas",
+            nextMurdered: "",
+          },
+        }),
+      ],
+      castStatus: {},
+      activeWeekId: "week-4",
+      weeklyResults: { weekId: "week-4", nextBanished: "Arisa Thomas" },
+      weeklyRecaps: [{ weekId: "week-4", intro: "Week 4.", published: true }],
+      scoreAdjustments: [
+        {
+          id: "adj-season",
+          seasonId: "traitors-new-blood-s1",
+          playerId: "serena",
+          reason: "Ruling",
+          points: 3,
+          createdBy: "admin",
+          createdAt: "2026-09-26T00:00:00.000Z",
+        },
+      ],
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        {
+          id: "week-3-snap",
+          label: "Week 3",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          weeklyResults: { weekId: "week-3" },
+          totals: { serena: 1.5 },
+          weeklyCallPoints: { serena: 1 },
+          draftPredictionPoints: { serena: 0 },
+        },
+      ],
+    });
+
+    const score = currentStandings(game)[0]?.score;
+    expect(score).toBe(0.5 + 1 + 3 + 1);
+    expect(displayedWeekDelta(game, "serena", score ?? 0)).toBe(1);
+
+    const recap = buildPublicWeeklyRecap(game, "week-4");
+    expect(recap?.standings.find((row) => row.name === "Serena")?.weekDelta).toBe(1);
   });
 });

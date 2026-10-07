@@ -1,4 +1,11 @@
-import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types";
+import type {
+  GameState,
+  League,
+  PlayerEntry,
+  ScoreAdjustment,
+  WeeklyResults,
+  WeeklyScoreSnapshot,
+} from "../../types";
 import {
   calculatePlayerScore,
   getFinaleTieBreakDistance,
@@ -42,16 +49,71 @@ export const componentSnapshotStart = (history: WeeklyScoreSnapshot[]): number =
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
+type AdjustmentSource = Pick<GameState, "scoreAdjustments" | "seasonId">;
+
+const parsedTime = (value?: string | null): number | null => {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+/** Same season-wide rule as calculatePlayerScore: no week id means always apply. */
+const isSeasonWideAdjustment = (
+  adjustment: ScoreAdjustment,
+  playerId: string,
+  seasonId?: string
+): boolean => {
+  if (adjustment.playerId !== playerId) return false;
+  if (adjustment.weekId) return false;
+  if (adjustment.seasonId && seasonId && adjustment.seasonId !== seasonId) return false;
+  return finite(adjustment.points) !== null;
+};
+
+/**
+ * Season-wide corrections are a level, not a per-week call.
+ * `after` is the legacy baseline: that published total already includes
+ * corrections archived with it. `through` limits a historical snapshot.
+ * Omit `through` to include every correction still open after `after`.
+ */
+const seasonWideAdjustmentPoints = (
+  source: AdjustmentSource | undefined,
+  playerId: string,
+  bounds: { after?: string | null; through?: string | null }
+): number => {
+  const adjustments = source?.scoreAdjustments;
+  if (!Array.isArray(adjustments) || adjustments.length === 0) return 0;
+
+  const afterMs = parsedTime(bounds.after);
+  if (bounds.after != null && afterMs === null) return 0;
+
+  const hasThrough = bounds.through !== undefined;
+  const throughMs = hasThrough ? parsedTime(bounds.through) : null;
+  if (hasThrough && throughMs === null) return 0;
+
+  let total = 0;
+  for (const adjustment of adjustments) {
+    if (!isSeasonWideAdjustment(adjustment, playerId, source?.seasonId)) continue;
+    const createdMs = parsedTime(adjustment.createdAt);
+    if (createdMs === null) continue;
+    if (afterMs !== null && createdMs <= afterMs) continue;
+    if (throughMs !== null && createdMs > throughMs) continue;
+    total += adjustment.points;
+  }
+  return total;
+};
+
 /**
  * Season total as of one archived week.
  * Legacy weeks return the published snapshot total.
  * Later weeks return the latest legacy total plus call points since then,
  * with draft points taken from that snapshot so a change counts once.
+ * Season-wide adjustments created after that legacy total are added once.
  */
 export const runningTotalAtSnapshot = (
   history: WeeklyScoreSnapshot[],
   index: number,
-  playerId: string
+  playerId: string,
+  source?: AdjustmentSource
 ): number | null => {
   if (index < 0 || index >= history.length) return null;
   const start = componentSnapshotStart(history);
@@ -64,11 +126,15 @@ export const runningTotalAtSnapshot = (
     calls += finite(history[cursor]?.weeklyCallPoints?.[playerId]) ?? 0;
   }
   const draftHere = finite(history[index]?.draftPredictionPoints?.[playerId]) ?? 0;
-  if (baselineTotal === null) return calls + draftHere;
+  const adjustment = seasonWideAdjustmentPoints(source, playerId, {
+    after: baselineIndex >= 0 ? history[baselineIndex]?.createdAt ?? "" : null,
+    through: history[index]?.createdAt ?? "",
+  });
+  if (baselineTotal === null) return calls + draftHere + adjustment;
 
   const anchor = finite(history[start]?.draftPredictionPoints?.[playerId]);
   const draftDelta = anchor === null ? 0 : draftHere - anchor;
-  return baselineTotal + calls + draftDelta;
+  return baselineTotal + calls + draftDelta + adjustment;
 };
 
 const withCurrentDraft = (
@@ -94,7 +160,8 @@ const withCurrentDraft = (
  * Legacy history (weeks archived before the call split) still shows the latest
  * published snapshot. Once a snapshot carries `weeklyCallPoints`, the total is
  * that baseline plus every later week's calls, plus the draft-point change
- * since the first of those snapshots.
+ * since the first of those snapshots, plus season-wide adjustments created
+ * after the baseline.
  */
 export const resolveDisplayTotal = (
   gameState: GameState,
@@ -111,29 +178,53 @@ export const resolveDisplayTotal = (
     return typeof archived === "number" ? archived : scoringTotal;
   }
 
-  const atLast = runningTotalAtSnapshot(history, history.length - 1, playerId);
+  const atLast = runningTotalAtSnapshot(history, history.length - 1, playerId, gameState);
   if (atLast === null) return scoringTotal;
   const currentDraft = parts?.draftPredictionPoints ?? 0;
   let total = withCurrentDraft(history, playerId, atLast, currentDraft);
   if (live) total += parts?.weeklyCallPoints ?? 0;
+  total += seasonWideAdjustmentPoints(gameState, playerId, {
+    after: history[history.length - 1]?.createdAt ?? "",
+  });
   return total;
 };
 
-/** Points added between the previous archive and the number on the board. */
+/**
+ * Points added between the previous archive and the number on the board.
+ * An open week compares to the latest archive. A closed week compares that
+ * archive to the one before it.
+ */
 export const displayedWeekDelta = (
   gameState: GameState,
   playerId: string,
   displayTotal: number
 ): number | null => {
   const history = historyOf(gameState);
+  const component = componentSnapshotStart(history) !== -1;
+  const live = component && weeklyResultsAreLive(gameState.weeklyResults);
+  if (live) {
+    const previous = runningTotalAtSnapshot(
+      history,
+      history.length - 1,
+      playerId,
+      gameState
+    );
+    if (previous === null) return null;
+    return displayTotal - previous;
+  }
   if (history.length < 2) return null;
-  if (componentSnapshotStart(history) === -1) {
+  if (!component) {
     const last = finite(history[history.length - 1]?.totals?.[playerId]);
     const prev = finite(history[history.length - 2]?.totals?.[playerId]);
     if (last === null || prev === null) return null;
     return last - prev;
   }
-  const previous = runningTotalAtSnapshot(history, history.length - 2, playerId);
+  const previous = runningTotalAtSnapshot(
+    history,
+    history.length - 2,
+    playerId,
+    gameState
+  );
   if (previous === null) return null;
   return displayTotal - previous;
 };
@@ -156,13 +247,18 @@ export const seasonTimeline = (
   const live = weeklyResultsAreLive(gameState.weeklyResults);
   const points: SeasonTimelinePoint[] = [];
   history.forEach((snapshot, index) => {
-    const archived = runningTotalAtSnapshot(history, index, playerId);
+    const archived = runningTotalAtSnapshot(history, index, playerId, gameState);
     if (archived === null) return;
     const isLast = index === history.length - 1;
-    const total =
-      isLast && !live && typeof currentDraft === "number"
-        ? withCurrentDraft(history, playerId, archived, currentDraft)
-        : archived;
+    let total = archived;
+    if (isLast && !live) {
+      if (typeof currentDraft === "number") {
+        total = withCurrentDraft(history, playerId, archived, currentDraft);
+      }
+      total += seasonWideAdjustmentPoints(gameState, playerId, {
+        after: snapshot.createdAt ?? "",
+      });
+    }
     points.push({ label: timelineLabel(snapshot), total });
   });
   return points;
@@ -172,11 +268,12 @@ export const seasonTimeline = (
 export const runningTotalsRecord = (
   history: WeeklyScoreSnapshot[],
   index: number,
-  playerIds: Iterable<string>
+  playerIds: Iterable<string>,
+  source?: AdjustmentSource
 ): Record<string, number> => {
   const totals: Record<string, number> = {};
   for (const playerId of playerIds) {
-    const total = runningTotalAtSnapshot(history, index, playerId);
+    const total = runningTotalAtSnapshot(history, index, playerId, source);
     if (typeof total === "number") totals[playerId] = total;
   }
   return totals;

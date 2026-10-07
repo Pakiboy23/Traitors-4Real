@@ -611,6 +611,9 @@ export const calculatePlayerScore = (
     })
     .forEach((adjustment) => {
       score += adjustment.points;
+      // Season-wide rows have no week, so they are not this week's calls.
+      // Standings add those points once; copying them into every archive
+      // would stack the same correction on each later week.
       if (normalizeWeekId(adjustment.weekId)) weeklyCallPoints += adjustment.points;
       breakdown.adjustments.push({
         reason: adjustment.reason,
