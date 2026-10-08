@@ -117,6 +117,39 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(app).toContain("window.setInterval(refreshSeasons, 45000)");
   });
 
+  it("does not let a season_state_changed echo overwrite unsaved admin edits", () => {
+    const loader = app.slice(
+      app.indexOf("const loadSeasonState = async () => {"),
+      app.indexOf("void loadSeasonState();")
+    );
+    expect(loader.length).toBeGreaterThan(0);
+    // The echo must not flip adminSeasonReady off (that clears the debounce)
+    // or replace the board without asking the refresh guard first.
+    expect(loader).not.toContain("if (isAdminAuthenticated) setAdminSeasonReady(false);");
+    expect(loader).toContain("shouldResetAdminSeasonReady({");
+    expect(loader).toContain("decideAdminSeasonRefresh({");
+    expect(loader).toContain("isLatestFetch: fetchSeq === seasonFetchSeqRef.current");
+    expect(loader).toContain("hasDebouncedSave: writeTimerRef.current !== null");
+    expect(loader).toContain("pendingWriteRef.current !== null");
+    expect(loader).toContain("manualSaveInFlightRef.current > 0");
+    expect(loader).toContain("editRevisionNow: adminEditRevisionRef.current");
+    expect(app).toContain("manualSaveInFlightRef.current += 1;");
+    expect(app).toMatch(
+      /manualSaveInFlightRef\.current \+= 1;[\s\S]*?finally \{\s*adminEditRevisionRef\.current \+= 1;\s*manualSaveInFlightRef\.current -= 1;/
+    );
+    expect(loader.match(/setGameState\(/g)).toHaveLength(1);
+    expect(loader).toContain("if (decision.applyRemote) {");
+    expect(app).toContain("seasonBoardKey(seasonId, isAdminAuthenticated)");
+
+    // writeTimerRef means "a debounced save is pending", so it must be nulled
+    // when the timer fires and when it is cleared.
+    expect(app).toMatch(/window\.setTimeout\(\(\) => \{\s*writeTimerRef\.current = null;/);
+    expect(app).toMatch(
+      /window\.clearTimeout\(writeTimerRef\.current\);\s*writeTimerRef\.current = null;/
+    );
+    expect(app).toContain("if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;");
+  });
+
   it("keeps the weekly poll and postgres_changes listener, and refreshes draft entries too", () => {
     expect(admin).toContain("subscribeToWeeklySubmissions");
     expect(admin).toMatch(/window\.setInterval\(\(\) => \{\s*refreshSubmissions\(\);\s*\}, 30000\)/);

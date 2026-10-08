@@ -35,6 +35,11 @@ import { readForceClosedFromEnv, resolveDraftWindow } from "./src/utils/draftWin
 import { resolveHomeCountdown } from "./src/utils/homeCountdown";
 import { pickPreferredSeason } from "./src/utils/seasonSelection";
 import {
+  decideAdminSeasonRefresh,
+  seasonBoardKey,
+  shouldResetAdminSeasonReady,
+} from "./src/utils/adminSeasonRefresh";
+import {
   canPersistSeasonState,
   isolateSeasonGameplay,
   isFinaleResultsCertified,
@@ -319,7 +324,15 @@ const App: React.FC = () => {
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
+  const manualSaveInFlightRef = useRef(0);
   const writeTimerRef = useRef<number | null>(null);
+  // Which board (season + admin/public view) is on screen, the newest season
+  // fetch, and a counter bumped on every local edit or save. Together they let
+  // a season_state_changed echo refresh the board without overwriting an
+  // admin's unsaved edit. See src/utils/adminSeasonRefresh.ts.
+  const appliedBoardKeyRef = useRef<string | null>(null);
+  const seasonFetchSeqRef = useRef(0);
+  const adminEditRevisionRef = useRef(0);
   // show_configs is the authority for branding and terminology, but the game
   // and season snapshots each embed their own copy, frozen whenever they were
   // last written. Those snapshots arrive on a whole-state replace, so without
@@ -412,6 +425,9 @@ const App: React.FC = () => {
       setLastWriteError("Active season has not finished loading.");
       return;
     }
+    // Any season fetch that overlaps this save may predate it.
+    manualSaveInFlightRef.current += 1;
+    adminEditRevisionRef.current += 1;
     try {
       const safeState = normalizeUndefined(gameState);
       const record = await saveSeasonState(scopedSeasonId, safeState as GameState);
@@ -425,6 +441,9 @@ const App: React.FC = () => {
         error instanceof Error ? error.message : String(error)
       );
       logger.warn("Manual save failed:", error);
+    } finally {
+      adminEditRevisionRef.current += 1;
+      manualSaveInFlightRef.current -= 1;
     }
   }, [
     activeSeasonId,
@@ -536,6 +555,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     setLoadedSeasonId(null);
+    appliedBoardKeyRef.current = null;
   }, [activeSeasonId]);
 
   useEffect(() => {
@@ -544,8 +564,44 @@ const App: React.FC = () => {
     if (!seasonId) return;
     localStorage.setItem("traitors_active_season", seasonId);
     let cancelled = false;
+    const boardKey = seasonBoardKey(seasonId, isAdminAuthenticated);
     const loadSeasonState = async () => {
-      if (isAdminAuthenticated) setAdminSeasonReady(false);
+      const fetchSeq = ++seasonFetchSeqRef.current;
+      const editRevisionAtFetchStart = adminEditRevisionRef.current;
+      // Only the first admin load of this board gates autosave. Flipping it on
+      // a broadcast echo would cancel the pending 500ms save.
+      if (
+        shouldResetAdminSeasonReady({
+          isAdminAuthenticated,
+          appliedBoardKey: appliedBoardKeyRef.current,
+          requestBoardKey: boardKey,
+        })
+      ) {
+        setAdminSeasonReady(false);
+      }
+      const refreshDecision = () =>
+        decideAdminSeasonRefresh({
+          isAdminAuthenticated,
+          appliedBoardKey: appliedBoardKeyRef.current,
+          requestBoardKey: boardKey,
+          isLatestFetch: fetchSeq === seasonFetchSeqRef.current,
+          hasDebouncedSave: writeTimerRef.current !== null,
+          hasPendingWrite:
+            pendingWriteRef.current !== null ||
+            manualSaveInFlightRef.current > 0,
+          editRevisionAtFetchStart,
+          editRevisionNow: adminEditRevisionRef.current,
+        });
+      const commitRemoteState = (nextState: GameState) => {
+        const decision = refreshDecision();
+        if (decision.applyRemote) {
+          lastRemoteStateRef.current = JSON.stringify(nextState);
+          setGameState(nextState);
+          appliedBoardKeyRef.current = boardKey;
+          setLoadedSeasonId(seasonId);
+        }
+        if (decision.markAdminReady && isAdminAuthenticated) setAdminSeasonReady(true);
+      };
       try {
         const seasonState = isAdminAuthenticated
           ? await fetchAdminSeasonState(seasonId)
@@ -558,7 +614,7 @@ const App: React.FC = () => {
             : undefined);
         if (!seasonState) {
           if (!seasonMeta) {
-            lastRemoteStateRef.current = null;
+            if (refreshDecision().applyRemote) lastRemoteStateRef.current = null;
             return;
           }
           // Do not keep the previous season's board (or localStorage) on
@@ -566,13 +622,9 @@ const App: React.FC = () => {
           const empty = normalizeGameState(
             isolateSeasonGameplay({ players: [] }, seasonMeta, rosterForSeason(seasonId))
           );
-          const nextEmpty = isAdminAuthenticated
-            ? empty
-            : redactPublicSeasonState(empty);
-          lastRemoteStateRef.current = JSON.stringify(nextEmpty);
-          setGameState(nextEmpty);
-          setLoadedSeasonId(seasonId);
-          if (isAdminAuthenticated) setAdminSeasonReady(true);
+          commitRemoteState(
+            isAdminAuthenticated ? empty : redactPublicSeasonState(empty)
+          );
           return;
         }
         const roster = rosterForSeason(
@@ -583,14 +635,9 @@ const App: React.FC = () => {
           ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
           : { ...seasonState, seasonId };
         const normalized = normalizeGameState(applied);
-        const nextState = isAdminAuthenticated
-          ? normalized
-          : redactPublicSeasonState(normalized);
-        const serialized = JSON.stringify(nextState);
-        lastRemoteStateRef.current = serialized;
-        setGameState(nextState);
-        setLoadedSeasonId(seasonId);
-        if (isAdminAuthenticated) setAdminSeasonReady(true);
+        commitRemoteState(
+          isAdminAuthenticated ? normalized : redactPublicSeasonState(normalized)
+        );
       } catch (error) {
         logger.warn("Failed to load season state:", error);
       }
@@ -718,8 +765,9 @@ const App: React.FC = () => {
     ) {
       return undefined;
     }
-    if (writeTimerRef.current) {
+    if (writeTimerRef.current !== null) {
       window.clearTimeout(writeTimerRef.current);
+      writeTimerRef.current = null;
     }
     const serialized = JSON.stringify(gameState);
     if (
@@ -728,13 +776,22 @@ const App: React.FC = () => {
     ) {
       return () => undefined;
     }
+    // A local edit is waiting to save. Any season fetch already out may
+    // predate it, so it must not replace the board when it lands.
+    adminEditRevisionRef.current += 1;
+    // writeTimerRef doubles as "a debounced save is pending", so it is nulled
+    // whenever the timer fires or is cleared.
     writeTimerRef.current = window.setTimeout(() => {
+      writeTimerRef.current = null;
       pendingWriteRef.current = serialized;
+      adminEditRevisionRef.current += 1;
       const safeState = normalizeUndefined(gameState);
       saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
           lastRemoteStateRef.current = serialized;
-          pendingWriteRef.current = null;
+          // A newer save may have started while this one was in flight.
+          if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
+          adminEditRevisionRef.current += 1;
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
             : Date.now();
@@ -742,7 +799,8 @@ const App: React.FC = () => {
           setLastWriteError(null);
         })
         .catch((error) => {
-          pendingWriteRef.current = null;
+          if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
+          adminEditRevisionRef.current += 1;
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );
@@ -750,8 +808,9 @@ const App: React.FC = () => {
         });
     }, TIMING.SAVE_DEBOUNCE_MS);
     return () => {
-      if (writeTimerRef.current) {
+      if (writeTimerRef.current !== null) {
         window.clearTimeout(writeTimerRef.current);
+        writeTimerRef.current = null;
       }
     };
   }, [
