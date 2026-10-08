@@ -135,7 +135,7 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(loader).toContain("editRevisionNow: adminEditRevisionRef.current");
     expect(app).toContain("manualSaveInFlightRef.current += 1;");
     expect(app).toMatch(
-      /manualSaveInFlightRef\.current \+= 1;[\s\S]*?finally \{\s*manualSaveInFlightRef\.current -= 1;/
+      /manualSaveInFlightRef\.current \+= 1;[\s\S]*?finally \{\s*adminEditRevisionRef\.current \+= 1;\s*manualSaveInFlightRef\.current -= 1;/
     );
     expect(loader.match(/setGameState\(/g)).toHaveLength(1);
     expect(loader).toContain("if (decision.applyRemote) {");

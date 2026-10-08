@@ -431,7 +431,6 @@ const App: React.FC = () => {
     try {
       const safeState = normalizeUndefined(gameState);
       const record = await saveSeasonState(scopedSeasonId, safeState as GameState);
-      adminEditRevisionRef.current += 1;
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
@@ -443,6 +442,7 @@ const App: React.FC = () => {
       );
       logger.warn("Manual save failed:", error);
     } finally {
+      adminEditRevisionRef.current += 1;
       manualSaveInFlightRef.current -= 1;
     }
   }, [

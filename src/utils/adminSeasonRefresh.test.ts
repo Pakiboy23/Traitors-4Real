@@ -224,11 +224,12 @@ describe("season_state_changed echo during an admin edit", () => {
     };
 
     const saveNow = () => {
+      const serialized = board.label;
       refs.manualSaveInFlight += 1;
       refs.editRevision += 1;
       return {
-        settle: () => {
-          saved.push(board.label);
+        settle: (succeeded = true) => {
+          if (succeeded) saved.push(serialized);
           refs.editRevision += 1;
           refs.manualSaveInFlight -= 1;
         },
@@ -311,6 +312,38 @@ describe("season_state_changed echo during an admin edit", () => {
     app.startFetch({ label: "edited in another tab" }).resolve();
     expect(app.board.label).toBe("edited in another tab");
   });
+
+  it("records the board submitted when a manual save starts", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    const save = app.saveNow();
+    app.edit("next edit");
+    save.settle();
+
+    expect(app.saved).toEqual(["committed"]);
+    expect(app.board.label).toBe("next edit");
+    expect(app.hasDebouncedSave).toBe(true);
+  });
+
+  it.each([true, false])(
+    "rejects an overlapping fetch after a manual save settles (success: %s)",
+    (succeeded) => {
+      const app = createAdminHarness();
+      app.startFetch({ label: "committed" }).resolve();
+
+      const save = app.saveNow();
+      const overlappingFetch = app.startFetch({ label: "stale remote" });
+      save.settle(succeeded);
+      overlappingFetch.resolve();
+
+      expect(app.board.label).toBe("committed");
+      expect(app.saved).toEqual(succeeded ? ["committed"] : []);
+
+      app.startFetch({ label: "fresh remote" }).resolve();
+      expect(app.board.label).toBe("fresh remote");
+    }
+  );
 
   it("does not apply a snapshot fetched while a manual save is in flight", () => {
     const app = createAdminHarness();
