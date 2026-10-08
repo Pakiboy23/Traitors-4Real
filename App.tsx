@@ -324,6 +324,7 @@ const App: React.FC = () => {
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
+  const manualSaveInFlightRef = useRef(0);
   const writeTimerRef = useRef<number | null>(null);
   // Which board (season + admin/public view) is on screen, the newest season
   // fetch, and a counter bumped on every local edit or save. Together they let
@@ -425,6 +426,7 @@ const App: React.FC = () => {
       return;
     }
     // Any season fetch that overlaps this save may predate it.
+    manualSaveInFlightRef.current += 1;
     adminEditRevisionRef.current += 1;
     try {
       const safeState = normalizeUndefined(gameState);
@@ -440,6 +442,8 @@ const App: React.FC = () => {
         error instanceof Error ? error.message : String(error)
       );
       logger.warn("Manual save failed:", error);
+    } finally {
+      manualSaveInFlightRef.current -= 1;
     }
   }, [
     activeSeasonId,
@@ -582,7 +586,9 @@ const App: React.FC = () => {
           requestBoardKey: boardKey,
           isLatestFetch: fetchSeq === seasonFetchSeqRef.current,
           hasDebouncedSave: writeTimerRef.current !== null,
-          hasPendingWrite: pendingWriteRef.current !== null,
+          hasPendingWrite:
+            pendingWriteRef.current !== null ||
+            manualSaveInFlightRef.current > 0,
           editRevisionAtFetchStart,
           editRevisionNow: adminEditRevisionRef.current,
         });

@@ -157,6 +157,7 @@ describe("season_state_changed echo during an admin edit", () => {
       editRevision: 0,
       debounceTimer: null as number | null,
       pendingWrite: null as string | null,
+      manualSaveInFlight: 0,
     };
     let board: Board = { label: "loading" };
     let adminSeasonReady = false;
@@ -186,7 +187,8 @@ describe("season_state_changed echo during an admin edit", () => {
             requestBoardKey: ADMIN_BOARD,
             isLatestFetch: fetchSeq === refs.fetchSeq,
             hasDebouncedSave: refs.debounceTimer !== null,
-            hasPendingWrite: refs.pendingWrite !== null,
+            hasPendingWrite:
+              refs.pendingWrite !== null || refs.manualSaveInFlight > 0,
             editRevisionAtFetchStart,
             editRevisionNow: refs.editRevision,
           });
@@ -221,10 +223,23 @@ describe("season_state_changed echo during an admin edit", () => {
       };
     };
 
+    const saveNow = () => {
+      refs.manualSaveInFlight += 1;
+      refs.editRevision += 1;
+      return {
+        settle: () => {
+          saved.push(board.label);
+          refs.editRevision += 1;
+          refs.manualSaveInFlight -= 1;
+        },
+      };
+    };
+
     return {
       startFetch,
       edit,
       fireDebounce,
+      saveNow,
       get board() {
         return board;
       },
@@ -295,5 +310,24 @@ describe("season_state_changed echo during an admin edit", () => {
     app.startFetch({ label: "committed" }).resolve();
     app.startFetch({ label: "edited in another tab" }).resolve();
     expect(app.board.label).toBe("edited in another tab");
+  });
+
+  it("does not apply a snapshot fetched while a manual save is in flight", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    // saveNow bumps revision before saveSeasonState returns. A fetch that
+    // starts after that bump sees an equal revision and no pendingWrite unless
+    // the in-flight manual save is counted as outstanding work.
+    const save = app.saveNow();
+    const overlappingFetch = app.startFetch({ label: "stale remote" });
+    overlappingFetch.resolve();
+
+    expect(app.board.label).toBe("committed");
+    save.settle();
+    expect(app.saved).toEqual(["committed"]);
+
+    app.startFetch({ label: "committed" }).resolve();
+    expect(app.board.label).toBe("committed");
   });
 });

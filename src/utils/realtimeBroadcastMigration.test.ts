@@ -130,8 +130,13 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(loader).toContain("decideAdminSeasonRefresh({");
     expect(loader).toContain("isLatestFetch: fetchSeq === seasonFetchSeqRef.current");
     expect(loader).toContain("hasDebouncedSave: writeTimerRef.current !== null");
-    expect(loader).toContain("hasPendingWrite: pendingWriteRef.current !== null");
+    expect(loader).toContain("pendingWriteRef.current !== null");
+    expect(loader).toContain("manualSaveInFlightRef.current > 0");
     expect(loader).toContain("editRevisionNow: adminEditRevisionRef.current");
+    expect(app).toContain("manualSaveInFlightRef.current += 1;");
+    expect(app).toMatch(
+      /manualSaveInFlightRef\.current \+= 1;[\s\S]*?finally \{\s*manualSaveInFlightRef\.current -= 1;/
+    );
     expect(loader.match(/setGameState\(/g)).toHaveLength(1);
     expect(loader).toContain("if (decision.applyRemote) {");
     expect(app).toContain("seasonBoardKey(seasonId, isAdminAuthenticated)");
