@@ -43,6 +43,12 @@ export type AdminSeasonRefreshDecision = {
   markAdminReady: boolean;
 };
 
+/**
+ * Decides whether a fetched snapshot may replace the board and enable autosave.
+ * Rejects superseded fetches and applies the first admin load before enabling
+ * autosave. Background admin refreshes preserve local edits when a save is
+ * pending or the edit/save revision changed while the fetch was in flight.
+ */
 export function decideAdminSeasonRefresh(input: {
   isAdminAuthenticated: boolean;
   /** Board key of what is on screen now, or null if nothing has loaded. */
