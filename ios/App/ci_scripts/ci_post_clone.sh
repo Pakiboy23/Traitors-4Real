@@ -70,7 +70,11 @@ if NODE_SUMS="$(curl -fsSL --retry 3 "$NODE_DIST/SHASUMS256.txt")"; then
     echo "[ci_post_clone] Could not find a darwin-$NODE_ARCH Node 22 tarball in SHASUMS256.txt." >&2
     exit 1
   fi
-  curl -fsSL --retry 3 -o "/tmp/$NODE_TARBALL" "$NODE_DIST/$NODE_TARBALL"
+  # Download from the tarball's own versioned directory (node-v22.x.y-… →
+  # dist/v22.x.y/). latest-v22.x can move between the two requests, and a 404
+  # here would stop the script without reaching the Homebrew fallback.
+  NODE_VERSION="$(printf '%s\n' "$NODE_TARBALL" | sed -E 's/^node-(v[0-9]+\.[0-9]+\.[0-9]+)-.*/\1/')"
+  curl -fsSL --retry 3 -o "/tmp/$NODE_TARBALL" "https://nodejs.org/dist/$NODE_VERSION/$NODE_TARBALL"
   echo "$NODE_SHA  /tmp/$NODE_TARBALL" | shasum -a 256 -c -
   rm -rf "$NODE_HOME" && mkdir -p "$NODE_HOME"
   tar -xzf "/tmp/$NODE_TARBALL" -C "$NODE_HOME" --strip-components=1
