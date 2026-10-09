@@ -1,4 +1,4 @@
-• Fixes the Home countdown reading "Picks are locked" while the draft was still open. It now counts down to the actual draft lock.
-• Devices that had a retired season remembered now land on the live season automatically.
+• Leaderboard standings now show running season totals from week 3 on.
+• Security and stability updates.
 
 Independent app — not affiliated with any television network or production.

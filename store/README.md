@@ -1,9 +1,15 @@
 # App Store submission kit
 
 Copy, screenshots, privacy answers, and the Mac archive steps for
-**Round Table Draft**. Current native identity is **2.0.1 (build 102)**.
-App Store Connect already has **2.0.1 (101)**. **2.0 (35)** is the version
-released on the App Store. Do not archive 101 or anything lower.
+**Round Table Draft**. Current native identity is **2.0.2 (build 102)**.
+**2.0.1 (101)** is approved and on the App Store, so the 2.0.1 train is
+closed: App Store Connect rejects any further 2.0.1 upload (ITMS-90186 /
+ITMS-90062 — that is what happened to build 105). Do not archive 2.0.1 again,
+and do not archive build 101 or anything lower.
+
+Xcode Cloud replaces `CFBundleVersion` with its own build-run number, so a
+Xcode Cloud archive is numbered by the run (113 was the last run on 9 Oct), not
+by `CURRENT_PROJECT_VERSION`. Only a Mac archive uses the 102 in the project.
 
 `release_notes.txt` holds the What's New for the version currently being
 shipped — rewrite it for each update, it is not a changelog.
@@ -59,10 +65,10 @@ branch):
    `ios/App/App/capacitor.config.json` has no `server.url`
 3. Discard a `CapApp-SPM/Package.swift` rewrite if `cap sync` changes
    platforms to iOS 17
-4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.1** / Build **102** /
+4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.2** / Build **102** /
    iPhone only
-5. Archive and upload **2.0.1 (102)** to App Store Connect
-6. Select that build on the 2.0.1 version record, paste `release_notes.txt`
+5. Archive and upload **2.0.2 (102)** to App Store Connect
+6. Create the 2.0.2 version record if needed, select that build on it, paste `release_notes.txt`
    into What's New, then submit for review
 
 Set `APNS_ENV=production` on the `send-lock-reminder` Edge Function before
@@ -78,8 +84,9 @@ things have to change in the repo per update, both in
 `ios/App/App.xcodeproj/project.pbxproj`:
 
 - `MARKETING_VERSION` — the public version string. Must be higher than the
-  version on the store (`2.0` → `2.0.1`). Apple compares this numerically per
-  component, so `2.0.1 > 2.0` and `2.1 > 2.0.1`.
+  version on the store (`2.0.1` → `2.0.2`). Apple compares this numerically per
+  component, so `2.0.2 > 2.0.1` and `2.1 > 2.0.2`. Once a version is approved
+  its train closes, and uploads under that string are rejected.
 - `CURRENT_PROJECT_VERSION` — the build number. Must be higher than any
   build ever uploaded for this app. App Store Connect already has **101**, so
   the repo is **102**. Apple rejects a reused build number at upload, across

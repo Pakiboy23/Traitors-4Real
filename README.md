@@ -155,8 +155,8 @@ written without an alpha channel, which App Store Connect requires.
 ## App Store
 
 Listing copy, review notes, privacy answers, and iPhone screenshots live in
-[`store/`](store/README.md). Native identity is version **2.0.1**, build **102**,
-iPhone only; **2.0 (35)** is live on the App Store. Archive from a Mac after
+[`store/`](store/README.md). Native identity is version **2.0.2**, build **102**,
+iPhone only; **2.0.1 (101)** is live on the App Store. Archive from a Mac after
 `npm run ios:sync:bundled`. The update workflow is in `store/README.md`.
 
 ## Push notifications
