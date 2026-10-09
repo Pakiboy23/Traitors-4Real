@@ -45,9 +45,45 @@ cd "$CI_PRIMARY_REPOSITORY_PATH"
 #
 # Node 22 ships npm 10.9.x, keeping npm on the 10.x line `npm ci` is verified
 # against.
+#
+# Installed from the official nodejs.org tarball, not Homebrew. Since 9 Oct
+# 2026 `brew install node@22` on Xcode Cloud dies part-way through with
+#
+#   Error: node@22: A `brew install node@22` process has already locked
+#   /opt/homebrew/Cellar/openssl@3.
+#
+# (Homebrew upgrading the image's preinstalled openssl@3 races its own lock),
+# which failed every Xcode Cloud run on main. The tarball has no dependencies
+# and is checked against the SHASUMS256.txt published beside it. Homebrew
+# stays as a fallback only if nodejs.org cannot be reached.
 echo "[ci_post_clone] Installing Node 22..."
-brew install node@22
-export PATH="$(brew --prefix node@22)/bin:$PATH"
+NODE_DIST="https://nodejs.org/dist/latest-v22.x"
+case "$(uname -m)" in
+  arm64) NODE_ARCH="arm64" ;;
+  *) NODE_ARCH="x64" ;;
+esac
+NODE_HOME="$HOME/node22"
+if NODE_SUMS="$(curl -fsSL --retry 3 "$NODE_DIST/SHASUMS256.txt")"; then
+  NODE_TARBALL="$(printf '%s\n' "$NODE_SUMS" | awk -v arch="$NODE_ARCH" '$2 ~ ("-darwin-" arch "\\.tar\\.gz$") { print $2; exit }')"
+  NODE_SHA="$(printf '%s\n' "$NODE_SUMS" | awk -v f="$NODE_TARBALL" '$2 == f { print $1; exit }')"
+  if [ -z "$NODE_TARBALL" ] || [ -z "$NODE_SHA" ]; then
+    echo "[ci_post_clone] Could not find a darwin-$NODE_ARCH Node 22 tarball in SHASUMS256.txt." >&2
+    exit 1
+  fi
+  # Download from the tarball's own versioned directory (node-v22.x.y-… →
+  # dist/v22.x.y/). latest-v22.x can move between the two requests, and a 404
+  # here would stop the script without reaching the Homebrew fallback.
+  NODE_VERSION="$(printf '%s\n' "$NODE_TARBALL" | sed -E 's/^node-(v[0-9]+\.[0-9]+\.[0-9]+)-.*/\1/')"
+  curl -fsSL --retry 3 -o "/tmp/$NODE_TARBALL" "https://nodejs.org/dist/$NODE_VERSION/$NODE_TARBALL"
+  echo "$NODE_SHA  /tmp/$NODE_TARBALL" | shasum -a 256 -c -
+  rm -rf "$NODE_HOME" && mkdir -p "$NODE_HOME"
+  tar -xzf "/tmp/$NODE_TARBALL" -C "$NODE_HOME" --strip-components=1
+  export PATH="$NODE_HOME/bin:$PATH"
+else
+  echo "[ci_post_clone] nodejs.org unreachable; falling back to Homebrew." >&2
+  brew install node@22
+  export PATH="$(brew --prefix node@22)/bin:$PATH"
+fi
 
 echo "[ci_post_clone] node $(node -v), npm $(npm -v)"
 

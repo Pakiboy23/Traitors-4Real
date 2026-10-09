@@ -13,9 +13,24 @@ const verifyScript = readFileSync(path.join(repoRoot, "ios/App/Scripts/verify-we
 const packageSwift = readFileSync(path.join(repoRoot, "ios/App/CapApp-SPM/Package.swift"), "utf8");
 const appDelegate = readFileSync(path.join(repoRoot, "ios/App/App/AppDelegate.swift"), "utf8");
 const packageJson = readFileSync(path.join(repoRoot, "package.json"), "utf8");
+const packageLock = JSON.parse(readFileSync(path.join(repoRoot, "package-lock.json"), "utf8"));
+const packageResolved = JSON.parse(
+  readFileSync(
+    path.join(
+      repoRoot,
+      "ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+    ),
+    "utf8",
+  ),
+);
 
-/** App Store Connect already has 2.0.1 (101). The next upload is 2.0.1 (102). */
-const MARKETING_VERSION = "2.0.1";
+/**
+ * 2.0.1 is approved and on the store, so its train is closed (ITMS-90186 /
+ * ITMS-90062 rejected build 105). The next upload is 2.0.2. Xcode Cloud
+ * replaces CFBundleVersion with its own build-run number; 102 is the floor for
+ * a Mac archive (App Store Connect's highest accepted build is 101).
+ */
+const MARKETING_VERSION = "2.0.2";
 const MIN_BUILD_NUMBER = 102;
 const BUNDLE_ID = "com.roundtabledraft.app";
 
@@ -31,9 +46,9 @@ function appTargetSettings(name: "Debug" | "Release"): string {
   return match[0];
 }
 
-describe("iOS 2.0.1 release identity", () => {
+describe("iOS 2.0.2 release identity", () => {
   it.each(["Debug", "Release"] as const)(
-    "sets MARKETING_VERSION 2.0.1 and CURRENT_PROJECT_VERSION >= 102 on App %s",
+    "sets MARKETING_VERSION 2.0.2 and CURRENT_PROJECT_VERSION >= 102 on App %s",
     (name) => {
       const settings = appTargetSettings(name);
       expect(settings).toMatch(new RegExp(`MARKETING_VERSION = ${MARKETING_VERSION};`));
@@ -82,7 +97,23 @@ describe("iOS release shipping guards", () => {
     // platforms: .iOS(.v17) diff is easy to commit by accident and is not the
     // App target's 15.0 deployment target.
     expect(packageSwift).toContain("platforms: [.iOS(.v15)]");
-    expect(packageSwift).toContain('exact: "8.5.0"');
+    expect(packageSwift).toContain('exact: "8.5.2"');
+  });
+
+  it("pins capacitor-swift-pm to the installed @capacitor/ios in Package.swift and Package.resolved", () => {
+    // Xcode Cloud's post-clone `cap sync` rewrites Package.swift to
+    // `exact: "<installed @capacitor/ios>"`. If the committed Package.resolved
+    // pins anything else, xcodebuild refuses to resolve packages (automatic
+    // resolution is off in CI) and every archive fails. A Dependabot bump of
+    // @capacitor/ios has to move all three together.
+    const installed: string = packageLock.packages["node_modules/@capacitor/ios"].version;
+    expect(packageSwift).toContain(
+      `.package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "${installed}")`,
+    );
+    const pin = packageResolved.pins.find(
+      (entry: { identity: string }) => entry.identity === "capacitor-swift-pm",
+    );
+    expect(pin?.state?.version).toBe(installed);
   });
 
   it("keeps the Capacitor app id and only adds server.url off the bundled path", () => {

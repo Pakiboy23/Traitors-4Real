@@ -234,12 +234,13 @@ old stack in its body — it carries a correction header.
   field, currently `UPRV Fantasy League`. The two are deliberately distinct —
   only one is public on the App Store.
 - Bundle id `com.roundtabledraft.app`. **Locks permanently at first submission.**
-- **2.0 (35) is the released App Store version.** App Store Connect already
-  has **2.0.1 (101)**. Native identity in the repo is **2.0.1 (102)** — do
-  not archive 101 or anything lower. Listing copy, screenshots, privacy
+- **2.0.1 (101) is the released App Store version** (2.0 (35) before it), so
+  the 2.0.1 train is closed (build 105 was rejected with ITMS-90186/90062). Native identity in
+  the repo is **2.0.2 (102)** — do not archive 2.0.1 again, or build 101 or
+  anything lower. Xcode Cloud overrides the build number with its run number. Listing copy, screenshots, privacy
   answers, and review notes live in `store/`; the update workflow (bump
   `CURRENT_PROJECT_VERSION` above the highest build App Store Connect has,
-  archive, select that build on the 2.0.1 version, submit) is in
+  archive, select that build on the 2.0.2 version, submit) is in
   `store/README.md`. The App target is **iPhone only**.
 - iOS target has the push entitlement, the `remote-notification` background
   mode, and `PrivacyInfo.xcprivacy` in Copy Bundle Resources.
@@ -254,9 +255,9 @@ old stack in its body — it carries a correction header.
 **Shipping already.** App Store Connect record, App ID, and signing are all
 done — do not describe them as outstanding. TestFlight groups `DrafTers`
 (internal) and `DrafTers2` (external) exist, and Xcode Cloud is wired to the
-App target. **2.0 (35)** is the released store version. App Store Connect
-already has **2.0.1 (101)**. Next archive is **2.0.1 (102)** from a Mac —
-see `store/README.md`.
+App target. **2.0.1 (101)** is the released store version. Next archive is
+**2.0.2** (numbered by the Xcode Cloud run, or 102 from a Mac) — see
+`store/README.md`.
 
 **Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
 iOS 26+ (no UIScene adoption — UIKit calls
@@ -264,8 +265,8 @@ iOS 26+ (no UIScene adoption — UIKit calls
 That is the most likely cause and the timing fits, but it is not confirmed
 against the crash logs. Build 3 was created after #133 merged.
 
-**Not done:** the Mac archive of **2.0.1 (102)**. App Store Connect already
-has 2.0.1 (101); uploading 102 is how the next binary gets a free build number.
+**Not done:** the first **2.0.2** archive. 2.0.1 (101) is on sale and its
+train is closed, so the next binary has to be 2.0.2.
 
 The `DEVELOPMENT` badge is gated on `NODE_ENV` and is dead-code-eliminated from
 a production build; the `NO SYNC YET` chip no longer exists (`syncLabel` is
