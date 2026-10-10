@@ -32,7 +32,7 @@ export interface PlayerScore {
   total: number;
   breakdown: ScoreBreakdown;
   achievements: ScoreAchievement[];
-  /** Draft picks, draft predictions, and season-wide adjustments. These persist across weeks. */
+  /** Draft picks and draft predictions. These persist across weeks. */
   draftPredictionPoints: number;
   /** This week's council, bonus, and finale calls, including Double or Nothing. */
   weeklyCallPoints: number;
@@ -612,7 +612,6 @@ export const calculatePlayerScore = (
     .forEach((adjustment) => {
       score += adjustment.points;
       if (normalizeWeekId(adjustment.weekId)) weeklyCallPoints += adjustment.points;
-      else draftPredictionPoints += adjustment.points;
       breakdown.adjustments.push({
         reason: adjustment.reason,
         points: adjustment.points,

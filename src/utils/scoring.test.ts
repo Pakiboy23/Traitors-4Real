@@ -421,13 +421,16 @@ describe("score adjustments", () => {
     expect(scoreOf(season(), player(), [adjustment()])).toBe(5);
   });
 
-  it("puts a season-wide adjustment in the persistent draft bucket, not this week's calls", () => {
+  it("keeps a season-wide adjustment out of both archived buckets", () => {
+    // Standings add season-wide adjustments by createdAt (see standings.ts),
+    // so they must not also ride in the archived draft or call points.
     const scored = calculatePlayerScore({
       seasonState: season(),
       player: player(),
       adjustments: [adjustment()],
     });
-    expect(scored.draftPredictionPoints).toBe(5);
+    expect(scored.total).toBe(5);
+    expect(scored.draftPredictionPoints).toBe(0);
     expect(scored.weeklyCallPoints).toBe(0);
   });
 
