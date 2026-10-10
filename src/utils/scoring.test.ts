@@ -421,6 +421,26 @@ describe("score adjustments", () => {
     expect(scoreOf(season(), player(), [adjustment()])).toBe(5);
   });
 
+  it("puts a season-wide adjustment in the persistent draft bucket, not this week's calls", () => {
+    const scored = calculatePlayerScore({
+      seasonState: season(),
+      player: player(),
+      adjustments: [adjustment()],
+    });
+    expect(scored.draftPredictionPoints).toBe(5);
+    expect(scored.weeklyCallPoints).toBe(0);
+  });
+
+  it("puts a week-scoped adjustment in this week's calls", () => {
+    const scored = calculatePlayerScore({
+      seasonState: season({ weeklyResults: { weekId: WEEK } }),
+      player: player(),
+      adjustments: [adjustment({ weekId: WEEK })],
+    });
+    expect(scored.weeklyCallPoints).toBe(5);
+    expect(scored.draftPredictionPoints).toBe(0);
+  });
+
   it("ignores adjustments belonging to another player", () => {
     expect(scoreOf(season(), player(), [adjustment({ playerId: "p2" })])).toBe(0);
   });

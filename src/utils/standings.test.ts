@@ -646,4 +646,42 @@ describe("running season totals", () => {
 
     expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 1);
   });
+
+  it("keeps a season-wide score adjustment on the board after the week-3 archive", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      castStatus: {},
+      scoreAdjustments: [
+        {
+          id: "adj-1",
+          seasonId: "traitors-new-blood-s1",
+          playerId: "serena",
+          reason: "Manual correction",
+          points: 5,
+          createdBy: "admin",
+          createdAt: "2026-10-08T00:00:00.000Z",
+        },
+      ],
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        {
+          id: "week-3-snap",
+          label: "Week 3",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          totals: { serena: 1.5 },
+          weeklyCallPoints: { serena: 1 },
+          draftPredictionPoints: { serena: 0 },
+        },
+      ],
+    });
+
+    const scored = calculatePlayerScore(game, game.players[0]);
+    expect(scored.total).toBe(5);
+    expect(scored.draftPredictionPoints).toBe(5);
+    expect(scored.weeklyCallPoints).toBe(0);
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 5);
+    expect(homeStandingsBoard(game).mvp?.score).toBe(0.5 + 1 + 5);
+  });
 });
