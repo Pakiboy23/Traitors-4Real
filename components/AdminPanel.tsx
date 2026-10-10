@@ -1912,7 +1912,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     ]);
     playerIds.forEach((id) => {
       const total =
-        index >= 0 ? runningTotalAtSnapshot(scoreHistory, index, id) : snapshot.totals?.[id];
+        index >= 0 ? runningTotalAtSnapshot(scoreHistory, index, id, gameState) : snapshot.totals?.[id];
       if (typeof total !== "number") return;
       if (total > topScore) {
         topScore = total;

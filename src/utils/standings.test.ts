@@ -12,6 +12,7 @@ import {
   homeStandingsBoard,
   leaderboardRankContext,
   resolveDisplayTotal,
+  runningTotalsRecord,
   seasonTimeline,
   snapshotScoreRecords,
   weeklyResultsAreLive,
@@ -645,5 +646,101 @@ describe("running season totals", () => {
     });
 
     expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 1);
+  });
+
+  it("keeps a season-wide score adjustment on the board after the week-3 archive", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      castStatus: {},
+      scoreAdjustments: [
+        {
+          id: "adj-1",
+          seasonId: "traitors-new-blood-s1",
+          playerId: "serena",
+          reason: "Manual correction",
+          points: 5,
+          createdBy: "admin",
+          createdAt: "2026-10-08T00:00:00.000Z",
+        },
+      ],
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        {
+          id: "week-3-snap",
+          label: "Week 3",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          totals: { serena: 1.5 },
+          weeklyCallPoints: { serena: 1 },
+          draftPredictionPoints: { serena: 0 },
+        },
+      ],
+    });
+
+    const scored = calculatePlayerScore(game, game.players[0]);
+    expect(scored.total).toBe(5);
+    expect(scored.draftPredictionPoints).toBe(0);
+    expect(scored.weeklyCallPoints).toBe(0);
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 5);
+    expect(homeStandingsBoard(game).mvp?.score).toBe(0.5 + 1 + 5);
+  });
+
+  const seasonWideAdjustment = (createdAt: string) => ({
+    id: `adj-${createdAt}`,
+    seasonId: "traitors-new-blood-s1",
+    playerId: "serena",
+    reason: "Manual correction",
+    points: 5,
+    createdBy: "admin",
+    createdAt,
+  });
+
+  const week3ComponentSeason = (adjustmentCreatedAt: string): GameState => {
+    const base = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      castStatus: {},
+      scoreAdjustments: [seasonWideAdjustment(adjustmentCreatedAt)],
+    });
+    // Week 3 is archived the way Archive Week does it, with the adjustment
+    // already on the season, so its draft bucket is whatever scoring puts there.
+    const archived = snapshotScoreRecords(base);
+    return {
+      ...base,
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        {
+          id: "week-3-snap",
+          label: "Week 3",
+          createdAt: "2026-10-02T00:00:00.000Z",
+          totals: { serena: archived.totals.serena + 1 },
+          weeklyCallPoints: { serena: 1 },
+          draftPredictionPoints: archived.draftPredictionPoints,
+        },
+      ],
+    };
+  };
+
+  it("keeps an adjustment entered between the last legacy archive and the first component archive", () => {
+    // Week 2 (legacy) archived 25 Sep, correction entered 28 Sep, week 3 (first
+    // component snapshot) archived 2 Oct. The legacy baseline predates it, so
+    // the board has to add it once.
+    const game = week3ComponentSeason("2026-09-28T00:00:00.000Z");
+
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 1 + 5);
+    expect(homeStandingsBoard(game).mvp?.score).toBe(0.5 + 1 + 5);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([-1, 0.5, 6.5]);
+    expect(runningTotalsRecord(game.weeklyScoreHistory!, 2, ["serena"], game).serena).toBe(6.5);
+  });
+
+  it("does not count an adjustment already in the published legacy total twice", () => {
+    // Entered 20 Sep, before week 2 was archived, so week 2's published 0.5
+    // already includes it.
+    const game = week3ComponentSeason("2026-09-20T00:00:00.000Z");
+
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 1);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([-1, 0.5, 1.5]);
   });
 });
