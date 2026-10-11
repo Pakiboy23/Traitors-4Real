@@ -324,6 +324,7 @@ const App: React.FC = () => {
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
+  const unsavedFailedWriteRef = useRef(false);
   const manualSaveInFlightRef = useRef(0);
   const writeTimerRef = useRef<number | null>(null);
   // Which board (season + admin/public view) is on screen, the newest season
@@ -435,8 +436,11 @@ const App: React.FC = () => {
         ? new Date(record.updated as string).getTime()
         : Date.now();
       setLastSavedAt(updatedAt);
+      unsavedFailedWriteRef.current = false;
       setLastWriteError(null);
     } catch (error) {
+      unsavedFailedWriteRef.current =
+        JSON.stringify(gameState) !== lastRemoteStateRef.current;
       setLastWriteError(
         error instanceof Error ? error.message : String(error)
       );
@@ -589,6 +593,7 @@ const App: React.FC = () => {
           hasPendingWrite:
             pendingWriteRef.current !== null ||
             manualSaveInFlightRef.current > 0,
+          hasUnsavedFailedWrite: unsavedFailedWriteRef.current,
           editRevisionAtFetchStart,
           editRevisionNow: adminEditRevisionRef.current,
         });
@@ -596,6 +601,7 @@ const App: React.FC = () => {
         const decision = refreshDecision();
         if (decision.applyRemote) {
           lastRemoteStateRef.current = JSON.stringify(nextState);
+          unsavedFailedWriteRef.current = false;
           setGameState(nextState);
           appliedBoardKeyRef.current = boardKey;
           setLoadedSeasonId(seasonId);
@@ -789,6 +795,7 @@ const App: React.FC = () => {
       saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
           lastRemoteStateRef.current = serialized;
+          unsavedFailedWriteRef.current = false;
           // A newer save may have started while this one was in flight.
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
@@ -801,6 +808,7 @@ const App: React.FC = () => {
         .catch((error) => {
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
+          unsavedFailedWriteRef.current = serialized !== lastRemoteStateRef.current;
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );

@@ -132,6 +132,7 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(loader).toContain("hasDebouncedSave: writeTimerRef.current !== null");
     expect(loader).toContain("pendingWriteRef.current !== null");
     expect(loader).toContain("manualSaveInFlightRef.current > 0");
+    expect(loader).toContain("hasUnsavedFailedWrite: unsavedFailedWriteRef.current");
     expect(loader).toContain("editRevisionNow: adminEditRevisionRef.current");
     expect(app).toContain("manualSaveInFlightRef.current += 1;");
     expect(app).toMatch(

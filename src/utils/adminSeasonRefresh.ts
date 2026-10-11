@@ -16,8 +16,10 @@
  *   can never be autosaved over the archive.
  * - A background admin refresh never resets adminSeasonReady, and it does not
  *   replace the board if a local edit is waiting to save, a save is in flight,
- *   or the board was edited or saved at any point while the fetch was out
- *   (the snapshot may predate that edit).
+ *   the last save of a dirty board failed (nothing is "outstanding" after the
+ *   catch clears pendingWrite, but the committed row is still stale), or the
+ *   board was edited or saved at any point while the fetch was out (the
+ *   snapshot may predate that edit).
  * - Only the newest fetch may apply, so out-of-order responses cannot roll
  *   the board back.
  */
@@ -47,7 +49,8 @@ export type AdminSeasonRefreshDecision = {
  * Decides whether a fetched snapshot may replace the board and enable autosave.
  * Rejects superseded fetches and applies the first admin load before enabling
  * autosave. Background admin refreshes preserve local edits when a save is
- * pending or the edit/save revision changed while the fetch was in flight.
+ * pending, a dirty save already failed, or the edit/save revision changed
+ * while the fetch was in flight.
  */
 export function decideAdminSeasonRefresh(input: {
   isAdminAuthenticated: boolean;
@@ -61,6 +64,12 @@ export function decideAdminSeasonRefresh(input: {
   hasDebouncedSave: boolean;
   /** A saveSeasonState call is in flight. */
   hasPendingWrite: boolean;
+  /**
+   * The last save of a board that still differs from lastRemote failed.
+   * pendingWrite is already cleared, so without this a later clean fetch
+   * (the 45s seasons poll remounts the loader) would apply the stale row.
+   */
+  hasUnsavedFailedWrite: boolean;
   /** Local edit/save revision when the fetch started, and now. */
   editRevisionAtFetchStart: number;
   editRevisionNow: number;
@@ -81,11 +90,12 @@ export function decideAdminSeasonRefresh(input: {
   const localWorkOutstanding =
     input.hasDebouncedSave ||
     input.hasPendingWrite ||
+    input.hasUnsavedFailedWrite ||
     input.editRevisionNow !== input.editRevisionAtFetchStart;
   if (localWorkOutstanding) {
     // Keep the commissioner's board and keep autosave armed. What is on screen
-    // is what was, or is about to be, saved. The next clean refetch (another
-    // broadcast, or the season list refresh) brings in anyone else's change.
+    // is what was, or is about to be, saved. After a successful save, the next
+    // clean refetch brings in anyone else's change.
     return { applyRemote: false, markAdminReady: true };
   }
 
