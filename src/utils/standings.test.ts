@@ -14,6 +14,7 @@ import {
   resolveDisplayTotal,
   runningTotalsRecord,
   seasonTimeline,
+  displayedWeekDelta,
   snapshotScoreRecords,
   weeklyResultsAreLive,
 } from "./standings";
@@ -486,6 +487,7 @@ describe("running season totals", () => {
     expect(archived.weeklyCallPoints).toEqual({ serena: 4, connor: -2 });
     expect(archived.draftPredictionPoints).toEqual({ serena: 0, connor: 0 });
     expect(archived.seasonWideAdjustmentPoints).toEqual({ serena: 0, connor: 0 });
+    expect(archived.seasonWideInBaselinePoints).toEqual({ serena: 0, connor: 0 });
 
     const game = runningSeason({
       activeWeekId: "week-4",
@@ -752,6 +754,7 @@ describe("running season totals", () => {
     });
     const archived = snapshotScoreRecords(game);
     expect(archived.seasonWideAdjustmentPoints).toEqual({ serena: 5 });
+    expect(archived.seasonWideInBaselinePoints).toEqual({ serena: 0 });
     expect(archived.draftPredictionPoints).toEqual({ serena: 0 });
     expect(archived.weeklyCallPoints).toEqual({ serena: 0 });
   });
@@ -810,5 +813,98 @@ describe("running season totals", () => {
     expect(seasonTimeline(game, "serena", 0).map((point) => point.total)).toEqual([
       -1, 0.5, 6.5,
     ]);
+  });
+
+  it("keeps a season-wide adjustment entered after the last legacy archive", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-3",
+      weeklyResults: clearedWeek("week-3"),
+      castStatus: {},
+      scoreAdjustments: [seasonWideAdjustment("2026-10-08T00:00:00.000Z")],
+      weeklyScoreHistory: publishedWeeks(),
+    });
+
+    expect(calculatePlayerScore(game, game.players[0]).total).toBe(5);
+    expect(currentStandings(game)[0]?.score).toBe(0.5 + 5);
+    expect(homeStandingsBoard(game).mvp?.score).toBe(0.5 + 5);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([-1, 5.5]);
+    expect(displayedWeekDelta(game, "serena", 5.5)).toBe(0.5 - -1 + 5);
+  });
+
+  it("does not add a legacy-era adjustment on top of the published week-2 total", () => {
+    const game = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-3",
+      weeklyResults: clearedWeek("week-3"),
+      castStatus: {},
+      scoreAdjustments: [seasonWideAdjustment("2026-09-20T00:00:00.000Z")],
+      weeklyScoreHistory: publishedWeeks(),
+    });
+
+    expect(currentStandings(game)[0]?.score).toBe(0.5);
+    expect(seasonTimeline(game, "serena").map((point) => point.total)).toEqual([-1, 0.5]);
+  });
+
+  it("removes a pre-baseline adjustment from the board after it is deleted", () => {
+    const adjustment = seasonWideAdjustment("2026-09-20T00:00:00.000Z");
+    const base = runningSeason({
+      players: [player({ id: "serena", name: "Serena" })],
+      activeWeekId: "week-3",
+      weeklyResults: clearedWeek("week-3"),
+      castStatus: {},
+      scoreAdjustments: [adjustment],
+    });
+    const archived = snapshotScoreRecords(base);
+    expect(archived.seasonWideAdjustmentPoints).toEqual({ serena: 5 });
+    expect(archived.seasonWideInBaselinePoints).toEqual({ serena: 5 });
+
+    const week3 = {
+      id: "week-3-snap",
+      label: "Week 3",
+      createdAt: "2026-10-02T00:00:00.000Z",
+      totals: { serena: 1.5 },
+      weeklyCallPoints: { serena: 1 },
+      draftPredictionPoints: { serena: 0 },
+      seasonWideAdjustmentPoints: archived.seasonWideAdjustmentPoints,
+      seasonWideInBaselinePoints: archived.seasonWideInBaselinePoints,
+    };
+    const withWeek3 = {
+      ...base,
+      activeWeekId: "week-4",
+      weeklyResults: clearedWeek("week-4"),
+      weeklyScoreHistory: [...publishedWeeks(), week3],
+    };
+    expect(currentStandings(withWeek3)[0]?.score).toBe(0.5 + 1);
+
+    const deleted = { ...withWeek3, scoreAdjustments: [] };
+    expect(currentStandings(deleted)[0]?.score).toBe(0.5 + 1 - 5);
+    expect(seasonTimeline(deleted, "serena").map((point) => point.total)).toEqual([
+      -1, 0.5, 0.5 + 1 - 5,
+    ]);
+
+    const week4Archive = snapshotScoreRecords(deleted);
+    expect(week4Archive.seasonWideInBaselinePoints).toEqual({ serena: 5 });
+    expect(week4Archive.seasonWideAdjustmentPoints).toEqual({ serena: 0 });
+    const withWeek4 = {
+      ...deleted,
+      activeWeekId: "week-5",
+      weeklyResults: clearedWeek("week-5"),
+      weeklyScoreHistory: [
+        ...publishedWeeks(),
+        week3,
+        {
+          id: "week-4-snap",
+          label: "Week 4",
+          createdAt: "2026-10-09T00:00:00.000Z",
+          totals: { serena: 1.5 },
+          weeklyCallPoints: { serena: 0 },
+          draftPredictionPoints: { serena: 0 },
+          seasonWideAdjustmentPoints: week4Archive.seasonWideAdjustmentPoints,
+          seasonWideInBaselinePoints: week4Archive.seasonWideInBaselinePoints,
+        },
+      ],
+    };
+    expect(currentStandings(withWeek4)[0]?.score).toBe(0.5 + 1 - 5);
   });
 });

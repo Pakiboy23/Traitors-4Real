@@ -1888,6 +1888,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       weeklyCallPoints: scored.weeklyCallPoints,
       draftPredictionPoints: scored.draftPredictionPoints,
       seasonWideAdjustmentPoints: scored.seasonWideAdjustmentPoints,
+      seasonWideInBaselinePoints: scored.seasonWideInBaselinePoints,
     };
     const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
     const nextActiveWeekId = `week-${nextHistory.length + 1}`;

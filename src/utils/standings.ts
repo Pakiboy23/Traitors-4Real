@@ -89,6 +89,20 @@ const persistedSeasonWide = (
   return finite(record[playerId]) ?? 0;
 };
 
+/**
+ * Portion of the cumulative season-wide total that the legacy baseline
+ * already published. Frozen onto the snapshot at archive time so a later
+ * delete still knows those points were in the published number.
+ */
+const frozenInBaseline = (
+  snapshot: WeeklyScoreSnapshot | null | undefined,
+  playerId: string
+): number | null => {
+  const record = snapshot?.seasonWideInBaselinePoints;
+  if (!record || typeof record !== "object") return null;
+  return finite(record[playerId]) ?? 0;
+};
+
 /** Points already published on the legacy baseline, or 0 when there is none. */
 const seasonWideAlreadyInBaseline = (
   source: AdjustmentSource | undefined,
@@ -111,6 +125,8 @@ const seasonWideForSnapshot = (
   baselineTotal: number | null
 ): number => {
   const persisted = persistedSeasonWide(snapshot, playerId);
+  const frozen = frozenInBaseline(snapshot, playerId);
+  if (persisted !== null && frozen !== null) return persisted - frozen;
   const alreadyInBaseline = seasonWideAlreadyInBaseline(
     source,
     playerId,
@@ -197,9 +213,10 @@ const withCurrentDraft = (
 /**
  * Leaderboard number.
  * Legacy history (weeks archived before the call split) still shows the latest
- * published snapshot. Once a snapshot carries `weeklyCallPoints`, the total is
- * that baseline plus every later week's calls, plus the draft-point change
- * since the first of those snapshots.
+ * published snapshot, plus season-wide adjustments entered after that archive.
+ * Once a snapshot carries `weeklyCallPoints`, the total is that baseline plus
+ * every later week's calls, plus the draft-point change since the first of
+ * those snapshots.
  */
 export const resolveDisplayTotal = (
   gameState: GameState,
@@ -212,8 +229,10 @@ export const resolveDisplayTotal = (
   const live = weeklyResultsAreLive(gameState.weeklyResults);
   if (start === -1) {
     if (live) return scoringTotal;
-    const archived = history[history.length - 1]?.totals?.[playerId];
-    return typeof archived === "number" ? archived : scoringTotal;
+    const latest = history[history.length - 1];
+    const archived = finite(latest?.totals?.[playerId]);
+    if (archived === null) return scoringTotal;
+    return archived + seasonWideSinceSnapshot(gameState, playerId, latest);
   }
 
   const atLast = runningTotalAtSnapshot(history, history.length - 1, playerId, gameState);
@@ -238,7 +257,11 @@ export const displayedWeekDelta = (
     const last = finite(history[history.length - 1]?.totals?.[playerId]);
     const prev = finite(history[history.length - 2]?.totals?.[playerId]);
     if (last === null || prev === null) return null;
-    return last - prev;
+    return (
+      last -
+      prev +
+      seasonWideSinceSnapshot(gameState, playerId, history[history.length - 1])
+    );
   }
   const previous = runningTotalAtSnapshot(history, history.length - 2, playerId, gameState);
   if (previous === null) return null;
@@ -266,11 +289,13 @@ export const seasonTimeline = (
     const archived = runningTotalAtSnapshot(history, index, playerId, gameState);
     if (archived === null) return;
     const isLast = index === history.length - 1;
-    const total =
-      isLast && !live && typeof currentDraft === "number"
-        ? withCurrentDraft(history, playerId, archived, currentDraft) +
-          seasonWideSinceSnapshot(gameState, playerId, snapshot)
-        : archived;
+    let total = archived;
+    if (isLast && !live) {
+      if (typeof currentDraft === "number") {
+        total = withCurrentDraft(history, playerId, archived, currentDraft);
+      }
+      total += seasonWideSinceSnapshot(gameState, playerId, snapshot);
+    }
     points.push({ label: timelineLabel(snapshot), total });
   });
   return points;
@@ -291,6 +316,44 @@ export const runningTotalsRecord = (
   return totals;
 };
 
+const carriedBaselinePoints = (
+  history: WeeklyScoreSnapshot[]
+): Record<string, number> | null => {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const record = history[index]?.seasonWideInBaselinePoints;
+    if (record && typeof record === "object") return record;
+  }
+  return null;
+};
+
+/**
+ * Season-wide points the legacy baseline already published.
+ * The first component archive freezes that split from timestamps while the
+ * rows still exist. Later archives copy it, so a delete cannot erase the
+ * only record that those points were inside the published total.
+ */
+const seasonWideInBaselineForArchive = (state: GameState): Record<string, number> => {
+  const history = historyOf(state);
+  const carried = carriedBaselinePoints(history);
+  const points: Record<string, number> = {};
+  if (carried) {
+    for (const player of state.players) {
+      points[player.id] = finite(carried[player.id]) ?? 0;
+    }
+    return points;
+  }
+  const start = componentSnapshotStart(history);
+  let baseline: WeeklyScoreSnapshot | undefined;
+  if (start === -1) baseline = history[history.length - 1];
+  else if (start > 0) baseline = history[start - 1];
+  else baseline = undefined;
+  for (const player of state.players) {
+    const baselineTotal = baseline ? finite(baseline.totals?.[player.id]) : null;
+    points[player.id] = seasonWideAlreadyInBaseline(state, player.id, baseline, baselineTotal);
+  }
+  return points;
+};
+
 /** Fields Archive Week writes onto a new snapshot. */
 export const snapshotScoreRecords = (
   state: GameState
@@ -299,11 +362,13 @@ export const snapshotScoreRecords = (
   weeklyCallPoints: Record<string, number>;
   draftPredictionPoints: Record<string, number>;
   seasonWideAdjustmentPoints: Record<string, number>;
+  seasonWideInBaselinePoints: Record<string, number>;
 } => {
   const totals: Record<string, number> = {};
   const weeklyCallPoints: Record<string, number> = {};
   const draftPredictionPoints: Record<string, number> = {};
   const seasonWide: Record<string, number> = {};
+  const inBaseline = seasonWideInBaselineForArchive(state);
   for (const player of state.players) {
     const scored: PlayerScore = calculatePlayerScore(state, player);
     totals[player.id] = scored.total;
@@ -316,6 +381,7 @@ export const snapshotScoreRecords = (
     weeklyCallPoints,
     draftPredictionPoints,
     seasonWideAdjustmentPoints: seasonWide,
+    seasonWideInBaselinePoints: inBaseline,
   };
 };
 
