@@ -371,9 +371,9 @@ const movementFor = (
   const active = resolveActiveWeekId(state);
 
   if (index >= 0) {
-    const currentTotals = runningTotalsRecord(history, index, namesById.keys());
+    const currentTotals = runningTotalsRecord(history, index, namesById.keys(), state);
     const current = currentTotals[playerId];
-    const previousTotals = index > 0 ? runningTotalsRecord(history, index - 1, namesById.keys()) : null;
+    const previousTotals = index > 0 ? runningTotalsRecord(history, index - 1, namesById.keys(), state) : null;
     const weekDelta =
       typeof current !== "number"
         ? null
@@ -393,7 +393,7 @@ const movementFor = (
   }
 
   if (weekId !== active || history.length === 0) return { weekDelta: null, rankDelta: null };
-  const previousTotals = runningTotalsRecord(history, history.length - 1, namesById.keys());
+  const previousTotals = runningTotalsRecord(history, history.length - 1, namesById.keys(), state);
   const previous = previousTotals[playerId];
   const weekDelta = typeof previous === "number" ? liveScore - previous : null;
   const previousRank = rankByTotals(namesById, previousTotals).get(playerId);

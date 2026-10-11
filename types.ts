@@ -93,6 +93,18 @@ export interface WeeklyScoreSnapshot {
   weeklyCallPoints?: Record<string, number>;
   /** Draft-prediction points when this week was archived. Absent on older snapshots. */
   draftPredictionPoints?: Record<string, number>;
+  /**
+   * Season-wide (no week) adjustment points present in the archived state.
+   * New archives persist this so standings do not order server-stamped
+   * adjustments against the admin device clock. Absent on older snapshots.
+   */
+  seasonWideAdjustmentPoints?: Record<string, number>;
+  /**
+   * Season-wide points already inside the legacy published total, frozen
+   * at archive time. Later archives copy the latest value forward so a
+   * deleted correction still comes off the board. Absent on older snapshots.
+   */
+  seasonWideInBaselinePoints?: Record<string, number>;
 }
 
 /**

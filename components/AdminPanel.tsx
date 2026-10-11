@@ -1887,6 +1887,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       totals: scored.totals,
       weeklyCallPoints: scored.weeklyCallPoints,
       draftPredictionPoints: scored.draftPredictionPoints,
+      seasonWideAdjustmentPoints: scored.seasonWideAdjustmentPoints,
+      seasonWideInBaselinePoints: scored.seasonWideInBaselinePoints,
     };
     const nextHistory = [...scoreHistory, snapshot].slice(-LIMITS.SCORE_HISTORY_LIMIT);
     const nextActiveWeekId = `week-${nextHistory.length + 1}`;
@@ -1912,7 +1914,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     ]);
     playerIds.forEach((id) => {
       const total =
-        index >= 0 ? runningTotalAtSnapshot(scoreHistory, index, id) : snapshot.totals?.[id];
+        index >= 0 ? runningTotalAtSnapshot(scoreHistory, index, id, gameState) : snapshot.totals?.[id];
       if (typeof total !== "number") return;
       if (total > topScore) {
         topScore = total;

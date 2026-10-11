@@ -203,10 +203,11 @@ Push to `main` → Vercel deploys production. Edge Functions deploy separately
 (Supabase CLI or MCP). Database changes go through `supabase/*.sql` applied as
 migrations.
 
-**Cloudflare Pages fails on every commit.** It is a leftover of the retired Vite
-build, configured dashboard-side, and it fails identically on `main`. Same for a
-permanently-queued Google Cloud Build check. Neither is actionable from the
-repo; ignore both.
+**Cloudflare Pages is a retired Vite project.** The dashboard still runs
+`npm run build` and publishes `dist`. `scripts/cloudflare-pages-dist.mjs`
+fills that directory only when `CF_PAGES=1`, and `.node-version` keeps the
+build on Node 22. Production is Vercel. A permanently-queued Google Cloud
+Build check is dashboard-side and not actionable from the repo; ignore it.
 
 ## Retired stacks
 
