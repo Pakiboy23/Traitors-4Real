@@ -49,12 +49,11 @@ export type AdjustmentSource = Pick<GameState, "seasonId" | "scoreAdjustments">;
 /**
  * Season-wide adjustments for one player created in (after, upTo].
  *
- * Archived snapshots do not carry these: a legacy total includes every
- * adjustment that existed when it was published, and nothing archived later
- * records them. Bucketing by createdAt is what lets a correction entered
- * between the last legacy archive and the first component archive count once.
- * A null bound is open. An unparseable createdAt only lands in the open-ended
- * "since the last archive" window.
+ * New snapshots persist the cumulative total from the archived state. This
+ * timestamp window is only for older snapshots that lack that record, and
+ * for subtracting what a legacy baseline already published. A null bound is
+ * open. An unparseable createdAt only lands in the open-ended "since the
+ * last archive" window.
  */
 const seasonWideAdjustmentPoints = (
   source: AdjustmentSource | undefined,
@@ -81,6 +80,65 @@ const seasonWideAdjustmentPoints = (
   return points;
 };
 
+const persistedSeasonWide = (
+  snapshot: WeeklyScoreSnapshot | null | undefined,
+  playerId: string
+): number | null => {
+  const record = snapshot?.seasonWideAdjustmentPoints;
+  if (!record || typeof record !== "object") return null;
+  return finite(record[playerId]) ?? 0;
+};
+
+/** Points already published on the legacy baseline, or 0 when there is none. */
+const seasonWideAlreadyInBaseline = (
+  source: AdjustmentSource | undefined,
+  playerId: string,
+  baseline: WeeklyScoreSnapshot | undefined,
+  baselineTotal: number | null
+): number => {
+  if (baselineTotal === null) return 0;
+  const persisted = persistedSeasonWide(baseline, playerId);
+  if (persisted !== null) return persisted;
+  return seasonWideAdjustmentPoints(source, playerId, null, baseline?.createdAt);
+};
+
+/** Season-wide points that belong on this archived week. */
+const seasonWideForSnapshot = (
+  source: AdjustmentSource | undefined,
+  playerId: string,
+  snapshot: WeeklyScoreSnapshot | undefined,
+  baseline: WeeklyScoreSnapshot | undefined,
+  baselineTotal: number | null
+): number => {
+  const persisted = persistedSeasonWide(snapshot, playerId);
+  const alreadyInBaseline = seasonWideAlreadyInBaseline(
+    source,
+    playerId,
+    baseline,
+    baselineTotal
+  );
+  if (persisted !== null) return persisted - alreadyInBaseline;
+  return seasonWideAdjustmentPoints(
+    source,
+    playerId,
+    baselineTotal === null ? null : baseline?.createdAt,
+    snapshot?.createdAt
+  );
+};
+
+/** Season-wide points entered after this archive. */
+const seasonWideSinceSnapshot = (
+  source: AdjustmentSource | undefined,
+  playerId: string,
+  snapshot: WeeklyScoreSnapshot | undefined
+): number => {
+  const persisted = persistedSeasonWide(snapshot, playerId);
+  if (persisted !== null) {
+    return seasonWideAdjustmentPoints(source, playerId, null, null) - persisted;
+  }
+  return seasonWideAdjustmentPoints(source, playerId, snapshot?.createdAt, null);
+};
+
 /**
  * Season total as of one archived week.
  * Legacy weeks return the published snapshot total.
@@ -104,11 +162,12 @@ export const runningTotalAtSnapshot = (
     calls += finite(history[cursor]?.weeklyCallPoints?.[playerId]) ?? 0;
   }
   const draftHere = finite(history[index]?.draftPredictionPoints?.[playerId]) ?? 0;
-  const adjusted = seasonWideAdjustmentPoints(
+  const adjusted = seasonWideForSnapshot(
     adjustments,
     playerId,
-    baselineTotal === null ? null : history[baselineIndex]?.createdAt,
-    history[index]?.createdAt
+    history[index],
+    baselineTotal === null ? undefined : history[baselineIndex],
+    baselineTotal
   );
   if (baselineTotal === null) return calls + draftHere + adjusted;
 
@@ -162,7 +221,7 @@ export const resolveDisplayTotal = (
   const currentDraft = parts?.draftPredictionPoints ?? 0;
   let total =
     withCurrentDraft(history, playerId, atLast, currentDraft) +
-    seasonWideAdjustmentPoints(gameState, playerId, history[history.length - 1]?.createdAt, null);
+    seasonWideSinceSnapshot(gameState, playerId, history[history.length - 1]);
   if (live) total += parts?.weeklyCallPoints ?? 0;
   return total;
 };
@@ -210,7 +269,7 @@ export const seasonTimeline = (
     const total =
       isLast && !live && typeof currentDraft === "number"
         ? withCurrentDraft(history, playerId, archived, currentDraft) +
-          seasonWideAdjustmentPoints(gameState, playerId, snapshot.createdAt, null)
+          seasonWideSinceSnapshot(gameState, playerId, snapshot)
         : archived;
     points.push({ label: timelineLabel(snapshot), total });
   });
@@ -239,17 +298,25 @@ export const snapshotScoreRecords = (
   totals: Record<string, number>;
   weeklyCallPoints: Record<string, number>;
   draftPredictionPoints: Record<string, number>;
+  seasonWideAdjustmentPoints: Record<string, number>;
 } => {
   const totals: Record<string, number> = {};
   const weeklyCallPoints: Record<string, number> = {};
   const draftPredictionPoints: Record<string, number> = {};
+  const seasonWide: Record<string, number> = {};
   for (const player of state.players) {
     const scored: PlayerScore = calculatePlayerScore(state, player);
     totals[player.id] = scored.total;
     weeklyCallPoints[player.id] = scored.weeklyCallPoints;
     draftPredictionPoints[player.id] = scored.draftPredictionPoints;
+    seasonWide[player.id] = seasonWideAdjustmentPoints(state, player.id, null, null);
   }
-  return { totals, weeklyCallPoints, draftPredictionPoints };
+  return {
+    totals,
+    weeklyCallPoints,
+    draftPredictionPoints,
+    seasonWideAdjustmentPoints: seasonWide,
+  };
 };
 
 export interface StandingSortKey {
