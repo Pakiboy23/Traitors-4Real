@@ -250,6 +250,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const gameStateRef = useRef(gameState);
   const scoreAdjustmentWriteRevRef = useRef<Record<string, number>>({});
   const scoreAdjustmentFetchSeqRef = useRef<Record<string, number>>({});
+  // Add and remove both await before they commit. A second call can finish
+  // before React re-renders, so the next list has to come from this ref
+  // rather than the scoreAdjustments snapshot closed over at click time.
+  const scoreAdjustmentStateRef = useRef<ScoreAdjustment[]>(scoreAdjustments);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -257,6 +261,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     if (Array.isArray(gameState.scoreAdjustments)) {
+      scoreAdjustmentStateRef.current = gameState.scoreAdjustments;
       setScoreAdjustments(gameState.scoreAdjustments);
     }
   }, [gameState.scoreAdjustments]);
@@ -330,6 +335,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           records,
         });
         if (!decision.apply) return;
+        scoreAdjustmentStateRef.current = decision.records;
         setScoreAdjustments(decision.records);
         updateGameState((prev) => {
           if (prev.seasonId !== seasonId) return prev;
@@ -1532,6 +1538,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
     bumpSeasonScopedCounter(scoreAdjustmentWriteRevRef.current, seasonId);
+    scoreAdjustmentStateRef.current = nextAdjustments;
     setScoreAdjustments(nextAdjustments);
     updateGameState((prev) => {
       if (prev.seasonId !== seasonId) return prev;
@@ -1575,7 +1582,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
         return;
       }
-      const next = [created, ...scoreAdjustments];
+      const next = [created, ...scoreAdjustmentStateRef.current];
       applyScoreAdjustmentsToState(next, seasonId);
       setNewAdjustmentPoints("");
       setNewAdjustmentReason("");
@@ -1596,7 +1603,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         createdBy: "admin",
         createdAt: new Date().toISOString(),
       };
-      const next = [fallback, ...scoreAdjustments];
+      const next = [fallback, ...scoreAdjustmentStateRef.current];
       applyScoreAdjustmentsToState(next, seasonId);
       setMsg({
         text: "Score adjustment added locally; remote write failed.",
@@ -1619,7 +1626,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
       return;
     }
-    const next = scoreAdjustments.filter((item) => item.id !== adjustment.id);
+    const next = scoreAdjustmentStateRef.current.filter(
+      (item) => item.id !== adjustment.id
+    );
     applyScoreAdjustmentsToState(next, seasonId);
     setMsg({ text: "Score adjustment removed.", type: "success" });
   };
