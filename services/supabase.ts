@@ -404,28 +404,23 @@ export const cloneSeason = async (params: { sourceSeasonId: string; targetSeason
 // ── score adjustments ─────────────────────────────────────────────────────────
 
 export const listScoreAdjustments = async (seasonId: string): Promise<ScoreAdjustment[]> => {
-  try {
-    const { data, error } = await supabase
-      .from("score_adjustments")
-      .select("*")
-      .eq("season_id", seasonId)
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) throw error;
-    return (data ?? []).map((row) => ({
-      id: row.id,
-      seasonId: row.season_id,
-      playerId: row.player_id,
-      weekId: row.week_id ?? undefined,
-      reason: row.reason,
-      points: Number(row.points) || 0,
-      createdBy: row.created_by_label || "admin",
-      createdAt: row.created_at || new Date().toISOString(),
-    }));
-  } catch (error) {
-    logger.warn("listScoreAdjustments failed:", error);
-    return [];
-  }
+  const { data, error } = await supabase
+    .from("score_adjustments")
+    .select("*")
+    .eq("season_id", seasonId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    seasonId: row.season_id,
+    playerId: row.player_id,
+    weekId: row.week_id ?? undefined,
+    reason: row.reason,
+    points: Number(row.points) || 0,
+    createdBy: row.created_by_label || "admin",
+    createdAt: row.created_at || new Date().toISOString(),
+  }));
 };
 
 export const createScoreAdjustment = async (input: {

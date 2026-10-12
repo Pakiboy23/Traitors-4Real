@@ -34,6 +34,12 @@ import { resolveCastNames } from "../src/utils/castProfiles";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
+import {
+  bumpSeasonScopedCounter,
+  decideScoreAdjustmentHydration,
+  isSameScoreAdjustmentSeason,
+  readSeasonScopedCounter,
+} from "../src/utils/scoreAdjustmentHydration";
 import { RULE_PACKS } from "../src/config/rulePacks";
 import {
   archiveSeason,
@@ -242,6 +248,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       true) !== false
   );
   const gameStateRef = useRef(gameState);
+  const scoreAdjustmentWriteRevRef = useRef<Record<string, number>>({});
+  const scoreAdjustmentFetchSeqRef = useRef<Record<string, number>>({});
+  // Add and remove both await before they commit. A second call can finish
+  // before React re-renders, so the next list has to come from this ref
+  // rather than the scoreAdjustments snapshot closed over at click time.
+  const scoreAdjustmentStateRef = useRef<ScoreAdjustment[]>(scoreAdjustments);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -249,6 +261,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   useEffect(() => {
     if (Array.isArray(gameState.scoreAdjustments)) {
+      scoreAdjustmentStateRef.current = gameState.scoreAdjustments;
       setScoreAdjustments(gameState.scoreAdjustments);
     }
   }, [gameState.scoreAdjustments]);
@@ -296,15 +309,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const seasonId = gameState.seasonId || seasonConfig?.seasonId;
     if (!seasonId) return;
     let cancelled = false;
+    const fetchSeq = bumpSeasonScopedCounter(
+      scoreAdjustmentFetchSeqRef.current,
+      seasonId
+    );
+    const writeRevisionAtFetchStart = readSeasonScopedCounter(
+      scoreAdjustmentWriteRevRef.current,
+      seasonId
+    );
     listScoreAdjustments(seasonId)
       .then((records) => {
         if (cancelled) return;
-        if (!Array.isArray(records)) return;
-        setScoreAdjustments(records);
-        updateGameState((prev) => ({
-          ...prev,
-          scoreAdjustments: records,
-        }));
+        const seasonIdNow = gameStateRef.current.seasonId || seasonConfig?.seasonId;
+        const decision = decideScoreAdjustmentHydration({
+          isLatestFetch:
+            fetchSeq ===
+            readSeasonScopedCounter(scoreAdjustmentFetchSeqRef.current, seasonId),
+          writeRevisionAtFetchStart,
+          writeRevisionNow: readSeasonScopedCounter(
+            scoreAdjustmentWriteRevRef.current,
+            seasonId
+          ),
+          seasonIdAtStart: seasonId,
+          seasonIdNow,
+          records,
+        });
+        if (!decision.apply) return;
+        scoreAdjustmentStateRef.current = decision.records;
+        setScoreAdjustments(decision.records);
+        updateGameState((prev) => {
+          if (prev.seasonId !== seasonId) return prev;
+          return {
+            ...prev,
+            scoreAdjustments: decision.records,
+          };
+        });
       })
       .catch((error) => {
         logger.warn("Failed to load score adjustments:", error);
@@ -1488,12 +1527,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setMsg({ text: "Merged history cleared.", type: "success" });
   };
 
-  const applyScoreAdjustmentsToState = (nextAdjustments: ScoreAdjustment[]) => {
+  const currentScoreAdjustmentSeasonId = () =>
+    gameStateRef.current.seasonId || seasonConfig?.seasonId || "";
+
+  const applyScoreAdjustmentsToState = (
+    nextAdjustments: ScoreAdjustment[],
+    seasonId: string
+  ) => {
+    if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
+      return;
+    }
+    bumpSeasonScopedCounter(scoreAdjustmentWriteRevRef.current, seasonId);
+    scoreAdjustmentStateRef.current = nextAdjustments;
     setScoreAdjustments(nextAdjustments);
-    updateGameState((prev) => ({
-      ...prev,
-      scoreAdjustments: nextAdjustments,
-    }));
+    updateGameState((prev) => {
+      if (prev.seasonId !== seasonId) return prev;
+      return {
+        ...prev,
+        scoreAdjustments: nextAdjustments,
+      };
+    });
   };
 
   const addScoreAdjustmentEntry = async () => {
@@ -1517,6 +1570,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     try {
+      bumpSeasonScopedCounter(scoreAdjustmentWriteRevRef.current, seasonId);
       const created = await createScoreAdjustment({
         seasonId,
         playerId,
@@ -1525,14 +1579,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         points,
         createdBy: "admin",
       });
-      const next = [created, ...scoreAdjustments];
-      applyScoreAdjustmentsToState(next);
+      if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
+        return;
+      }
+      const next = [created, ...scoreAdjustmentStateRef.current];
+      applyScoreAdjustmentsToState(next, seasonId);
       setNewAdjustmentPoints("");
       setNewAdjustmentReason("");
       setNewAdjustmentWeekId("");
       setMsg({ text: "Score adjustment added.", type: "success" });
     } catch (error) {
       logger.warn("Failed to create score adjustment in Supabase:", error);
+      if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
+        return;
+      }
       const fallback: ScoreAdjustment = {
         id: `local-${Date.now()}`,
         seasonId,
@@ -1543,8 +1603,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         createdBy: "admin",
         createdAt: new Date().toISOString(),
       };
-      const next = [fallback, ...scoreAdjustments];
-      applyScoreAdjustmentsToState(next);
+      const next = [fallback, ...scoreAdjustmentStateRef.current];
+      applyScoreAdjustmentsToState(next, seasonId);
       setMsg({
         text: "Score adjustment added locally; remote write failed.",
         type: "error",
@@ -1553,16 +1613,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const removeScoreAdjustmentEntry = async (adjustment: ScoreAdjustment) => {
+    const seasonId = gameState.seasonId || seasonConfig?.seasonId || "season-1";
     if (!(await requestConfirm("Delete this score adjustment?"))) return;
     try {
       if (!adjustment.id.startsWith("local-")) {
+        bumpSeasonScopedCounter(scoreAdjustmentWriteRevRef.current, seasonId);
         await deleteScoreAdjustment(adjustment.id);
       }
     } catch (error) {
       logger.warn("Failed to delete score adjustment in Supabase:", error);
     }
-    const next = scoreAdjustments.filter((item) => item.id !== adjustment.id);
-    applyScoreAdjustmentsToState(next);
+    if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
+      return;
+    }
+    const next = scoreAdjustmentStateRef.current.filter(
+      (item) => item.id !== adjustment.id
+    );
+    applyScoreAdjustmentsToState(next, seasonId);
     setMsg({ text: "Score adjustment removed.", type: "success" });
   };
 
