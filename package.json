@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build && node scripts/cloudflare-pages-dist.mjs",
     "start": "next start",
     "native:web:build": "node scripts/build-native-web.mjs",
     "ios:sync:bundled": "npm run native:web:build && CAPACITOR_BUNDLED=1 npx cap sync ios",
