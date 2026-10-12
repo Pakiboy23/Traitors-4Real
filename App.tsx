@@ -36,8 +36,12 @@ import { resolveHomeCountdown } from "./src/utils/homeCountdown";
 import { pickPreferredSeason } from "./src/utils/seasonSelection";
 import {
   decideAdminSeasonRefresh,
+  failedWriteFromRejection,
+  isUnsavedFailedWriteActive,
   seasonBoardKey,
+  shouldAcceptSaveSettlement,
   shouldResetAdminSeasonReady,
+  type UnsavedFailedWrite,
 } from "./src/utils/adminSeasonRefresh";
 import {
   canPersistSeasonState,
@@ -324,9 +328,14 @@ const App: React.FC = () => {
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
   const pendingWriteRef = useRef<string | null>(null);
-  const unsavedFailedWriteRef = useRef(false);
+  const unsavedFailedWriteRef = useRef<UnsavedFailedWrite | null>(null);
+  const saveGenerationRef = useRef(0);
   const manualSaveInFlightRef = useRef(0);
   const writeTimerRef = useRef<number | null>(null);
+  const activeSeasonIdRef = useRef(activeSeasonId);
+  activeSeasonIdRef.current = activeSeasonId;
+  const isAdminAuthenticatedRef = useRef(isAdminAuthenticated);
+  isAdminAuthenticatedRef.current = isAdminAuthenticated;
   // Which board (season + admin/public view) is on screen, the newest season
   // fetch, and a counter bumped on every local edit or save. Together they let
   // a season_state_changed echo refresh the board without overwriting an
@@ -355,6 +364,8 @@ const App: React.FC = () => {
 
     return normalizeGameState({ players: [] });
   });
+  const gameStateRef = useRef(gameState);
+  gameStateRef.current = gameState;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -407,6 +418,11 @@ const App: React.FC = () => {
     return value;
   };
 
+  const liveAdminBoardKey = () => {
+    const seasonId = normalizeWeekId(activeSeasonIdRef.current);
+    return seasonId ? seasonBoardKey(seasonId, isAdminAuthenticatedRef.current) : null;
+  };
+
   const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated || !adminSeasonReady) return;
     // Empty-league bootstrap stays in localStorage. Remote writes go to
@@ -429,21 +445,45 @@ const App: React.FC = () => {
     // Any season fetch that overlaps this save may predate it.
     manualSaveInFlightRef.current += 1;
     adminEditRevisionRef.current += 1;
+    const settledGeneration = ++saveGenerationRef.current;
+    const settledBoardKey = seasonBoardKey(scopedSeasonId, true);
     try {
       const safeState = normalizeUndefined(gameState);
       const record = await saveSeasonState(scopedSeasonId, safeState as GameState);
+      if (
+        !shouldAcceptSaveSettlement({
+          settledBoardKey,
+          activeBoardKey: liveAdminBoardKey(),
+          settledGeneration,
+          latestGeneration: saveGenerationRef.current,
+        })
+      ) {
+        return;
+      }
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
       setLastSavedAt(updatedAt);
-      unsavedFailedWriteRef.current = false;
+      unsavedFailedWriteRef.current = null;
       setLastWriteError(null);
     } catch (error) {
-      unsavedFailedWriteRef.current =
-        JSON.stringify(gameState) !== lastRemoteStateRef.current;
-      setLastWriteError(
-        error instanceof Error ? error.message : String(error)
-      );
+      if (
+        shouldAcceptSaveSettlement({
+          settledBoardKey,
+          activeBoardKey: liveAdminBoardKey(),
+          settledGeneration,
+          latestGeneration: saveGenerationRef.current,
+        })
+      ) {
+        unsavedFailedWriteRef.current = failedWriteFromRejection({
+          boardKey: settledBoardKey,
+          currentSerialized: JSON.stringify(gameStateRef.current),
+          lastRemoteSerialized: lastRemoteStateRef.current,
+        });
+        setLastWriteError(
+          error instanceof Error ? error.message : String(error)
+        );
+      }
       logger.warn("Manual save failed:", error);
     } finally {
       adminEditRevisionRef.current += 1;
@@ -560,6 +600,7 @@ const App: React.FC = () => {
   useEffect(() => {
     setLoadedSeasonId(null);
     appliedBoardKeyRef.current = null;
+    unsavedFailedWriteRef.current = null;
   }, [activeSeasonId]);
 
   useEffect(() => {
@@ -593,7 +634,12 @@ const App: React.FC = () => {
           hasPendingWrite:
             pendingWriteRef.current !== null ||
             manualSaveInFlightRef.current > 0,
-          hasUnsavedFailedWrite: unsavedFailedWriteRef.current,
+          hasUnsavedFailedWrite: isUnsavedFailedWriteActive(
+            unsavedFailedWriteRef.current,
+            boardKey,
+            JSON.stringify(gameStateRef.current),
+            lastRemoteStateRef.current
+          ),
           editRevisionAtFetchStart,
           editRevisionNow: adminEditRevisionRef.current,
         });
@@ -601,7 +647,7 @@ const App: React.FC = () => {
         const decision = refreshDecision();
         if (decision.applyRemote) {
           lastRemoteStateRef.current = JSON.stringify(nextState);
-          unsavedFailedWriteRef.current = false;
+          unsavedFailedWriteRef.current = null;
           setGameState(nextState);
           appliedBoardKeyRef.current = boardKey;
           setLoadedSeasonId(seasonId);
@@ -791,14 +837,26 @@ const App: React.FC = () => {
       writeTimerRef.current = null;
       pendingWriteRef.current = serialized;
       adminEditRevisionRef.current += 1;
+      const settledGeneration = ++saveGenerationRef.current;
+      const settledBoardKey = seasonBoardKey(scopedSeasonId, true);
       const safeState = normalizeUndefined(gameState);
       saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
-          lastRemoteStateRef.current = serialized;
-          unsavedFailedWriteRef.current = false;
           // A newer save may have started while this one was in flight.
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
+          if (
+            !shouldAcceptSaveSettlement({
+              settledBoardKey,
+              activeBoardKey: liveAdminBoardKey(),
+              settledGeneration,
+              latestGeneration: saveGenerationRef.current,
+            })
+          ) {
+            return;
+          }
+          lastRemoteStateRef.current = serialized;
+          unsavedFailedWriteRef.current = null;
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
             : Date.now();
@@ -808,7 +866,21 @@ const App: React.FC = () => {
         .catch((error) => {
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
-          unsavedFailedWriteRef.current = serialized !== lastRemoteStateRef.current;
+          if (
+            !shouldAcceptSaveSettlement({
+              settledBoardKey,
+              activeBoardKey: liveAdminBoardKey(),
+              settledGeneration,
+              latestGeneration: saveGenerationRef.current,
+            })
+          ) {
+            return;
+          }
+          unsavedFailedWriteRef.current = failedWriteFromRejection({
+            boardKey: settledBoardKey,
+            currentSerialized: JSON.stringify(gameStateRef.current),
+            lastRemoteSerialized: lastRemoteStateRef.current,
+          });
           setLastWriteError(
             error instanceof Error ? error.message : String(error)
           );

@@ -101,3 +101,53 @@ export function decideAdminSeasonRefresh(input: {
 
   return { applyRemote: true, markAdminReady: true };
 }
+
+/** Failed dirty write tied to the board that produced it. */
+export type UnsavedFailedWrite = {
+  boardKey: string;
+};
+
+/**
+ * Only the newest save for the board now on screen may mutate lastRemote
+ * or the failed-write guard. Older or cross-season settlements are ignored
+ * so they cannot clear a newer failure or mark a different board dirty.
+ */
+export function shouldAcceptSaveSettlement(input: {
+  settledBoardKey: string;
+  activeBoardKey: string | null;
+  settledGeneration: number;
+  latestGeneration: number;
+}): boolean {
+  return (
+    input.activeBoardKey === input.settledBoardKey &&
+    input.settledGeneration === input.latestGeneration
+  );
+}
+
+/**
+ * Record a failed write only when the board now on screen still differs
+ * from lastRemote. A revert back to the committed snapshot, or a late
+ * rejection after the user left this board, must not stick the guard.
+ */
+export function failedWriteFromRejection(input: {
+  boardKey: string;
+  currentSerialized: string;
+  lastRemoteSerialized: string | null;
+}): UnsavedFailedWrite | null {
+  if (input.currentSerialized === input.lastRemoteSerialized) return null;
+  return { boardKey: input.boardKey };
+}
+
+/** True when the failed-write guard still applies to the board on screen. */
+export function isUnsavedFailedWriteActive(
+  failed: UnsavedFailedWrite | null,
+  boardKey: string,
+  currentSerialized: string,
+  lastRemoteSerialized: string | null
+): boolean {
+  return (
+    failed !== null &&
+    failed.boardKey === boardKey &&
+    currentSerialized !== lastRemoteSerialized
+  );
+}

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   decideAdminSeasonRefresh,
+  failedWriteFromRejection,
+  isUnsavedFailedWriteActive,
   seasonBoardKey,
+  shouldAcceptSaveSettlement,
   shouldResetAdminSeasonReady,
 } from "./adminSeasonRefresh";
 
@@ -109,6 +112,85 @@ describe("decideAdminSeasonRefresh", () => {
   });
 });
 
+describe("shouldAcceptSaveSettlement", () => {
+  it("accepts only the newest save for the board now on screen", () => {
+    expect(
+      shouldAcceptSaveSettlement({
+        settledBoardKey: ADMIN_BOARD,
+        activeBoardKey: ADMIN_BOARD,
+        settledGeneration: 2,
+        latestGeneration: 2,
+      })
+    ).toBe(true);
+    expect(
+      shouldAcceptSaveSettlement({
+        settledBoardKey: ADMIN_BOARD,
+        activeBoardKey: ADMIN_BOARD,
+        settledGeneration: 1,
+        latestGeneration: 2,
+      })
+    ).toBe(false);
+  });
+
+  it("ignores a settlement after the commissioner leaves that board", () => {
+    expect(
+      shouldAcceptSaveSettlement({
+        settledBoardKey: ADMIN_BOARD,
+        activeBoardKey: seasonBoardKey("other-season", true),
+        settledGeneration: 1,
+        latestGeneration: 1,
+      })
+    ).toBe(false);
+    expect(
+      shouldAcceptSaveSettlement({
+        settledBoardKey: ADMIN_BOARD,
+        activeBoardKey: null,
+        settledGeneration: 1,
+        latestGeneration: 1,
+      })
+    ).toBe(false);
+  });
+});
+
+describe("failedWriteFromRejection", () => {
+  it("records a failure only when the current board still differs from lastRemote", () => {
+    expect(
+      failedWriteFromRejection({
+        boardKey: ADMIN_BOARD,
+        currentSerialized: "B",
+        lastRemoteSerialized: "A",
+      })
+    ).toEqual({ boardKey: ADMIN_BOARD });
+    expect(
+      failedWriteFromRejection({
+        boardKey: ADMIN_BOARD,
+        currentSerialized: "A",
+        lastRemoteSerialized: "A",
+      })
+    ).toBeNull();
+  });
+});
+
+describe("isUnsavedFailedWriteActive", () => {
+  it("ignores a failure from another board or a board that now matches lastRemote", () => {
+    expect(
+      isUnsavedFailedWriteActive({ boardKey: ADMIN_BOARD }, ADMIN_BOARD, "B", "A")
+    ).toBe(true);
+    expect(
+      isUnsavedFailedWriteActive(
+        { boardKey: ADMIN_BOARD },
+        seasonBoardKey("other-season", true),
+        "B",
+        "A"
+      )
+    ).toBe(false);
+    expect(
+      isUnsavedFailedWriteActive({ boardKey: ADMIN_BOARD }, ADMIN_BOARD, "A", "A")
+    ).toBe(false);
+    expect(isUnsavedFailedWriteActive(null, ADMIN_BOARD, "B", "A")).toBe(false);
+  });
+});
+
 describe("shouldResetAdminSeasonReady", () => {
   it("gates autosave on the first admin load and after sign-in", () => {
     expect(
@@ -162,12 +244,14 @@ describe("season_state_changed echo during an admin edit", () => {
   const createAdminHarness = () => {
     const refs = {
       appliedBoardKey: null as string | null,
+      activeBoardKey: ADMIN_BOARD as string | null,
       fetchSeq: 0,
       editRevision: 0,
+      saveGeneration: 0,
       debounceTimer: null as number | null,
       pendingWrite: null as string | null,
       manualSaveInFlight: 0,
-      unsavedFailedWrite: false,
+      unsavedFailedWrite: null as { boardKey: string } | null,
       lastRemote: null as string | null,
     };
     let board: Board = { label: "loading" };
@@ -178,11 +262,12 @@ describe("season_state_changed echo during an admin edit", () => {
     const startFetch = (snapshot: Board) => {
       const fetchSeq = ++refs.fetchSeq;
       const editRevisionAtFetchStart = refs.editRevision;
+      const requestBoardKey = refs.activeBoardKey ?? ADMIN_BOARD;
       if (
         shouldResetAdminSeasonReady({
           isAdminAuthenticated: true,
           appliedBoardKey: refs.appliedBoardKey,
-          requestBoardKey: ADMIN_BOARD,
+          requestBoardKey,
         })
       ) {
         adminSeasonReady = false;
@@ -195,20 +280,25 @@ describe("season_state_changed echo during an admin edit", () => {
           const decision = decideAdminSeasonRefresh({
             isAdminAuthenticated: true,
             appliedBoardKey: refs.appliedBoardKey,
-            requestBoardKey: ADMIN_BOARD,
+            requestBoardKey,
             isLatestFetch: fetchSeq === refs.fetchSeq,
             hasDebouncedSave: refs.debounceTimer !== null,
             hasPendingWrite:
               refs.pendingWrite !== null || refs.manualSaveInFlight > 0,
-            hasUnsavedFailedWrite: refs.unsavedFailedWrite,
+            hasUnsavedFailedWrite: isUnsavedFailedWriteActive(
+              refs.unsavedFailedWrite,
+              requestBoardKey,
+              board.label,
+              refs.lastRemote
+            ),
             editRevisionAtFetchStart,
             editRevisionNow: refs.editRevision,
           });
           if (decision.applyRemote) {
             board = snapshot;
-            refs.appliedBoardKey = ADMIN_BOARD;
+            refs.appliedBoardKey = requestBoardKey;
             refs.lastRemote = snapshot.label;
-            refs.unsavedFailedWrite = false;
+            refs.unsavedFailedWrite = null;
           }
           if (decision.markAdminReady) adminSeasonReady = true;
         },
@@ -218,6 +308,10 @@ describe("season_state_changed echo during an admin edit", () => {
     const edit = (label: string) => {
       board = { label };
       if (!adminSeasonReady) return;
+      if (label === refs.lastRemote || label === refs.pendingWrite) {
+        refs.debounceTimer = null;
+        return;
+      }
       refs.editRevision += 1;
       refs.debounceTimer = nextTimerId++;
     };
@@ -228,17 +322,30 @@ describe("season_state_changed echo during an admin edit", () => {
       const serialized = board.label;
       refs.pendingWrite = serialized;
       refs.editRevision += 1;
+      const settledGeneration = ++refs.saveGeneration;
+      const settledBoardKey = ADMIN_BOARD;
       return {
         settle: (succeeded = true) => {
+          if (refs.pendingWrite === serialized) refs.pendingWrite = null;
+          refs.editRevision += 1;
+          const accept = shouldAcceptSaveSettlement({
+            settledBoardKey,
+            activeBoardKey: refs.activeBoardKey,
+            settledGeneration,
+            latestGeneration: refs.saveGeneration,
+          });
+          if (!accept) return;
           if (succeeded) {
             saved.push(serialized);
             refs.lastRemote = serialized;
-            refs.unsavedFailedWrite = false;
+            refs.unsavedFailedWrite = null;
           } else {
-            refs.unsavedFailedWrite = serialized !== refs.lastRemote;
+            refs.unsavedFailedWrite = failedWriteFromRejection({
+              boardKey: settledBoardKey,
+              currentSerialized: board.label,
+              lastRemoteSerialized: refs.lastRemote,
+            });
           }
-          if (refs.pendingWrite === serialized) refs.pendingWrite = null;
-          refs.editRevision += 1;
         },
       };
     };
@@ -247,14 +354,28 @@ describe("season_state_changed echo during an admin edit", () => {
       const serialized = board.label;
       refs.manualSaveInFlight += 1;
       refs.editRevision += 1;
+      const settledGeneration = ++refs.saveGeneration;
+      const settledBoardKey = ADMIN_BOARD;
       return {
         settle: (succeeded = true) => {
-          if (succeeded) {
-            saved.push(serialized);
-            refs.lastRemote = serialized;
-            refs.unsavedFailedWrite = false;
-          } else {
-            refs.unsavedFailedWrite = serialized !== refs.lastRemote;
+          const accept = shouldAcceptSaveSettlement({
+            settledBoardKey,
+            activeBoardKey: refs.activeBoardKey,
+            settledGeneration,
+            latestGeneration: refs.saveGeneration,
+          });
+          if (accept) {
+            if (succeeded) {
+              saved.push(serialized);
+              refs.lastRemote = serialized;
+              refs.unsavedFailedWrite = null;
+            } else {
+              refs.unsavedFailedWrite = failedWriteFromRejection({
+                boardKey: settledBoardKey,
+                currentSerialized: board.label,
+                lastRemoteSerialized: refs.lastRemote,
+              });
+            }
           }
           refs.editRevision += 1;
           refs.manualSaveInFlight -= 1;
@@ -267,6 +388,10 @@ describe("season_state_changed echo during an admin edit", () => {
       edit,
       fireDebounce,
       saveNow,
+      leaveBoard() {
+        refs.activeBoardKey = seasonBoardKey("other-season", true);
+        refs.unsavedFailedWrite = null;
+      },
       get board() {
         return board;
       },
@@ -385,6 +510,50 @@ describe("season_state_changed echo during an admin edit", () => {
       expect(app.board.label).toBe("fresh remote");
     }
   );
+
+  it("does not let an older save success clear a newer failed board's protection", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    app.edit("A");
+    const saveA = app.fireDebounce();
+    app.edit("B");
+    const saveB = app.fireDebounce();
+    saveB!.settle(false);
+    saveA!.settle(true);
+
+    expect(app.board.label).toBe("B");
+    expect(app.saved).toEqual([]);
+
+    app.startFetch({ label: "A" }).resolve();
+    expect(app.board.label).toBe("B");
+  });
+
+  it("does not mark a reverted board dirty when a failed save settles late", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    app.edit("B");
+    const saveB = app.fireDebounce();
+    app.edit("committed");
+    saveB!.settle(false);
+
+    app.startFetch({ label: "committed" }).resolve();
+    expect(app.board.label).toBe("committed");
+  });
+
+  it("ignores a late failure after the commissioner leaves the season", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    app.edit("left behind");
+    const save = app.fireDebounce();
+    app.leaveBoard();
+    save!.settle(false);
+
+    app.startFetch({ label: "other season committed" }).resolve();
+    expect(app.board.label).toBe("other season committed");
+  });
 
   it("does not apply a snapshot fetched while a manual save is in flight", () => {
     const app = createAdminHarness();
