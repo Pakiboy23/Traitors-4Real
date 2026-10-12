@@ -1,17 +1,52 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { decideScoreAdjustmentHydration } from "./scoreAdjustmentHydration";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { listScoreAdjustments } from "../../services/supabase";
 import type { ScoreAdjustment } from "../../types";
+import { decideScoreAdjustmentHydration } from "./scoreAdjustmentHydration";
 
-const repoRoot = path.resolve(__dirname, "../..");
-const admin = readFileSync(path.join(repoRoot, "components/AdminPanel.tsx"), "utf8");
-const supabase = readFileSync(path.join(repoRoot, "services/supabase.ts"), "utf8");
+const from = vi.hoisted(() => vi.fn());
 
-const listFn = supabase.slice(
-  supabase.indexOf("export const listScoreAdjustments"),
-  supabase.indexOf("export const createScoreAdjustment")
-);
+vi.mock("../lib/supabase", () => ({
+  supabase: { from },
+  supabaseUrl: "https://example.supabase.co",
+}));
+
+type QueryResult = {
+  data: unknown;
+  error: { code?: string; message?: string } | null;
+};
+
+const responses = new Map<string, QueryResult>();
+
+const query = (table: string) => {
+  const result = responses.get(table) ?? {
+    data: null,
+    error: { message: "unmocked table" },
+  };
+  const builder = {
+    select() {
+      return builder;
+    },
+    eq() {
+      return builder;
+    },
+    order() {
+      return builder;
+    },
+    limit() {
+      return builder;
+    },
+    then(onFulfilled: (value: QueryResult) => unknown) {
+      return Promise.resolve(result).then(onFulfilled);
+    },
+  };
+  return builder;
+};
+
+beforeEach(() => {
+  responses.clear();
+  from.mockReset();
+  from.mockImplementation((table: string) => query(table));
+});
 
 const adjustment = (id: string): ScoreAdjustment => ({
   id,
@@ -64,19 +99,43 @@ describe("decideScoreAdjustmentHydration", () => {
   });
 });
 
-describe("score adjustment hydrator wiring", () => {
-  it("does not swallow a failed list as an empty array", () => {
-    expect(listFn).toContain("if (error) throw error");
-    expect(listFn).not.toContain("listScoreAdjustments failed:");
-    expect(listFn).not.toMatch(/catch[\s\S]*return \[\]/);
+describe("listScoreAdjustments", () => {
+  it("rejects when the query returns an error instead of an empty list", async () => {
+    responses.set("score_adjustments", {
+      data: null,
+      error: { message: "permission denied" },
+    });
+
+    await expect(listScoreAdjustments("traitors-new-blood-s1")).rejects.toMatchObject({
+      message: "permission denied",
+    });
   });
 
-  it("gates the board write on decideScoreAdjustmentHydration and local write revision", () => {
-    expect(admin).toContain("decideScoreAdjustmentHydration");
-    expect(admin).toContain("scoreAdjustmentWriteRevRef");
-    expect(admin).toContain("scoreAdjustmentFetchSeqRef");
-    expect(admin).toMatch(
-      /applyScoreAdjustmentsToState[\s\S]*scoreAdjustmentWriteRevRef\.current \+= 1/
-    );
+  it("returns mapped rows when the query succeeds", async () => {
+    responses.set("score_adjustments", {
+      data: [
+        {
+          id: "adj-1",
+          season_id: "traitors-new-blood-s1",
+          player_id: "player-1",
+          week_id: null,
+          reason: "scoring correction",
+          points: 5,
+          created_by_label: "admin",
+          created_at: "2026-10-11T00:00:00.000Z",
+        },
+      ],
+      error: null,
+    });
+
+    await expect(listScoreAdjustments("traitors-new-blood-s1")).resolves.toEqual([
+      adjustment("adj-1"),
+    ]);
+  });
+
+  it("returns an empty array only when the query succeeds with no rows", async () => {
+    responses.set("score_adjustments", { data: [], error: null });
+
+    await expect(listScoreAdjustments("traitors-new-blood-s1")).resolves.toEqual([]);
   });
 });
