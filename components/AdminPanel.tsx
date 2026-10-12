@@ -1529,6 +1529,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
 
     try {
+      scoreAdjustmentWriteRevRef.current += 1;
       const created = await createScoreAdjustment({
         seasonId,
         playerId,
@@ -1568,6 +1569,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     if (!(await requestConfirm("Delete this score adjustment?"))) return;
     try {
       if (!adjustment.id.startsWith("local-")) {
+        scoreAdjustmentWriteRevRef.current += 1;
         await deleteScoreAdjustment(adjustment.id);
       }
     } catch (error) {
