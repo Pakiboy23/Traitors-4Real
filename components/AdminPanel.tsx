@@ -34,6 +34,7 @@ import { resolveCastNames } from "../src/utils/castProfiles";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
+import { decideScoreAdjustmentHydration } from "../src/utils/scoreAdjustmentHydration";
 import { RULE_PACKS } from "../src/config/rulePacks";
 import {
   archiveSeason,
@@ -242,6 +243,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       true) !== false
   );
   const gameStateRef = useRef(gameState);
+  const scoreAdjustmentWriteRevRef = useRef(0);
+  const scoreAdjustmentFetchSeqRef = useRef(0);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -296,14 +299,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const seasonId = gameState.seasonId || seasonConfig?.seasonId;
     if (!seasonId) return;
     let cancelled = false;
+    const fetchSeq = ++scoreAdjustmentFetchSeqRef.current;
+    const writeRevisionAtFetchStart = scoreAdjustmentWriteRevRef.current;
     listScoreAdjustments(seasonId)
       .then((records) => {
         if (cancelled) return;
-        if (!Array.isArray(records)) return;
-        setScoreAdjustments(records);
+        const decision = decideScoreAdjustmentHydration({
+          isLatestFetch: fetchSeq === scoreAdjustmentFetchSeqRef.current,
+          writeRevisionAtFetchStart,
+          writeRevisionNow: scoreAdjustmentWriteRevRef.current,
+          records,
+        });
+        if (!decision.apply) return;
+        setScoreAdjustments(decision.records);
         updateGameState((prev) => ({
           ...prev,
-          scoreAdjustments: records,
+          scoreAdjustments: decision.records,
         }));
       })
       .catch((error) => {
@@ -1489,6 +1500,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const applyScoreAdjustmentsToState = (nextAdjustments: ScoreAdjustment[]) => {
+    scoreAdjustmentWriteRevRef.current += 1;
     setScoreAdjustments(nextAdjustments);
     updateGameState((prev) => ({
       ...prev,
