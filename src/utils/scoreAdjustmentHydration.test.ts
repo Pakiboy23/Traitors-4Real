@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listScoreAdjustments } from "../../services/supabase";
 import type { ScoreAdjustment } from "../../types";
-import { decideScoreAdjustmentHydration } from "./scoreAdjustmentHydration";
+import {
+  bumpSeasonScopedCounter,
+  decideScoreAdjustmentHydration,
+  isSameScoreAdjustmentSeason,
+  readSeasonScopedCounter,
+} from "./scoreAdjustmentHydration";
 
 const from = vi.hoisted(() => vi.fn());
 
@@ -62,6 +67,8 @@ const base = {
   isLatestFetch: true,
   writeRevisionAtFetchStart: 0,
   writeRevisionNow: 0,
+  seasonIdAtStart: "traitors-new-blood-s1",
+  seasonIdNow: "traitors-new-blood-s1",
   records: [adjustment("adj-1")],
 };
 
@@ -96,6 +103,28 @@ describe("decideScoreAdjustmentHydration", () => {
     expect(
       decideScoreAdjustmentHydration({ ...base, records: null })
     ).toEqual({ apply: false });
+  });
+
+  it("does not apply a previous season's list after the board switched", () => {
+    expect(
+      decideScoreAdjustmentHydration({
+        ...base,
+        seasonIdNow: "traitors-us-s4",
+        records: [],
+      })
+    ).toEqual({ apply: false });
+  });
+});
+
+describe("season-scoped score adjustment counters", () => {
+  it("bumps one season without invalidating another", () => {
+    const writeRev: Record<string, number> = {};
+    bumpSeasonScopedCounter(writeRev, "season-a");
+    expect(readSeasonScopedCounter(writeRev, "season-a")).toBe(1);
+    expect(readSeasonScopedCounter(writeRev, "season-b")).toBe(0);
+    expect(
+      isSameScoreAdjustmentSeason("season-a", "season-b")
+    ).toBe(false);
   });
 });
 
