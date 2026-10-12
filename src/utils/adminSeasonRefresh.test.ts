@@ -16,6 +16,7 @@ const base = {
   isLatestFetch: true,
   hasDebouncedSave: false,
   hasPendingWrite: false,
+  hasUnsavedFailedWrite: false,
   editRevisionAtFetchStart: 4,
   editRevisionNow: 4,
 };
@@ -50,6 +51,7 @@ describe("decideAdminSeasonRefresh", () => {
         appliedBoardKey: PUBLIC_BOARD,
         hasDebouncedSave: true,
         hasPendingWrite: true,
+        hasUnsavedFailedWrite: true,
         editRevisionNow: 7,
       })
     ).toEqual({ applyRemote: true, markAdminReady: true });
@@ -64,6 +66,13 @@ describe("decideAdminSeasonRefresh", () => {
 
   it("keeps the board while a save is in flight", () => {
     expect(decideAdminSeasonRefresh({ ...base, hasPendingWrite: true })).toEqual({
+      applyRemote: false,
+      markAdminReady: true,
+    });
+  });
+
+  it("keeps the board after a dirty save failed", () => {
+    expect(decideAdminSeasonRefresh({ ...base, hasUnsavedFailedWrite: true })).toEqual({
       applyRemote: false,
       markAdminReady: true,
     });
@@ -158,6 +167,8 @@ describe("season_state_changed echo during an admin edit", () => {
       debounceTimer: null as number | null,
       pendingWrite: null as string | null,
       manualSaveInFlight: 0,
+      unsavedFailedWrite: false,
+      lastRemote: null as string | null,
     };
     let board: Board = { label: "loading" };
     let adminSeasonReady = false;
@@ -189,12 +200,15 @@ describe("season_state_changed echo during an admin edit", () => {
             hasDebouncedSave: refs.debounceTimer !== null,
             hasPendingWrite:
               refs.pendingWrite !== null || refs.manualSaveInFlight > 0,
+            hasUnsavedFailedWrite: refs.unsavedFailedWrite,
             editRevisionAtFetchStart,
             editRevisionNow: refs.editRevision,
           });
           if (decision.applyRemote) {
             board = snapshot;
             refs.appliedBoardKey = ADMIN_BOARD;
+            refs.lastRemote = snapshot.label;
+            refs.unsavedFailedWrite = false;
           }
           if (decision.markAdminReady) adminSeasonReady = true;
         },
@@ -215,8 +229,14 @@ describe("season_state_changed echo during an admin edit", () => {
       refs.pendingWrite = serialized;
       refs.editRevision += 1;
       return {
-        settle: () => {
-          saved.push(serialized);
+        settle: (succeeded = true) => {
+          if (succeeded) {
+            saved.push(serialized);
+            refs.lastRemote = serialized;
+            refs.unsavedFailedWrite = false;
+          } else {
+            refs.unsavedFailedWrite = serialized !== refs.lastRemote;
+          }
           if (refs.pendingWrite === serialized) refs.pendingWrite = null;
           refs.editRevision += 1;
         },
@@ -229,7 +249,13 @@ describe("season_state_changed echo during an admin edit", () => {
       refs.editRevision += 1;
       return {
         settle: (succeeded = true) => {
-          if (succeeded) saved.push(serialized);
+          if (succeeded) {
+            saved.push(serialized);
+            refs.lastRemote = serialized;
+            refs.unsavedFailedWrite = false;
+          } else {
+            refs.unsavedFailedWrite = serialized !== refs.lastRemote;
+          }
           refs.editRevision += 1;
           refs.manualSaveInFlight -= 1;
         },
@@ -311,6 +337,21 @@ describe("season_state_changed echo during an admin edit", () => {
     app.startFetch({ label: "committed" }).resolve();
     app.startFetch({ label: "edited in another tab" }).resolve();
     expect(app.board.label).toBe("edited in another tab");
+  });
+
+  it("keeps a merged edit after a failed save so a later refresh cannot roll it back", () => {
+    const app = createAdminHarness();
+    app.startFetch({ label: "committed" }).resolve();
+
+    app.edit("merged vote");
+    app.fireDebounce()!.settle(false);
+
+    expect(app.board.label).toBe("merged vote");
+    expect(app.saved).toEqual([]);
+
+    // The 45s seasons poll remounts the loader and fetches the last committed row.
+    app.startFetch({ label: "committed" }).resolve();
+    expect(app.board.label).toBe("merged vote");
   });
 
   it("records the board submitted when a manual save starts", () => {
