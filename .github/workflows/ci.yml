@@ -40,6 +40,9 @@ jobs:
       - name: Test
         run: npm test --if-present
 
+      # `npm run build` uses `next build --webpack`. Turbopack's Google Font
+      # download does not retry a fonts.gstatic.com miss and fails CI as
+      # Module not found for @vercel/turbopack-next/internal/font/google/font.
       - name: Build (Next.js)
         env:
           # Next.js inlines NEXT_PUBLIC_* at build time. Real values come from
