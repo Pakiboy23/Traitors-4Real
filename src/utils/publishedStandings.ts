@@ -50,6 +50,93 @@ export interface SeasonStandingsRecord {
   rule_pack_id: string | null;
 }
 
+const parsedTimestamp = (value: string | null | undefined): number | null => {
+  if (!value) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+/**
+ * saveSeasonState writes the snapshot first, then copies finale and week onto
+ * the seasons row. A snapshot timestamp that is newer than the season row is
+ * that gap: the results are new and the row's finale flag is still the old one.
+ */
+export const snapshotAheadOfSeasonRow = (
+  seasonUpdatedAt: string | null | undefined,
+  stateUpdatedAt: string | null | undefined
+): boolean => {
+  const season = parsedTimestamp(seasonUpdatedAt);
+  const state = parsedTimestamp(stateUpdatedAt);
+  if (season === null || state === null) return false;
+  return state > season;
+};
+
+const snapshotRecord = (state: unknown): Record<string, unknown> =>
+  state && typeof state === "object" && !Array.isArray(state)
+    ? (state as Record<string, unknown>)
+    : {};
+
+const snapshotString = (state: Record<string, unknown>, key: string): string | null => {
+  const direct = state[key];
+  if (typeof direct === "string" && direct.trim()) return direct;
+  const nested = snapshotRecord(state.seasonConfig)[key];
+  return typeof nested === "string" && nested.trim() ? nested : null;
+};
+
+/**
+ * When the snapshot is ahead of the seasons row, score the snapshot's own
+ * finale, week, and rule pack. Overlaying the row would publish one board
+ * made of two versions.
+ */
+export const standingsSeasonForSnapshot = (
+  season: SeasonStandingsRecord,
+  state: unknown,
+  timestamps: {
+    seasonUpdatedAt?: string | null;
+    stateUpdatedAt?: string | null;
+  }
+): SeasonStandingsRecord => {
+  if (!snapshotAheadOfSeasonRow(timestamps.seasonUpdatedAt, timestamps.stateUpdatedAt)) {
+    return season;
+  }
+  const snapshot = snapshotRecord(state);
+  const week = snapshotString(snapshot, "activeWeekId");
+  const rulePack = snapshotString(snapshot, "rulePackId");
+  const finale = snapshot.finaleConfig ?? snapshotRecord(snapshot.seasonConfig).finaleConfig;
+  return {
+    ...season,
+    ...(week ? { active_week_id: week } : {}),
+    ...(finale ? { finale_config: finale } : {}),
+    ...(rulePack ? { rule_pack_id: rulePack } : {}),
+  };
+};
+
+/**
+ * Re-read while the snapshot is ahead of the season row. The last attempt is
+ * returned either way so the caller can score the snapshot's own lifecycle
+ * fields instead of waiting out the request.
+ */
+export const readUntilSeasonRowCatchesUp = async <T>(
+  read: () => Promise<{
+    seasonUpdatedAt: string | null;
+    stateUpdatedAt: string | null;
+    value: T;
+  }>,
+  attempts = 3,
+  wait: (attempt: number) => Promise<void> = async () => undefined
+): Promise<{ value: T; snapshotAhead: boolean }> => {
+  const tries = Math.max(1, attempts);
+  let last: { value: T; snapshotAhead: boolean } | null = null;
+  for (let attempt = 0; attempt < tries; attempt += 1) {
+    const row = await read();
+    const snapshotAhead = snapshotAheadOfSeasonRow(row.seasonUpdatedAt, row.stateUpdatedAt);
+    last = { value: row.value, snapshotAhead };
+    if (!snapshotAhead || attempt === tries - 1) return last;
+    await wait(attempt);
+  }
+  return last as { value: T; snapshotAhead: boolean };
+};
+
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 

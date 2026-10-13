@@ -83,11 +83,16 @@ export type StandingsSaveCommit = {
  * the board on screen has moved on.
  *
  * The saved key is recorded when that season is still active and this save
- * started after every save already applied. An older in-flight save that
- * finishes later must not replace the newer key. Clearing the unsaved hold
- * is separate: a save for an older key must still count as persisted, or
- * reverting to it later looks unsaved and nothing clears it. A different
- * season records nothing.
+ * started after every save of that same season already applied. An older
+ * in-flight save that finishes later must not replace the newer key.
+ * appliedGeneration is that season's own counter: a save of another season
+ * does not make this one look stale. Clearing the unsaved hold is separate:
+ * a save for an older key must still count as persisted, or reverting to it
+ * later looks unsaved and nothing clears it. A different season records nothing.
+ *
+ * This does not write a repair snapshot. The screen can still be the previous
+ * season when the active id has already changed, and writing that board into
+ * the season that just finished replaces its players and history.
  */
 export const standingsSaveCommit = (input: {
   savedSeasonId: string;
@@ -96,7 +101,7 @@ export const standingsSaveCommit = (input: {
   currentStandingsKey: string;
   /** Monotonic id captured when this save started. */
   saveGeneration: number;
-  /** Highest generation already applied for a save that finished. */
+  /** Highest generation already applied for this season. */
   appliedGeneration: number;
 }): StandingsSaveCommit => {
   const savedSeasonId = normalizeWeekId(input.savedSeasonId);
@@ -113,25 +118,26 @@ export const standingsSaveCommit = (input: {
   };
 };
 
-/**
- * An older save can still finish after a newer one and upsert the previous
- * snapshot. Rewrite the current snapshot when this completion lost that race
- * and its body is not the board on screen. The same body does not need another
- * write. A different season is left alone.
- */
-export const staleSaveNeedsRewrite = (input: {
-  savedSeasonId: string;
-  activeSeasonId: string | null | undefined;
-  saveGeneration: number;
-  appliedGeneration: number;
-  savedSerialized: string;
-  currentSerialized: string;
-}): boolean => {
-  const savedSeasonId = normalizeWeekId(input.savedSeasonId);
-  const activeSeasonId = normalizeWeekId(input.activeSeasonId);
-  if (!savedSeasonId || savedSeasonId !== activeSeasonId) return false;
-  if (!(input.saveGeneration < input.appliedGeneration)) return false;
-  return input.savedSerialized !== input.currentSerialized;
+/** Highest generation already applied for this season. Other seasons do not count. */
+export const appliedGenerationForSeason = (
+  appliedBySeason: ReadonlyMap<string, number>,
+  seasonId: string | null | undefined
+): number => {
+  const id = normalizeWeekId(seasonId ?? null);
+  if (!id) return 0;
+  return appliedBySeason.get(id) ?? 0;
+};
+
+/** Remember a completed save for its season. An older generation does not stick. */
+export const noteAppliedSeasonGeneration = (
+  appliedBySeason: Map<string, number>,
+  seasonId: string | null | undefined,
+  generation: number
+): void => {
+  const id = normalizeWeekId(seasonId ?? null);
+  if (!id) return;
+  const current = appliedBySeason.get(id) ?? 0;
+  if (generation > current) appliedBySeason.set(id, generation);
 };
 
 /** Board the UI may render. Null means score locally. */

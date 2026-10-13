@@ -31,6 +31,7 @@ import {
   redactPublicSeasonState,
 } from "../src/utils/publicRedaction";
 import { resetSeasonStateForClone } from "../src/utils/seasonAuthority";
+import { enqueueSeasonWrite } from "../src/utils/seasonWriteQueue";
 
 export { supabaseUrl };
 
@@ -367,7 +368,9 @@ export const fetchAdminSeasonState = async (seasonId: string): Promise<SeasonSta
   return mergeArchivedEmails(base, archived.data.emails);
 };
 
-export const saveSeasonState = async (seasonId: string, state: SeasonState): Promise<{ updated: string }> => {
+const seasonWriteChains = new Map<string, Promise<unknown>>();
+
+const writeSeasonState = async (seasonId: string, state: SeasonState): Promise<{ updated: string }> => {
   const now = new Date().toISOString();
   const { error } = await supabase.from("season_states").upsert(
     {
@@ -390,6 +393,13 @@ export const saveSeasonState = async (seasonId: string, state: SeasonState): Pro
   }
   return { updated: now };
 };
+
+/** Writes for one season run one at a time, in the order they were started. */
+export const saveSeasonState = (
+  seasonId: string,
+  state: SeasonState
+): Promise<{ updated: string }> =>
+  enqueueSeasonWrite(seasonWriteChains, seasonId, () => writeSeasonState(seasonId, state));
 
 export const cloneSeason = async (params: { sourceSeasonId: string; targetSeason: SeasonConfig }) => {
   const sourceState = await fetchSeasonState(params.sourceSeasonId);

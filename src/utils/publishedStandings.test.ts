@@ -30,7 +30,10 @@ import {
   publishedWeekMovement,
   sameStandingRoster,
   scoreAdjustmentsFromRows,
+  readUntilSeasonRowCatchesUp,
+  snapshotAheadOfSeasonRow,
   standingsResponseFromRecords,
+  standingsSeasonForSnapshot,
   stateWithAuthoritativeAdjustments,
   usablePublishedStandings,
   type PublishedStandings,
@@ -990,6 +993,62 @@ describe("collectScoreAdjustmentRows", () => {
   });
 });
 
+describe("standings reads from one version", () => {
+  it("treats a newer snapshot as ahead of the seasons row", () => {
+    expect(
+      snapshotAheadOfSeasonRow("2026-10-13T00:00:00.000Z", "2026-10-13T00:00:01.000Z")
+    ).toBe(true);
+    expect(
+      snapshotAheadOfSeasonRow("2026-10-13T00:00:02.000Z", "2026-10-13T00:00:01.000Z")
+    ).toBe(false);
+    expect(snapshotAheadOfSeasonRow(null, "2026-10-13T00:00:01.000Z")).toBe(false);
+  });
+
+  it("scores the snapshot finale when the seasons row has not caught up", () => {
+    const state = runningSeason({
+      finaleConfig: { enabled: true, label: "Finale", lockAt: "2026-12-02T00:00:00.000Z" },
+      activeWeekId: "week-5",
+      rulePackId: "pack-b",
+    });
+    const staleRow = seasonRecord({
+      finale_config: { enabled: false, label: "Finale", lockAt: "2026-12-01T00:00:00.000Z" },
+      active_week_id: "week-4",
+      rule_pack_id: "traitors-classic",
+    });
+    const mixed = gameStateForStandings({ season: staleRow, state });
+    expect(mixed.finaleConfig?.enabled).toBe(false);
+    const caughtUp = standingsSeasonForSnapshot(staleRow, state, {
+      seasonUpdatedAt: "2026-10-13T00:00:00.000Z",
+      stateUpdatedAt: "2026-10-13T00:00:01.000Z",
+    });
+    const scored = gameStateForStandings({ season: caughtUp, state });
+    expect(scored.finaleConfig?.enabled).toBe(true);
+    expect(scored.rulePackId).toBe("pack-b");
+    const aligned = standingsSeasonForSnapshot(staleRow, state, {
+      seasonUpdatedAt: "2026-10-13T00:00:02.000Z",
+      stateUpdatedAt: "2026-10-13T00:00:01.000Z",
+    });
+    expect(gameStateForStandings({ season: aligned, state }).finaleConfig?.enabled).toBe(false);
+  });
+
+  it("stops rereading once the season row is as new as the snapshot", async () => {
+    const reads = [
+      { seasonUpdatedAt: "2026-10-13T00:00:00.000Z", stateUpdatedAt: "2026-10-13T00:00:01.000Z", value: "ahead" },
+      { seasonUpdatedAt: "2026-10-13T00:00:02.000Z", stateUpdatedAt: "2026-10-13T00:00:01.000Z", value: "aligned" },
+      { seasonUpdatedAt: "2026-10-13T00:00:03.000Z", stateUpdatedAt: "2026-10-13T00:00:01.000Z", value: "later" },
+    ];
+    let calls = 0;
+    const result = await readUntilSeasonRowCatchesUp(async () => {
+      const row = reads[calls];
+      calls += 1;
+      if (!row) throw new Error("too many reads");
+      return row;
+    });
+    expect(result).toEqual({ value: "aligned", snapshotAhead: false });
+    expect(calls).toBe(2);
+  });
+});
+
 describe("season-standings function", () => {
   const source = readFileSync(
     path.resolve(__dirname, "../../supabase/functions/season-standings/index.ts"),
@@ -1006,6 +1065,9 @@ describe("season-standings function", () => {
     expect(source).toContain(".range(from, to)");
     expect(source).not.toContain(".limit(500)");
     expect(source).toContain("stateWithAuthoritativeAdjustments");
+    expect(source).toContain("readUntilSeasonRowCatchesUp");
+    expect(source).toContain("standingsSeasonForSnapshot");
+    expect(source).toContain("updated_at");
     expect(source).not.toContain("calculatePlayerScore");
     expect(source).not.toContain("currentStandings");
     expect(source).not.toContain("MULTIPLIERS");
@@ -1023,7 +1085,9 @@ describe("season-standings function", () => {
     expect(app).toContain("homeWeekMovement");
     expect(app).toContain("standingsSaveCommit");
     expect(app).toContain("saveGeneration");
-    expect(app).toContain("staleSaveNeedsRewrite");
+    expect(app).toContain("appliedStandingsGenerationBySeasonRef");
+    expect(app).not.toContain("staleSaveNeedsRewrite");
+    expect(app).not.toContain("saveSeasonState(result.scopedSeasonId");
     expect(app).toContain("useLayoutEffect");
     expect(app).toContain("setUnsavedStandingsKey(standingsKey)");
     const leaderboard = readFileSync(

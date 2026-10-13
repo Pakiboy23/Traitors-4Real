@@ -27,7 +27,11 @@ import {
   homeWeekMovement,
   usablePublishedStandings,
 } from "./src/utils/publishedStandings";
-import { staleSaveNeedsRewrite, standingsSaveCommit } from "./src/utils/standingsHold";
+import {
+  appliedGenerationForSeason,
+  noteAppliedSeasonGeneration,
+  standingsSaveCommit,
+} from "./src/utils/standingsHold";
 import {
   standingsRefreshKey,
   usePublishedStandings,
@@ -97,7 +101,7 @@ const App: React.FC = () => {
   }, [activeSeasonId]);
   const standingsKeyRef = useRef("");
   const standingsSaveGenerationRef = useRef(0);
-  const appliedStandingsSaveGenerationRef = useRef(0);
+  const appliedStandingsGenerationBySeasonRef = useRef(new Map<string, number>());
   const [loadedSeasonId, setLoadedSeasonId] = useState<string | null>(null);
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
@@ -185,8 +189,6 @@ const App: React.FC = () => {
     return value;
   };
 
-  const gameStateRef = useRef(gameState);
-  gameStateRef.current = gameState;
   const commitStandingsSaveRef = useRef<
     (result: {
       scopedSeasonId: string;
@@ -204,55 +206,23 @@ const App: React.FC = () => {
         savedStandingsKey: result.savedStandingsKey,
         currentStandingsKey: standingsKeyRef.current,
         saveGeneration: result.saveGeneration,
-        appliedGeneration: appliedStandingsSaveGenerationRef.current,
+        appliedGeneration: appliedGenerationForSeason(
+          appliedStandingsGenerationBySeasonRef.current,
+          result.scopedSeasonId
+        ),
       });
-      if (commit.recordSavedKey) {
-        appliedStandingsSaveGenerationRef.current = result.saveGeneration;
-        lastRemoteStateRef.current = result.writtenSerialized;
-        unsavedFailedWriteRef.current = false;
-        committedStandingsKeyRef.current = result.savedStandingsKey;
-        if (commit.clearUnsaved) setUnsavedStandingsKey(null);
-        setLastSavedAt(result.updatedAt);
-        setLastWriteError(null);
-        return;
-      }
-      const current = gameStateRef.current;
-      const currentSerialized = JSON.stringify(current);
-      if (
-        !staleSaveNeedsRewrite({
-          savedSeasonId: result.scopedSeasonId,
-          activeSeasonId: activeSeasonIdRef.current,
-          saveGeneration: result.saveGeneration,
-          appliedGeneration: appliedStandingsSaveGenerationRef.current,
-          savedSerialized: result.writtenSerialized,
-          currentSerialized,
-        })
-      ) {
-        return;
-      }
-      // The older upsert may have replaced the newer snapshot. Hold the local
-      // board and write the current one again.
-      const healGeneration = ++standingsSaveGenerationRef.current;
-      const healKey = standingsRefreshKey(current);
-      setUnsavedStandingsKey(healKey);
-      saveSeasonState(result.scopedSeasonId, normalizeUndefined(current) as GameState)
-        .then((record) => {
-          const updatedAt = record?.updated
-            ? new Date(record.updated as string).getTime()
-            : Date.now();
-          commitStandingsSaveRef.current({
-            scopedSeasonId: result.scopedSeasonId,
-            writtenSerialized: currentSerialized,
-            savedStandingsKey: healKey,
-            saveGeneration: healGeneration,
-            updatedAt,
-          });
-        })
-        .catch((error) => {
-          unsavedFailedWriteRef.current = true;
-          setLastWriteError(error instanceof Error ? error.message : String(error));
-          logger.warn("Stale season save rewrite failed:", error);
-        });
+      if (!commit.recordSavedKey) return;
+      noteAppliedSeasonGeneration(
+        appliedStandingsGenerationBySeasonRef.current,
+        result.scopedSeasonId,
+        result.saveGeneration
+      );
+      lastRemoteStateRef.current = result.writtenSerialized;
+      unsavedFailedWriteRef.current = false;
+      committedStandingsKeyRef.current = result.savedStandingsKey;
+      if (commit.clearUnsaved) setUnsavedStandingsKey(null);
+      setLastSavedAt(result.updatedAt);
+      setLastWriteError(null);
     };
   });
 
