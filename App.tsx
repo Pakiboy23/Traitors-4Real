@@ -677,7 +677,7 @@ const App: React.FC = () => {
     ? gameState.weeklyScoreHistory
     : [];
 
-  const publishedStandings = usePublishedStandings(gameState);
+  const publishedStandings = usePublishedStandings(gameState, lastSavedAt);
   const { mvp: overallMvp, finalStandings } = useMemo(() => {
     const published = usablePublishedStandings(publishedStandings, gameState);
     return published
