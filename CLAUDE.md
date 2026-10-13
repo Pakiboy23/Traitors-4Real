@@ -257,8 +257,9 @@ old stack in its body — it carries a correction header.
 done — do not describe them as outstanding. TestFlight groups `DrafTers`
 (internal) and `DrafTers2` (external) exist, and Xcode Cloud is wired to the
 App target. **2.0.1 (101)** is the released store version. Next archive is
-**2.0.3** (numbered by the Xcode Cloud run, or 103 from a Mac) — see
-`store/README.md`.
+**2.0.3** (numbered by the Xcode Cloud run, or a Mac archive after bumping
+`CURRENT_PROJECT_VERSION` above the highest App Store Connect build — not 103)
+— see `store/README.md`.
 
 **Build 2 recorded 5 crashes.** It predates #133, which fixed a launch trap on
 iOS 26+ (no UIScene adoption — UIKit calls

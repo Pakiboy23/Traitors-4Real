@@ -9,8 +9,12 @@ and do not archive build 102 or anything lower.
 
 Xcode Cloud replaces `CFBundleVersion` with its own build-run number, so a
 Xcode Cloud archive is numbered by the run (113 was the last run recorded on
-9 Oct), not by `CURRENT_PROJECT_VERSION`. Only a Mac archive uses the 103 in
-the project.
+9 Oct), not by `CURRENT_PROJECT_VERSION`. The 103 in the project is the repo
+floor / source identity, not an uploadable Mac build — App Store Connect has
+already seen 105 (rejected on the closed 2.0.1 train) and Xcode Cloud runs
+through at least 113. A Mac archive must bump `CURRENT_PROJECT_VERSION` to a
+number App Store Connect has not used, then verify that number in App Store
+Connect before upload.
 
 `release_notes.txt` holds the What's New for the version currently being
 shipped — rewrite it for each update, it is not a changelog.
@@ -66,9 +70,13 @@ branch):
    `ios/App/App/capacitor.config.json` has no `server.url`
 3. Discard a `CapApp-SPM/Package.swift` rewrite if `cap sync` changes
    platforms to iOS 17
-4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.3** / Build **103** /
-   iPhone only
-5. Archive and upload **2.0.3 (103)** to App Store Connect
+4. Open `ios/App/App.xcodeproj`, confirm Version **2.0.3** / iPhone only.
+   Do not archive at Build **103**. Bump both App Debug and Release
+   `CURRENT_PROJECT_VERSION` values to a number App Store Connect has not
+   used (higher than the last recorded Xcode Cloud run — 113 on 9 Oct —
+   and any later run or rejected upload). Confirm that unused number in
+   App Store Connect before you archive.
+5. Archive and upload that 2.0.3 build to App Store Connect
 6. Create the 2.0.3 version record if needed, select that build on it, paste `release_notes.txt`
    into What's New, then submit for review
 
@@ -89,10 +97,11 @@ things have to change in the repo per update, both in
   component, so `2.0.3 > 2.0.1` and `2.1 > 2.0.3`. Once a version is approved
   its train closes, and uploads under that string are rejected.
 - `CURRENT_PROJECT_VERSION` — the build number. Must be higher than any
-  build ever uploaded for this app. The repo is **103** (102 was the build on
-  both 2.0.1 and 2.0.2). Xcode Cloud still replaces this with its run number.
-  Apple rejects a reused build number at upload, across
-  TestFlight and the store.
+  build ever uploaded for this app. The repo floor is **103** (102 was the
+  build on both 2.0.1 and 2.0.2); that is not the next Mac upload number.
+  Confirm an unused value in App Store Connect before a local archive.
+  Xcode Cloud still replaces this with its run number. Apple rejects a
+  reused build number at upload, across TestFlight and the store.
 
 Then, on a Mac:
 
