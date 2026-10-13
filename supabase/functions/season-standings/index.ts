@@ -4,8 +4,10 @@ import { DEFAULT_SHOW_SLUG } from "../../../src/config/defaultShowConfig.ts";
 import { redactPublicSeasonState } from "../../../src/utils/publicRedaction.ts";
 import {
   collectScoreAdjustmentRows,
+  readUntilSeasonRowCatchesUp,
   scoreAdjustmentsFromRows,
   standingsResponseFromRecords,
+  standingsSeasonForSnapshot,
   stateWithAuthoritativeAdjustments,
   type ScoreAdjustmentRow,
   type SeasonStandingsRecord,
@@ -39,6 +41,8 @@ import {
  *      function exists, the site keeps the local board (current behavior).
  *   3. The next App Store binary includes the client. Further scoring
  *      changes need this function redeployed. They do not need a new binary.
+ *      The read that keeps the snapshot and the seasons row on one version
+ *      is one of those changes: redeploy after it merges. v1 does not have it.
  *
  * The gateway still requires the anon JWT. The function reads with the
  * service role through season_states_public and score_adjustments, and
@@ -59,7 +63,12 @@ const json = (status: number, payload: unknown) =>
   });
 
 const SEASON_COLUMNS =
-  "season_id,label,status,timezone,lock_schedule,active_week_id,finale_config,rule_pack_id";
+  "season_id,label,status,timezone,lock_schedule,active_week_id,finale_config,rule_pack_id,updated_at";
+
+const waitForSeasonRow = (attempt: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, 50 * (attempt + 1));
+  });
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -90,37 +99,68 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const seasonResult = await supabase
-    .from("seasons")
-    .select(SEASON_COLUMNS)
-    .eq("season_id", seasonId)
-    .maybeSingle();
-  if (seasonResult.error) {
-    console.error("season-standings season read failed:", seasonResult.error.message);
+  // The snapshot and the seasons row are written one after the other. Read
+  // them again while the snapshot is newer, then score one version: the row
+  // when it has caught up, otherwise the finale and week stored on the snapshot.
+  const consistent = await readUntilSeasonRowCatchesUp(async () => {
+    const seasonResult = await supabase
+      .from("seasons")
+      .select(SEASON_COLUMNS)
+      .eq("season_id", seasonId)
+      .maybeSingle();
+    if (seasonResult.error) {
+      throw new Error(seasonResult.error.message);
+    }
+    if (!seasonResult.data) {
+      throw new Error("Season not found.");
+    }
+    const stateResult = await supabase
+      .from("season_states_public")
+      .select("state,updated_at")
+      .eq("season_id", seasonId)
+      .maybeSingle();
+    if (stateResult.error) {
+      throw new Error(stateResult.error.message);
+    }
+    const showResult = await supabase
+      .from("show_configs")
+      .select("config")
+      .eq("slug", DEFAULT_SHOW_SLUG)
+      .maybeSingle();
+    if (showResult.error) {
+      console.error("season-standings show config read failed:", showResult.error.message);
+    }
+    const seasonRow = seasonResult.data as SeasonStandingsRecord & { updated_at?: string | null };
+    const seasonUpdatedAt = typeof seasonRow.updated_at === "string" ? seasonRow.updated_at : null;
+    const stateUpdatedAt =
+      stateResult.data && typeof stateResult.data.updated_at === "string"
+        ? stateResult.data.updated_at
+        : null;
+    return {
+      seasonUpdatedAt,
+      stateUpdatedAt,
+      value: {
+        season: seasonRow,
+        seasonUpdatedAt,
+        state: stateResult.data?.state ?? { players: [] },
+        stateUpdatedAt,
+        showConfig: showResult.error ? null : showResult.data?.config ?? null,
+      },
+    };
+  }, 3, waitForSeasonRow).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message === "Season not found.") return null;
+    console.error("season-standings read failed:", message);
     return json(500, { error: "Standings are unavailable." });
-  }
-  if (!seasonResult.data) {
-    return json(404, { error: "Season not found." });
-  }
+  });
+  if (consistent instanceof Response) return consistent;
+  if (!consistent) return json(404, { error: "Season not found." });
 
-  const stateResult = await supabase
-    .from("season_states_public")
-    .select("state")
-    .eq("season_id", seasonId)
-    .maybeSingle();
-  if (stateResult.error) {
-    console.error("season-standings state read failed:", stateResult.error.message);
-    return json(500, { error: "Standings are unavailable." });
-  }
-
-  const showResult = await supabase
-    .from("show_configs")
-    .select("config")
-    .eq("slug", DEFAULT_SHOW_SLUG)
-    .maybeSingle();
-  if (showResult.error) {
-    console.error("season-standings show config read failed:", showResult.error.message);
-  }
+  const storedState = consistent.value.state;
+  const seasonForScore = standingsSeasonForSnapshot(consistent.value.season, storedState, {
+    seasonUpdatedAt: consistent.value.seasonUpdatedAt,
+    stateUpdatedAt: consistent.value.stateUpdatedAt,
+  });
 
   const adjustmentsResult = await collectScoreAdjustmentRows(async (from, to) => {
     const page = await supabase
@@ -140,7 +180,6 @@ Deno.serve(async (req: Request) => {
     return json(500, { error: "Standings are unavailable." });
   }
 
-  const storedState = stateResult.data?.state ?? { players: [] };
   const stateForStandings = stateWithAuthoritativeAdjustments(
     storedState,
     scoreAdjustmentsFromRows(adjustmentsResult.rows)
@@ -148,9 +187,9 @@ Deno.serve(async (req: Request) => {
 
   const standings = standingsResponseFromRecords(
     {
-      season: seasonResult.data as SeasonStandingsRecord,
+      season: seasonForScore,
       state: redactPublicSeasonState(stateForStandings),
-      showConfig: showResult.error ? null : showResult.data?.config ?? null,
+      showConfig: consistent.value.showConfig,
     },
     Date.now()
   );

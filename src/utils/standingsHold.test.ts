@@ -3,7 +3,8 @@ import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
-  staleSaveNeedsRewrite,
+  appliedGenerationForSeason,
+  noteAppliedSeasonGeneration,
   standingsEditIsUnsaved,
   standingsSaveCommit,
   standingsRefreshKey,
@@ -167,47 +168,22 @@ describe("standingsSaveCommit", () => {
     ).toEqual({ recordSavedKey: false, clearUnsaved: false });
   });
 
-  it("rewrites only when an older save lost the race to a different snapshot", () => {
+  it("keeps each season's applied generation separate", () => {
+    const applied = new Map<string, number>();
+    noteAppliedSeasonGeneration(applied, "season-a", 4);
+    noteAppliedSeasonGeneration(applied, "season-a", 2);
+    expect(appliedGenerationForSeason(applied, "season-a")).toBe(4);
+    expect(appliedGenerationForSeason(applied, "season-b")).toBe(0);
     expect(
-      staleSaveNeedsRewrite({
-        savedSeasonId: "season-a",
-        activeSeasonId: "season-a",
-        saveGeneration: 1,
-        appliedGeneration: 2,
-        savedSerialized: "older",
-        currentSerialized: "newer",
-      })
-    ).toBe(true);
-    expect(
-      staleSaveNeedsRewrite({
-        savedSeasonId: "season-a",
-        activeSeasonId: "season-a",
-        saveGeneration: 1,
-        appliedGeneration: 2,
-        savedSerialized: "same",
-        currentSerialized: "same",
-      })
-    ).toBe(false);
-    expect(
-      staleSaveNeedsRewrite({
-        savedSeasonId: "season-a",
+      standingsSaveCommit({
+        savedSeasonId: "season-b",
         activeSeasonId: "season-b",
+        savedStandingsKey: "key-b",
+        currentStandingsKey: "key-b",
         saveGeneration: 1,
-        appliedGeneration: 2,
-        savedSerialized: "older",
-        currentSerialized: "newer",
+        appliedGeneration: appliedGenerationForSeason(applied, "season-b"),
       })
-    ).toBe(false);
-    expect(
-      staleSaveNeedsRewrite({
-        savedSeasonId: "season-a",
-        activeSeasonId: "season-a",
-        saveGeneration: 2,
-        appliedGeneration: 1,
-        savedSerialized: "older",
-        currentSerialized: "newer",
-      })
-    ).toBe(false);
+    ).toEqual({ recordSavedKey: true, clearUnsaved: true });
   });
 
   it("ignores a save that finishes after another season is active", () => {
