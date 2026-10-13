@@ -2,7 +2,7 @@ import {
   sameStandingRoster,
   type PublishedStandings,
 } from "./publishedStandings";
-import type { GameState } from "../../types";
+import { normalizeWeekId, type GameState } from "../../types";
 
 /** Changes when a field that can move the board changes. */
 export const standingsRefreshKey = (gameState: GameState): string =>
@@ -70,6 +70,24 @@ export const standingsEditIsUnsaved = (
   unsavedRefreshKey: string | null,
   refreshKey: string
 ): boolean => unsavedRefreshKey !== null && unsavedRefreshKey === refreshKey;
+
+/**
+ * A save may finish after the admin has loaded a different season, or after
+ * the board on screen has moved on. Only the save that still matches both
+ * may clear the unsaved hold. Committing any other completion stamps the
+ * active season as unsaved with nothing left to clear it.
+ */
+export const shouldCommitStandingsSave = (input: {
+  savedSeasonId: string;
+  activeSeasonId: string | null | undefined;
+  savedStandingsKey: string;
+  currentStandingsKey: string;
+}): boolean => {
+  const savedSeasonId = normalizeWeekId(input.savedSeasonId);
+  const activeSeasonId = normalizeWeekId(input.activeSeasonId);
+  if (!savedSeasonId || savedSeasonId !== activeSeasonId) return false;
+  return input.savedStandingsKey === input.currentStandingsKey;
+};
 
 /** Board the UI may render. Null means score locally. */
 export const selectPublishedStandings = (

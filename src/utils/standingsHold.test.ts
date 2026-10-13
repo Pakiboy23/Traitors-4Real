@@ -3,6 +3,7 @@ import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
+  shouldCommitStandingsSave,
   standingsEditIsUnsaved,
   standingsRefreshKey,
   type StandingsHold,
@@ -112,6 +113,57 @@ describe("standingsEditIsUnsaved", () => {
     expect(standingsEditIsUnsaved(null, "loaded")).toBe(false);
     expect(standingsEditIsUnsaved("edited", "loaded")).toBe(false);
     expect(standingsEditIsUnsaved("edited", "edited")).toBe(true);
+  });
+});
+
+describe("shouldCommitStandingsSave", () => {
+  it("commits only when the saved season and board are still on screen", () => {
+    expect(
+      shouldCommitStandingsSave({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-a",
+      })
+    ).toBe(true);
+    expect(
+      shouldCommitStandingsSave({
+        savedSeasonId: "  season-a  ",
+        activeSeasonId: "season-a",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-a",
+      })
+    ).toBe(true);
+  });
+
+  it("ignores a save that finishes after another season is active", () => {
+    expect(
+      shouldCommitStandingsSave({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-b",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-b",
+      })
+    ).toBe(false);
+    expect(
+      shouldCommitStandingsSave({
+        savedSeasonId: "season-a",
+        activeSeasonId: null,
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-a",
+      })
+    ).toBe(false);
+  });
+
+  it("ignores a save whose board is no longer the one on screen", () => {
+    expect(
+      shouldCommitStandingsSave({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-b",
+      })
+    ).toBe(false);
   });
 });
 

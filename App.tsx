@@ -27,6 +27,7 @@ import {
   publishedWeekMovement,
   usablePublishedStandings,
 } from "./src/utils/publishedStandings";
+import { shouldCommitStandingsSave } from "./src/utils/standingsHold";
 import {
   standingsRefreshKey,
   usePublishedStandings,
@@ -90,6 +91,9 @@ const App: React.FC = () => {
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
+  const activeSeasonIdRef = useRef<string | null>(activeSeasonId);
+  activeSeasonIdRef.current = activeSeasonId;
+  const standingsKeyRef = useRef("");
   const [loadedSeasonId, setLoadedSeasonId] = useState<string | null>(null);
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
@@ -201,13 +205,23 @@ const App: React.FC = () => {
     adminEditRevisionRef.current += 1;
     try {
       const safeState = normalizeUndefined(gameState);
+      const savedStandingsKey = standingsRefreshKey(gameState);
       const record = await saveSeasonState(scopedSeasonId, safeState as GameState);
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
       setLastSavedAt(updatedAt);
-      committedStandingsKeyRef.current = standingsRefreshKey(gameState);
-      setUnsavedStandingsKey(null);
+      if (
+        shouldCommitStandingsSave({
+          savedSeasonId: scopedSeasonId,
+          activeSeasonId: activeSeasonIdRef.current,
+          savedStandingsKey,
+          currentStandingsKey: standingsKeyRef.current,
+        })
+      ) {
+        committedStandingsKeyRef.current = savedStandingsKey;
+        setUnsavedStandingsKey(null);
+      }
       unsavedFailedWriteRef.current = false;
       setLastWriteError(null);
     } catch (error) {
@@ -566,6 +580,7 @@ const App: React.FC = () => {
       pendingWriteRef.current = serialized;
       adminEditRevisionRef.current += 1;
       const safeState = normalizeUndefined(gameState);
+      const savedStandingsKey = standingsRefreshKey(gameState);
       saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
           lastRemoteStateRef.current = serialized;
@@ -573,8 +588,19 @@ const App: React.FC = () => {
           // A newer save may have started while this one was in flight.
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
-          committedStandingsKeyRef.current = standingsRefreshKey(gameState);
-          setUnsavedStandingsKey(null);
+          // The timer closed over the season it saved. The screen may have
+          // moved to another season before this write finished.
+          if (
+            shouldCommitStandingsSave({
+              savedSeasonId: scopedSeasonId,
+              activeSeasonId: activeSeasonIdRef.current,
+              savedStandingsKey,
+              currentStandingsKey: standingsKeyRef.current,
+            })
+          ) {
+            committedStandingsKeyRef.current = savedStandingsKey;
+            setUnsavedStandingsKey(null);
+          }
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
             : Date.now();
@@ -690,6 +716,7 @@ const App: React.FC = () => {
     : [];
 
   const standingsKey = useMemo(() => standingsRefreshKey(gameState), [gameState]);
+  standingsKeyRef.current = standingsKey;
   // During render so the published-standings hook never starts a fetch for an
   // admin edit that is still inside the autosave debounce.
   if (

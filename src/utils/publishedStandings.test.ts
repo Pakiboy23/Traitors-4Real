@@ -18,6 +18,7 @@ import {
   snapshotScoreRecords,
 } from "./standings";
 import {
+  collectScoreAdjustmentRows,
   gameStateForStandings,
   homeBoardFromStandings,
   orderByPublishedStandings,
@@ -31,6 +32,7 @@ import {
   stateWithAuthoritativeAdjustments,
   usablePublishedStandings,
   type PublishedStandings,
+  type ScoreAdjustmentRow,
   type SeasonStandingsRecord,
 } from "./publishedStandings";
 
@@ -536,6 +538,13 @@ describe("season-standings matches standings.ts", () => {
         player({ id: "b@example.com", name: "Sam Lee" }),
       ])
     ).toEqual(["sam-lee-1", "sam-lee-2"]);
+    const colliding = publicRosterIds([
+      player({ id: "sam", name: "Sam" }),
+      player({ id: "sam", name: "Sam" }),
+      player({ id: "sam-1", name: "Sam One" }),
+    ]);
+    expect(colliding).toEqual(["sam-2", "sam-3", "sam-1"]);
+    expect(new Set(colliding).size).toBe(colliding.length);
   });
 
   it("scores a table adjustment the snapshot save never copied", () => {
@@ -707,6 +716,44 @@ describe("published standings payload", () => {
       { rank: 2, name: "Connor", score: -2, weekDelta: -1, rankDelta: 1 },
     ]);
     expect(orderByPublishedStandings(recapRows, standings)).toBeNull();
+
+    const sharedName = [
+      { rank: 2, name: "Sam", score: 0, weekDelta: 1, rankDelta: 0, playerId: "sam-2" },
+      { rank: 1, name: "Sam", score: 1, weekDelta: 2, rankDelta: 0, playerId: "sam-1" },
+    ];
+    const sharedBoard: PublishedStandings = {
+      seasonId: "traitors-new-blood-s1",
+      rows: [
+        {
+          playerId: "sam-1",
+          name: "Sam",
+          score: 9,
+          tieBreakDistance: null,
+          weekDelta: 4,
+          rank: 1,
+          timeline: [],
+        },
+        {
+          playerId: "sam-2",
+          name: "Sam",
+          score: 3,
+          tieBreakDistance: null,
+          weekDelta: 1,
+          rank: 2,
+          timeline: [],
+        },
+      ],
+    };
+    expect(orderByPublishedStandings(sharedName, sharedBoard)).toEqual([
+      { rank: 1, name: "Sam", score: 9, weekDelta: 2, rankDelta: 0, playerId: "sam-1" },
+      { rank: 2, name: "Sam", score: 3, weekDelta: 1, rankDelta: 0, playerId: "sam-2" },
+    ]);
+    expect(
+      orderByPublishedStandings(
+        sharedName.map(({ playerId: _playerId, ...row }) => row),
+        sharedBoard
+      )
+    ).toBeNull();
   });
 
   it("does not put emails or picks on the server payload", () => {
@@ -763,6 +810,49 @@ describe("normalizeFinaleConfig", () => {
   });
 });
 
+describe("collectScoreAdjustmentRows", () => {
+  const row = (id: string): ScoreAdjustmentRow => ({
+    id,
+    season_id: "traitors-new-blood-s1",
+    player_id: "serena",
+    week_id: null,
+    reason: "Manual correction",
+    points: 1,
+    created_by_label: "admin",
+    created_at: "2026-10-08T00:00:00.000Z",
+  });
+
+  it("reads every page and stops on a short page", async () => {
+    const pages = [[row("a"), row("b")], [row("c")]];
+    const calls: Array<[number, number]> = [];
+    const result = await collectScoreAdjustmentRows(async (from, to) => {
+      calls.push([from, to]);
+      return { data: pages.shift() ?? [], error: null };
+    }, 2);
+    expect(result).toEqual({ rows: [row("a"), row("b"), row("c")] });
+    expect(calls).toEqual([
+      [0, 1],
+      [2, 3],
+    ]);
+  });
+
+  it("requests the next page when a page is full", async () => {
+    const pages = [[row("a"), row("b")], []];
+    const result = await collectScoreAdjustmentRows(async () => {
+      return { data: pages.shift() ?? [], error: null };
+    }, 2);
+    expect(result).toEqual({ rows: [row("a"), row("b")] });
+  });
+
+  it("fails the read when any page errors", async () => {
+    const result = await collectScoreAdjustmentRows(async (from) => {
+      if (from === 0) return { data: [row("a"), row("b")], error: null };
+      return { data: null, error: { message: "timeout" } };
+    }, 2);
+    expect(result).toEqual({ error: "timeout" });
+  });
+});
+
 describe("season-standings function", () => {
   const source = readFileSync(
     path.resolve(__dirname, "../../supabase/functions/season-standings/index.ts"),
@@ -775,6 +865,9 @@ describe("season-standings function", () => {
     expect(source).toContain('from("season_states_public")');
     expect(source).not.toMatch(/from\("season_states"\)/);
     expect(source).toContain('from("score_adjustments")');
+    expect(source).toContain("collectScoreAdjustmentRows");
+    expect(source).toContain(".range(from, to)");
+    expect(source).not.toContain(".limit(500)");
     expect(source).toContain("stateWithAuthoritativeAdjustments");
     expect(source).not.toContain("calculatePlayerScore");
     expect(source).not.toContain("currentStandings");
@@ -790,6 +883,7 @@ describe("season-standings function", () => {
     expect(hook).toContain("unsavedRefreshKey");
     expect(hook).toContain("editIsUnsaved");
     expect(app).toContain("unsavedStandingsKey");
+    expect(app).toContain("shouldCommitStandingsSave");
     expect(app).toContain("publishedWeekMovement");
     expect(app).toContain("setUnsavedStandingsKey(standingsKey)");
     const leaderboard = readFileSync(

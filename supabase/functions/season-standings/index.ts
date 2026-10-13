@@ -3,6 +3,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_SHOW_SLUG } from "../../../src/config/defaultShowConfig.ts";
 import { redactPublicSeasonState } from "../../../src/utils/publicRedaction.ts";
 import {
+  collectScoreAdjustmentRows,
   scoreAdjustmentsFromRows,
   standingsResponseFromRecords,
   stateWithAuthoritativeAdjustments,
@@ -121,26 +122,29 @@ Deno.serve(async (req: Request) => {
     console.error("season-standings show config read failed:", showResult.error.message);
   }
 
-  const adjustmentsResult = await supabase
-    .from("score_adjustments")
-    .select("id,season_id,player_id,week_id,reason,points,created_by_label,created_at")
-    .eq("season_id", seasonId)
-    .order("created_at", { ascending: false })
-    .limit(500);
-  if (adjustmentsResult.error) {
-    console.error(
-      "season-standings adjustments read failed:",
-      adjustmentsResult.error.message
-    );
+  const adjustmentsResult = await collectScoreAdjustmentRows(async (from, to) => {
+    const page = await supabase
+      .from("score_adjustments")
+      .select("id,season_id,player_id,week_id,reason,points,created_by_label,created_at")
+      .eq("season_id", seasonId)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to);
+    return {
+      data: (page.data ?? null) as ScoreAdjustmentRow[] | null,
+      error: page.error ? { message: page.error.message } : null,
+    };
+  });
+  if ("error" in adjustmentsResult) {
+    console.error("season-standings adjustments read failed:", adjustmentsResult.error);
+    return json(500, { error: "Standings are unavailable." });
   }
 
   const storedState = stateResult.data?.state ?? { players: [] };
-  const stateForStandings = adjustmentsResult.error
-    ? storedState
-    : stateWithAuthoritativeAdjustments(
-        storedState,
-        scoreAdjustmentsFromRows((adjustmentsResult.data ?? []) as ScoreAdjustmentRow[])
-      );
+  const stateForStandings = stateWithAuthoritativeAdjustments(
+    storedState,
+    scoreAdjustmentsFromRows(adjustmentsResult.rows)
+  );
 
   const standings = standingsResponseFromRecords(
     {

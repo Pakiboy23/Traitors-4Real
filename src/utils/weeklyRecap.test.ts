@@ -160,6 +160,8 @@ describe("buildPublicWeeklyRecap", () => {
       calculatePlayerScore(game, blair).total,
     ]);
     expect(recap?.standings[0]?.name).toBe("Alex Rivera");
+    expect(recap?.standings[0]?.playerId).toBe("alex");
+    expect(recap?.standings[1]?.playerId).toBe("blair");
     expect(recap?.standings[0]?.weekDelta).toBe(
       calculatePlayerScore(game, alex).total - 4
     );
@@ -169,6 +171,21 @@ describe("buildPublicWeeklyRecap", () => {
     expect(publicRecapHasForbiddenKey(recap)).toBe(false);
     expect(JSON.stringify(recap)).not.toContain("alex@example.com");
     expect(JSON.stringify(recap)).not.toContain("Abbey Benjamin");
+  });
+
+  it("gives duplicate display names distinct public roster ids", () => {
+    const recap = buildPublicWeeklyRecap(
+      state({
+        players: [
+          player({ id: "a@example.com", name: "Sam Lee", email: "a@example.com" }),
+          player({ id: "b@example.com", name: "Sam Lee", email: "b@example.com" }),
+        ],
+      }),
+      "week-2"
+    );
+    const ids = recap?.standings.map((row) => row.playerId);
+    expect(ids?.slice().sort()).toEqual(["sam-lee-1", "sam-lee-2"]);
+    expect(JSON.stringify(recap)).not.toContain("@");
   });
 
   it("uses an archived snapshot for an older week's movement without showing that week when unpublished", () => {

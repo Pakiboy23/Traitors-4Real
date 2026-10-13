@@ -5,6 +5,7 @@ import type {
   WeeklyScoreSnapshot,
 } from "../../types.ts";
 import { inferActiveWeekId, normalizeWeekId, resolveActiveWeekId } from "../../types.ts";
+import { publicRosterIds } from "./publicRosterIds.ts";
 import { currentStandings, runningTotalsRecord } from "./standings.ts";
 
 export const RECAP_PUBLIC_ORIGIN = "https://traitorsfantasydraft.online";
@@ -20,6 +21,8 @@ export interface RecapEpisodeResults {
 export interface RecapStanding {
   rank: number;
   name: string;
+  /** Public roster id, shared with published standings. Absent on older payloads. */
+  playerId?: string;
   score: number;
   /** Points gained that week. Null when history can't support it. */
   weekDelta: number | null;
@@ -440,6 +443,14 @@ export const buildPublicWeeklyRecap = (
     (entry) => normalizeWeekId(entry.weeklyResults?.weekId) === weekId
   );
   const standings = currentStandings(state);
+  const rosterIds = publicRosterIds(state.players);
+  const publicIdByInternalId = new Map<string, string>();
+  state.players.forEach((player, index) => {
+    const publicId = rosterIds[index];
+    if (publicId && player.id && !publicIdByInternalId.has(player.id)) {
+      publicIdByInternalId.set(player.id, publicId);
+    }
+  });
   return {
     seasonId,
     seasonLabel: state.seasonConfig?.label || seasonId,
@@ -452,9 +463,11 @@ export const buildPublicWeeklyRecap = (
     standings: standings.map((row, index) => {
       const rank = index + 1;
       const movement = movementFor(state, weekId, row.playerId, row.score, rank);
+      const playerId = publicIdByInternalId.get(row.playerId);
       return {
         rank,
         name: row.name,
+        ...(playerId ? { playerId } : {}),
         score: row.score,
         weekDelta: movement.weekDelta,
         rankDelta: movement.rankDelta,

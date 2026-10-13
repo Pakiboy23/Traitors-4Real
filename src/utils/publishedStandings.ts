@@ -12,6 +12,9 @@ import {
   type HomeStandingsBoard,
   type SeasonTimelinePoint,
 } from "./standings.ts";
+import { isEmailShapedId, nameSlug, publicRosterIds } from "./publicRosterIds.ts";
+
+export { isEmailShapedId, publicRosterIds } from "./publicRosterIds.ts";
 
 /**
  * Board the site and the app both render.
@@ -49,49 +52,6 @@ export interface SeasonStandingsRecord {
 
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
-
-/** Stored ids that are themselves email addresses. */
-const EMAIL_SHAPED_ID = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-
-export const isEmailShapedId = (value: string): boolean => EMAIL_SHAPED_ID.test(value.trim());
-
-const nameSlug = (name: string): string => name.trim().toLowerCase().replace(/\s+/g, "-");
-
-/**
- * Public roster id for one player.
- *
- * A non-email stored id is kept. An email-shaped id, or a missing id, becomes
- * the name slug. The slug is not computed from the address. Scoring still
- * uses the stored id; only the published row and the client match use this.
- */
-const preferredPublicRosterId = (
-  player: { id?: string | null; name?: string | null },
-  index: number
-): string => {
-  const rawId = typeof player.id === "string" ? player.id.trim() : "";
-  if (rawId && !isEmailShapedId(rawId)) return rawId;
-  const slug = typeof player.name === "string" ? nameSlug(player.name) : "";
-  return slug || `player-${index + 1}`;
-};
-
-/**
- * One stable public id per row, in player-array order.
- * Collisions get a numeric suffix so the set stays unique without the email.
- */
-export const publicRosterIds = (
-  players: readonly { id?: string | null; name?: string | null }[]
-): string[] => {
-  const preferred = players.map((player, index) => preferredPublicRosterId(player, index));
-  const counts = new Map<string, number>();
-  for (const id of preferred) counts.set(id, (counts.get(id) ?? 0) + 1);
-  const seen = new Map<string, number>();
-  return preferred.map((id) => {
-    if ((counts.get(id) ?? 0) < 2) return id;
-    const next = (seen.get(id) ?? 0) + 1;
-    seen.set(id, next);
-    return `${id}-${next}`;
-  });
-};
 
 const publicIdByInternalId = (gameState: GameState): Map<string, string> => {
   const rosterIds = publicRosterIds(gameState.players);
@@ -247,6 +207,38 @@ export const stateWithAuthoritativeAdjustments = (
       ? { ...(state as Record<string, unknown>) }
       : {};
   return { ...base, scoreAdjustments: adjustments };
+};
+
+/** PostgREST's default max rows. A full page means another page exists. */
+export const ADJUSTMENT_PAGE_SIZE = 1000;
+
+export type ScoreAdjustmentPage = {
+  data: readonly ScoreAdjustmentRow[] | null;
+  error: { message: string } | null;
+};
+
+/**
+ * Every score_adjustments row for the season.
+ * A failed page fails the read. Returning the pages already collected would
+ * replace the snapshot with a truncated list and drop older corrections.
+ */
+export const collectScoreAdjustmentRows = async (
+  fetchPage: (from: number, to: number) => Promise<ScoreAdjustmentPage>,
+  pageSize: number = ADJUSTMENT_PAGE_SIZE
+): Promise<{ rows: ScoreAdjustmentRow[] } | { error: string }> => {
+  if (!Number.isInteger(pageSize) || pageSize < 1) {
+    return { error: "Score adjustments page size is invalid." };
+  }
+  const rows: ScoreAdjustmentRow[] = [];
+  let from = 0;
+  for (;;) {
+    const page = await fetchPage(from, from + pageSize - 1);
+    if (page.error) return { error: page.error.message || "Score adjustments read failed." };
+    const data = page.data ?? [];
+    rows.push(...data);
+    if (data.length < pageSize) return { rows };
+    from += pageSize;
+  }
 };
 
 export const standingsResponseFromRecords = (
@@ -412,14 +404,37 @@ export const publishedWeekMovement = (
 
 /**
  * Recap rows keep their week movement and take score and order from the server
- * board. Returns null when a name cannot be matched, so the caller keeps the
- * local recap.
+ * board. Rows that carry a public roster id match on that id, so two players
+ * with the same display name still use the server scores. Older rows with no
+ * id match on a unique name. Returns null when a row cannot be matched, so
+ * the caller keeps the local recap.
  */
-export const orderByPublishedStandings = <T extends { name: string; score: number; rank: number }>(
+export const orderByPublishedStandings = <
+  T extends { name: string; score: number; rank: number; playerId?: string },
+>(
   rows: readonly T[],
   standings: PublishedStandings
 ): T[] | null => {
   if (rows.length !== standings.rows.length) return null;
+  const identified = rows.every(
+    (row) => typeof row.playerId === "string" && row.playerId.length > 0
+  );
+  if (identified) {
+    const byPublicId = new Map(standings.rows.map((row) => [row.playerId, row]));
+    const seen = new Set<string>();
+    for (const row of rows) {
+      const playerId = row.playerId ?? "";
+      if (seen.has(playerId) || !byPublicId.has(playerId)) return null;
+      seen.add(playerId);
+    }
+    return rows
+      .map((row) => {
+        const server = byPublicId.get(row.playerId ?? "");
+        if (!server) return row;
+        return { ...row, score: server.score, rank: server.rank };
+      })
+      .sort((a, b) => a.rank - b.rank);
+  }
   const seen = new Set<string>();
   for (const row of rows) {
     if (seen.has(row.name)) return null;
