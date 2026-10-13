@@ -52,10 +52,32 @@ jobs:
           # bundle by design and is governed by row-level security.
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
-        run: npm run build
+        # next/font downloads Google CSS during the build. A short response
+        # throws in the loader and is not retried, so the job tries again.
+        run: |
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            if npm run build; then
+              exit 0
+            fi
+            echo "next build failed (attempt ${attempt})"
+            attempt=$((attempt + 1))
+            sleep 5
+          done
+          exit 1
 
       - name: Build (Capacitor bundled web assets)
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
-        run: npm run native:web:build
+        run: |
+          attempt=1
+          while [ "$attempt" -le 3 ]; do
+            if npm run native:web:build; then
+              exit 0
+            fi
+            echo "native web build failed (attempt ${attempt})"
+            attempt=$((attempt + 1))
+            sleep 5
+          done
+          exit 1
