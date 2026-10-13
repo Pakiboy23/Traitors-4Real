@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Layout from "./components/Layout";
 import Welcome, {
   type LeaguePulseOverview,
@@ -24,10 +24,10 @@ import { homeStandingsBoard } from "./src/utils/standings";
 import { normalizeGameState } from "./src/utils/normalizeGameState";
 import {
   homeBoardFromStandings,
-  publishedWeekMovement,
+  homeWeekMovement,
   usablePublishedStandings,
 } from "./src/utils/publishedStandings";
-import { shouldCommitStandingsSave } from "./src/utils/standingsHold";
+import { standingsSaveCommit } from "./src/utils/standingsHold";
 import {
   standingsRefreshKey,
   usePublishedStandings,
@@ -92,7 +92,9 @@ const App: React.FC = () => {
   const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
   const activeSeasonIdRef = useRef<string | null>(activeSeasonId);
-  activeSeasonIdRef.current = activeSeasonId;
+  useLayoutEffect(() => {
+    activeSeasonIdRef.current = activeSeasonId;
+  }, [activeSeasonId]);
   const standingsKeyRef = useRef("");
   const [loadedSeasonId, setLoadedSeasonId] = useState<string | null>(null);
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
@@ -211,16 +213,15 @@ const App: React.FC = () => {
         ? new Date(record.updated as string).getTime()
         : Date.now();
       setLastSavedAt(updatedAt);
-      if (
-        shouldCommitStandingsSave({
-          savedSeasonId: scopedSeasonId,
-          activeSeasonId: activeSeasonIdRef.current,
-          savedStandingsKey,
-          currentStandingsKey: standingsKeyRef.current,
-        })
-      ) {
+      const commit = standingsSaveCommit({
+        savedSeasonId: scopedSeasonId,
+        activeSeasonId: activeSeasonIdRef.current,
+        savedStandingsKey,
+        currentStandingsKey: standingsKeyRef.current,
+      });
+      if (commit.recordSavedKey) {
         committedStandingsKeyRef.current = savedStandingsKey;
-        setUnsavedStandingsKey(null);
+        if (commit.clearUnsaved) setUnsavedStandingsKey(null);
       }
       unsavedFailedWriteRef.current = false;
       setLastWriteError(null);
@@ -590,16 +591,15 @@ const App: React.FC = () => {
           adminEditRevisionRef.current += 1;
           // The timer closed over the season it saved. The screen may have
           // moved to another season before this write finished.
-          if (
-            shouldCommitStandingsSave({
-              savedSeasonId: scopedSeasonId,
-              activeSeasonId: activeSeasonIdRef.current,
-              savedStandingsKey,
-              currentStandingsKey: standingsKeyRef.current,
-            })
-          ) {
+          const commit = standingsSaveCommit({
+            savedSeasonId: scopedSeasonId,
+            activeSeasonId: activeSeasonIdRef.current,
+            savedStandingsKey,
+            currentStandingsKey: standingsKeyRef.current,
+          });
+          if (commit.recordSavedKey) {
             committedStandingsKeyRef.current = savedStandingsKey;
-            setUnsavedStandingsKey(null);
+            if (commit.clearUnsaved) setUnsavedStandingsKey(null);
           }
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
@@ -716,7 +716,9 @@ const App: React.FC = () => {
     : [];
 
   const standingsKey = useMemo(() => standingsRefreshKey(gameState), [gameState]);
-  standingsKeyRef.current = standingsKey;
+  useLayoutEffect(() => {
+    standingsKeyRef.current = standingsKey;
+  }, [standingsKey]);
   // During render so the published-standings hook never starts a fetch for an
   // admin edit that is still inside the autosave debounce.
   if (
@@ -765,10 +767,14 @@ const App: React.FC = () => {
     [gameState]
   );
 
-  const publishedMovement = useMemo(() => {
-    const published = usablePublishedStandings(publishedStandings, gameState);
-    return published ? publishedWeekMovement(gameState, published) : null;
-  }, [gameState, publishedStandings]);
+  const publishedMovement = useMemo(
+    () =>
+      homeWeekMovement(
+        gameState,
+        usablePublishedStandings(publishedStandings, gameState)
+      ),
+    [gameState, publishedStandings]
+  );
 
   const weeklyMvp = useMemo(() => {
     if (publishedMovement) {

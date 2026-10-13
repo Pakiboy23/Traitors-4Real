@@ -71,22 +71,37 @@ export const standingsEditIsUnsaved = (
   refreshKey: string
 ): boolean => unsavedRefreshKey !== null && unsavedRefreshKey === refreshKey;
 
+export type StandingsSaveCommit = {
+  /** The saved season is still on screen, so its key is now persisted. */
+  recordSavedKey: boolean;
+  /** The board on screen is still that saved snapshot. */
+  clearUnsaved: boolean;
+};
+
 /**
  * A save may finish after the admin has loaded a different season, or after
- * the board on screen has moved on. Only the save that still matches both
- * may clear the unsaved hold. Committing any other completion stamps the
- * active season as unsaved with nothing left to clear it.
+ * the board on screen has moved on.
+ *
+ * The saved key is recorded whenever that season is still active. Clearing
+ * the unsaved hold is separate: a save for an older key must still count as
+ * persisted, or reverting to it later looks unsaved and nothing clears it.
+ * A different season records nothing.
  */
-export const shouldCommitStandingsSave = (input: {
+export const standingsSaveCommit = (input: {
   savedSeasonId: string;
   activeSeasonId: string | null | undefined;
   savedStandingsKey: string;
   currentStandingsKey: string;
-}): boolean => {
+}): StandingsSaveCommit => {
   const savedSeasonId = normalizeWeekId(input.savedSeasonId);
   const activeSeasonId = normalizeWeekId(input.activeSeasonId);
-  if (!savedSeasonId || savedSeasonId !== activeSeasonId) return false;
-  return input.savedStandingsKey === input.currentStandingsKey;
+  if (!savedSeasonId || savedSeasonId !== activeSeasonId) {
+    return { recordSavedKey: false, clearUnsaved: false };
+  }
+  return {
+    recordSavedKey: true,
+    clearUnsaved: input.savedStandingsKey === input.currentStandingsKey,
+  };
 };
 
 /** Board the UI may render. Null means score locally. */

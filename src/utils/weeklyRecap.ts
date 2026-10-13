@@ -444,13 +444,6 @@ export const buildPublicWeeklyRecap = (
   );
   const standings = currentStandings(state);
   const rosterIds = publicRosterIds(state.players);
-  const publicIdByInternalId = new Map<string, string>();
-  state.players.forEach((player, index) => {
-    const publicId = rosterIds[index];
-    if (publicId && player.id && !publicIdByInternalId.has(player.id)) {
-      publicIdByInternalId.set(player.id, publicId);
-    }
-  });
   return {
     seasonId,
     seasonLabel: state.seasonConfig?.label || seasonId,
@@ -463,7 +456,7 @@ export const buildPublicWeeklyRecap = (
     standings: standings.map((row, index) => {
       const rank = index + 1;
       const movement = movementFor(state, weekId, row.playerId, row.score, rank);
-      const playerId = publicIdByInternalId.get(row.playerId);
+      const playerId = rosterIds[row.playerIndex];
       return {
         rank,
         name: row.name,

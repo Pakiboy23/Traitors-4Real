@@ -53,25 +53,13 @@ export interface SeasonStandingsRecord {
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
-const publicIdByInternalId = (gameState: GameState): Map<string, string> => {
-  const rosterIds = publicRosterIds(gameState.players);
-  const map = new Map<string, string>();
-  gameState.players.forEach((player, index) => {
-    const publicId = rosterIds[index];
-    if (publicId && !map.has(player.id)) map.set(player.id, publicId);
-  });
-  return map;
-};
-
 export const publishedStandingsFromGameState = (gameState: GameState): PublishedStandings => {
-  const publishedIds = publicIdByInternalId(gameState);
-  const playersById = new Map(gameState.players.map((player) => [player.id, player]));
+  const rosterIds = publicRosterIds(gameState.players);
   const rows = currentStandings(gameState).map((row, index) => {
-    const player = playersById.get(row.playerId);
+    const player = gameState.players[row.playerIndex];
     const draft = player ? calculatePlayerScore(gameState, player).draftPredictionPoints : 0;
     const publicId =
-      publishedIds.get(row.playerId) ??
-      (nameSlug(row.name) || `player-${index + 1}`);
+      rosterIds[row.playerIndex] || nameSlug(row.name) || `player-${row.playerIndex + 1}`;
     return {
       playerId: publicId,
       name: row.name,
@@ -193,10 +181,24 @@ export const scoreAdjustmentsFromRows = (
     ];
   });
 
+const isPendingLocalAdjustment = (value: unknown): value is ScoreAdjustment => {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Partial<ScoreAdjustment>;
+  return (
+    typeof row.id === "string" &&
+    row.id.startsWith("local-") &&
+    typeof row.playerId === "string" &&
+    typeof row.reason === "string" &&
+    typeof row.points === "number"
+  );
+};
+
 /**
  * The score_adjustments table is the list the admin restores.
  * A successful read replaces the copy inside the season snapshot, which is
  * written later by the debounced save and can be missing or stale.
+ * Rows the admin added locally after a failed insert stay. Their ids start
+ * with `local-` and were never in the table.
  */
 export const stateWithAuthoritativeAdjustments = (
   state: unknown,
@@ -206,7 +208,13 @@ export const stateWithAuthoritativeAdjustments = (
     state && typeof state === "object" && !Array.isArray(state)
       ? { ...(state as Record<string, unknown>) }
       : {};
-  return { ...base, scoreAdjustments: adjustments };
+  const tableIds = new Set(adjustments.map((row) => row.id));
+  const pending = Array.isArray(base.scoreAdjustments)
+    ? base.scoreAdjustments.filter(
+        (row) => isPendingLocalAdjustment(row) && !tableIds.has(row.id)
+      )
+    : [];
+  return { ...base, scoreAdjustments: [...adjustments, ...pending] };
 };
 
 /** PostgREST's default max rows. A full page means another page exists. */
@@ -400,6 +408,21 @@ export const publishedWeekMovement = (
       return entry;
     })
     .sort((a, b) => b.delta - a.delta || a.name.localeCompare(b.name));
+};
+
+/**
+ * Movement Home may take from a published board.
+ * An empty list means the server has no week deltas, which is the first
+ * archive. Home then keeps the local calculation that treats the prior total
+ * as zero. An empty array must not count as a published movement.
+ */
+export const homeWeekMovement = (
+  gameState: GameState,
+  standings: PublishedStandings | null
+): PublishedWeekMovement[] | null => {
+  if (!standings) return null;
+  const movement = publishedWeekMovement(gameState, standings);
+  return movement.length > 0 ? movement : null;
 };
 
 /**

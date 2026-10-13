@@ -1622,6 +1622,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       }
     } catch (error) {
       logger.warn("Failed to delete score adjustment in Supabase:", error);
+      if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
+        return;
+      }
+      setMsg({
+        text: "Score adjustment could not be removed.",
+        type: "error",
+      });
+      return;
     }
     if (!isSameScoreAdjustmentSeason(seasonId, currentScoreAdjustmentSeasonId())) {
       return;

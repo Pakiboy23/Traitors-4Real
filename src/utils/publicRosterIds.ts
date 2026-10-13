@@ -1,7 +1,8 @@
-/** Stored ids that are themselves email addresses. */
-const EMAIL_SHAPED_ID = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
-
-export const isEmailShapedId = (value: string): boolean => EMAIL_SHAPED_ID.test(value.trim());
+/**
+ * Stored ids that are themselves email addresses.
+ * Any `@` counts. A dotted domain is not required: `alice@local` is still an address.
+ */
+export const isEmailShapedId = (value: string): boolean => value.includes("@");
 
 export const nameSlug = (name: string): string => name.trim().toLowerCase().replace(/\s+/g, "-");
 

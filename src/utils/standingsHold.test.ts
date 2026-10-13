@@ -3,8 +3,8 @@ import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
-  shouldCommitStandingsSave,
   standingsEditIsUnsaved,
+  standingsSaveCommit,
   standingsRefreshKey,
   type StandingsHold,
 } from "./standingsHold";
@@ -116,54 +116,54 @@ describe("standingsEditIsUnsaved", () => {
   });
 });
 
-describe("shouldCommitStandingsSave", () => {
-  it("commits only when the saved season and board are still on screen", () => {
+describe("standingsSaveCommit", () => {
+  it("records and clears when the saved season and board are still on screen", () => {
     expect(
-      shouldCommitStandingsSave({
+      standingsSaveCommit({
         savedSeasonId: "season-a",
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-a",
       })
-    ).toBe(true);
+    ).toEqual({ recordSavedKey: true, clearUnsaved: true });
     expect(
-      shouldCommitStandingsSave({
+      standingsSaveCommit({
         savedSeasonId: "  season-a  ",
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-a",
       })
-    ).toBe(true);
+    ).toEqual({ recordSavedKey: true, clearUnsaved: true });
   });
 
-  it("ignores a save that finishes after another season is active", () => {
+  it("records an older key for the active season without clearing a newer edit", () => {
     expect(
-      shouldCommitStandingsSave({
-        savedSeasonId: "season-a",
-        activeSeasonId: "season-b",
-        savedStandingsKey: "key-a",
-        currentStandingsKey: "key-b",
-      })
-    ).toBe(false);
-    expect(
-      shouldCommitStandingsSave({
-        savedSeasonId: "season-a",
-        activeSeasonId: null,
-        savedStandingsKey: "key-a",
-        currentStandingsKey: "key-a",
-      })
-    ).toBe(false);
-  });
-
-  it("ignores a save whose board is no longer the one on screen", () => {
-    expect(
-      shouldCommitStandingsSave({
+      standingsSaveCommit({
         savedSeasonId: "season-a",
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-b",
       })
-    ).toBe(false);
+    ).toEqual({ recordSavedKey: true, clearUnsaved: false });
+  });
+
+  it("ignores a save that finishes after another season is active", () => {
+    expect(
+      standingsSaveCommit({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-b",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-b",
+      })
+    ).toEqual({ recordSavedKey: false, clearUnsaved: false });
+    expect(
+      standingsSaveCommit({
+        savedSeasonId: "season-a",
+        activeSeasonId: null,
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-a",
+      })
+    ).toEqual({ recordSavedKey: false, clearUnsaved: false });
   });
 });
 

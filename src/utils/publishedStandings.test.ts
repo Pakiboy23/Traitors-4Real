@@ -21,6 +21,7 @@ import {
   collectScoreAdjustmentRows,
   gameStateForStandings,
   homeBoardFromStandings,
+  homeWeekMovement,
   orderByPublishedStandings,
   parsePublishedStandings,
   publicRosterIds,
@@ -140,14 +141,10 @@ const expectServerMatchesStandings = (
   const server = standingsResponseFromRecords({ season, state, showConfig });
   const local = currentStandings(prepared);
   const rosterIds = publicRosterIds(prepared.players);
-  const publicIdFor = (internalId: string) => {
-    const index = prepared.players.findIndex((player) => player.id === internalId);
-    return index >= 0 ? rosterIds[index] : internalId;
-  };
 
   expect(server.seasonId).toBe("traitors-new-blood-s1");
   expect(server.rows.map((row) => row.playerId)).toEqual(
-    local.map((row) => publicIdFor(row.playerId))
+    local.map((row) => rosterIds[row.playerIndex] ?? row.playerId)
   );
   expect(server.rows.map((row) => row.name)).toEqual(local.map((row) => row.name));
   expect(server.rows.map((row) => row.score)).toEqual(local.map((row) => row.score));
@@ -545,6 +542,31 @@ describe("season-standings matches standings.ts", () => {
     ]);
     expect(colliding).toEqual(["sam-2", "sam-3", "sam-1"]);
     expect(new Set(colliding).size).toBe(colliding.length);
+    expect(publicRosterIds([player({ id: "alice@local", name: "Alice" })])).toEqual(["alice"]);
+    expect(publicRosterIds([player({ id: "player@example", name: "Pat Example" })])).toEqual([
+      "pat-example",
+    ]);
+  });
+
+  it("publishes distinct roster ids when two rows share an internal id", () => {
+    const state = runningSeason({
+      players: [
+        player({ id: "", name: "Sam Lee", email: "a@example.com" }),
+        player({ id: "", name: "Sam Lee", email: "b@example.com" }),
+      ],
+    });
+    const server = standingsResponseFromRecords({ season: seasonRecord(), state });
+    expect(server.rows.map((row) => row.playerId).slice().sort()).toEqual(["sam-lee-1", "sam-lee-2"]);
+    expect(new Set(server.rows.map((row) => row.playerId)).size).toBe(2);
+    expect(JSON.stringify(server)).not.toContain("@");
+    expect(
+      standingsResponseFromRecords({
+        season: seasonRecord(),
+        state: runningSeason({
+          players: [player({ id: "alice@local", name: "Alice", email: "alice@local" })],
+        }),
+      }).rows[0]?.playerId
+    ).toBe("alice");
   });
 
   it("scores a table adjustment the snapshot save never copied", () => {
@@ -587,6 +609,25 @@ describe("season-standings matches standings.ts", () => {
       state: staleSnapshot,
     });
     expect(cleared.rows[0]?.score).toBe(without.rows[0]?.score);
+
+    const localOnly = {
+      ...seasonWideAdjustment("2026-10-09T00:00:00.000Z", 3),
+      id: "local-9",
+    };
+    const merged = stateWithAuthoritativeAdjustments(
+      runningSeason({
+        players: [player({ id: "serena", name: "Serena", email: "serena@example.com" })],
+        scoreAdjustments: [seasonWideAdjustment("2026-10-01T00:00:00.000Z", 9), localOnly],
+        weeklyScoreHistory: history,
+      }),
+      [seasonWideAdjustment("2026-10-08T00:00:00.000Z")]
+    ) as GameState;
+    expect(merged.scoreAdjustments?.map((row) => row.id).sort()).toEqual([
+      "adj-2026-10-08T00:00:00.000Z",
+      "local-9",
+    ]);
+    const withLocal = standingsResponseFromRecords({ season: seasonRecord(), state: merged });
+    expect(withLocal.rows[0]?.score).toBe((without.rows[0]?.score ?? 0) + 5 + 3);
     expect(
       scoreAdjustmentsFromRows([
         {
@@ -626,6 +667,23 @@ describe("season-standings matches standings.ts", () => {
     expect(serena?.delta).toBe(server.rows.find((row) => row.name === "Serena")?.weekDelta);
     expect(serena?.delta).toBe(archiveOnly + 20);
     expect(movement[0]?.name).toBe("Serena");
+    expect(homeWeekMovement(prepared, server)?.map((entry) => entry.delta)).toEqual(
+      movement.map((entry) => entry.delta)
+    );
+    const firstArchive = runningSeason({
+      weeklyScoreHistory: [publishedWeeks()[0]!],
+    });
+    const firstServer = standingsResponseFromRecords({
+      season: seasonRecord(),
+      state: firstArchive,
+    });
+    const firstPrepared = gameStateForStandings({
+      season: seasonRecord(),
+      state: firstArchive,
+    });
+    expect(firstServer.rows.every((row) => row.weekDelta === null)).toBe(true);
+    expect(publishedWeekMovement(firstPrepared, firstServer)).toEqual([]);
+    expect(homeWeekMovement(firstPrepared, firstServer)).toBeNull();
     expect(movement.map((entry) => entry.delta)).not.toEqual(
       prepared.players.map((player) => {
         const last = prepared.weeklyScoreHistory?.at(-1)?.totals?.[player.id] ?? 0;
@@ -646,7 +704,7 @@ describe("published standings payload", () => {
         seasonId: "traitors-new-blood-s1",
         rows: [
           {
-            playerId: "serena@example.com",
+            playerId: "alice@local",
             name: "Serena",
             score: 1,
             tieBreakDistance: null,
@@ -883,8 +941,9 @@ describe("season-standings function", () => {
     expect(hook).toContain("unsavedRefreshKey");
     expect(hook).toContain("editIsUnsaved");
     expect(app).toContain("unsavedStandingsKey");
-    expect(app).toContain("shouldCommitStandingsSave");
-    expect(app).toContain("publishedWeekMovement");
+    expect(app).toContain("homeWeekMovement");
+    expect(app).toContain("standingsSaveCommit");
+    expect(app).toContain("useLayoutEffect");
     expect(app).toContain("setUnsavedStandingsKey(standingsKey)");
     const leaderboard = readFileSync(
       path.resolve(__dirname, "../../components/Leaderboard.tsx"),
