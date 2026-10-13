@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { enqueueSeasonWrite } from "./seasonWriteQueue";
+import {
+  assertSeasonStateCasApplied,
+  enqueueSeasonWrite,
+  SeasonStateWriteConflict,
+  seasonStateCasExpected,
+} from "./seasonWriteQueue";
 
 describe("enqueueSeasonWrite", () => {
   it("runs a later save of the same season after the earlier upsert finishes", async () => {
@@ -50,5 +57,27 @@ describe("enqueueSeasonWrite", () => {
     await expect(
       enqueueSeasonWrite(chains, "season-a", async () => "recovered")
     ).resolves.toBe("recovered");
+  });
+});
+
+describe("season state compare-and-swap", () => {
+  it("inserts when no snapshot exists and rejects a write that missed the stored timestamp", () => {
+    expect(seasonStateCasExpected(null)).toBeNull();
+    expect(seasonStateCasExpected("")).toBeNull();
+    expect(seasonStateCasExpected("2026-10-13T20:00:00.000Z")).toBe(
+      "2026-10-13T20:00:00.000Z"
+    );
+    expect(() => assertSeasonStateCasApplied(1)).not.toThrow();
+    expect(() => assertSeasonStateCasApplied(0)).toThrow(SeasonStateWriteConflict);
+    expect(() => assertSeasonStateCasApplied(0)).toThrow(
+      "Season state changed while saving. Reload and try again."
+    );
+  });
+
+  it("writes the snapshot only when the stored updated_at still matches", () => {
+    const source = readFileSync(path.resolve(__dirname, "../../services/supabase.ts"), "utf8");
+    expect(source).toContain("seasonStateCasExpected");
+    expect(source).toContain("assertSeasonStateCasApplied");
+    expect(source).toContain('.eq("updated_at", expected)');
   });
 });

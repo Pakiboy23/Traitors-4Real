@@ -31,7 +31,11 @@ import {
   redactPublicSeasonState,
 } from "../src/utils/publicRedaction";
 import { resetSeasonStateForClone } from "../src/utils/seasonAuthority";
-import { enqueueSeasonWrite } from "../src/utils/seasonWriteQueue";
+import {
+  assertSeasonStateCasApplied,
+  enqueueSeasonWrite,
+  seasonStateCasExpected,
+} from "../src/utils/seasonWriteQueue";
 
 export { supabaseUrl };
 
@@ -372,15 +376,34 @@ const seasonWriteChains = new Map<string, Promise<unknown>>();
 
 const writeSeasonState = async (seasonId: string, state: SeasonState): Promise<{ updated: string }> => {
   const now = new Date().toISOString();
-  const { error } = await supabase.from("season_states").upsert(
-    {
+  const snapshot = {
+    ...state,
+    seasonId,
+  } as unknown as Database["public"]["Tables"]["season_states"]["Insert"]["state"];
+  const existing = await supabase
+    .from("season_states")
+    .select("updated_at")
+    .eq("season_id", seasonId)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+  const expected = seasonStateCasExpected(existing.data?.updated_at);
+  if (expected === null) {
+    const { error } = await supabase.from("season_states").insert({
       season_id: seasonId,
-      state: { ...state, seasonId } as unknown as Database["public"]["Tables"]["season_states"]["Insert"]["state"],
+      state: snapshot,
       updated_at: now,
-    },
-    { onConflict: "season_id" }
-  );
-  if (error) throw error;
+    });
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase
+      .from("season_states")
+      .update({ state: snapshot, updated_at: now })
+      .eq("season_id", seasonId)
+      .eq("updated_at", expected)
+      .select("season_id");
+    if (error) throw error;
+    assertSeasonStateCasApplied(data?.length ?? 0);
+  }
   // The snapshot week is the running week. Copy it onto the seasons row
   // (and finale config, which the row already owns) so the two cannot drift.
   try {
