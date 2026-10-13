@@ -1,4 +1,4 @@
-import type { RulePack } from "../../types";
+import type { RulePack } from "../../types.ts";
 
 export const TRAITORS_CLASSIC_RULE_PACK: RulePack = {
   id: "traitors-classic",

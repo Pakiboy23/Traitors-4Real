@@ -10,11 +10,11 @@ import {
   type WeeklySubmissionHistoryEntry,
   normalizeWeekId,
   resolveActiveWeekId,
-} from "../../types";
-import { DEFAULT_SHOW_CONFIG } from "../config/defaultShowConfig";
-import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation";
-import { normalizeCastMemberStatus, resolveCastNames } from "./castProfiles";
-import { sanitizeWeeklyRecaps } from "./weeklyRecap";
+} from "../../types.ts";
+import { DEFAULT_SHOW_CONFIG } from "../config/defaultShowConfig.ts";
+import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation.ts";
+import { normalizeCastMemberStatus, resolveCastNames } from "./castProfiles.ts";
+import { sanitizeWeeklyRecaps } from "./weeklyRecap.ts";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 

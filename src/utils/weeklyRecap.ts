@@ -3,9 +3,9 @@ import type {
   WeeklyRecapRecord,
   WeeklyResults,
   WeeklyScoreSnapshot,
-} from "../../types";
-import { inferActiveWeekId, normalizeWeekId, resolveActiveWeekId } from "../../types";
-import { currentStandings, runningTotalsRecord } from "./standings";
+} from "../../types.ts";
+import { inferActiveWeekId, normalizeWeekId, resolveActiveWeekId } from "../../types.ts";
+import { currentStandings, runningTotalsRecord } from "./standings.ts";
 
 export const RECAP_PUBLIC_ORIGIN = "https://traitorsfantasydraft.online";
 const INTRO_LIMIT = 2000;

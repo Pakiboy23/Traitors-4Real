@@ -1,4 +1,4 @@
-import { NEW_BLOOD_CAST_NAMES } from "./src/config/newBloodCast";
+import { NEW_BLOOD_CAST_NAMES } from "./src/config/newBloodCast.ts";
 
 export interface CastMemberStatus {
   isWinner: boolean;

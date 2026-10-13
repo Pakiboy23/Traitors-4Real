@@ -4,10 +4,10 @@ import type {
   RulePack,
   ScoreAdjustment,
   SeasonState,
-} from "../../types";
-import { normalizeWeekId } from "../../types";
-import { TRAITORS_CLASSIC_RULE_PACK, getRulePackById } from "../config/rulePacks";
-import { MULTIPLIERS } from "./scoringConstants";
+} from "../../types.ts";
+import { normalizeWeekId } from "../../types.ts";
+import { TRAITORS_CLASSIC_RULE_PACK, getRulePackById } from "../config/rulePacks.ts";
+import { MULTIPLIERS } from "./scoringConstants.ts";
 
 export interface ScoreAchievement {
   member: string;

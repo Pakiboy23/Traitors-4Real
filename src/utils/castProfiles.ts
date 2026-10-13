@@ -1,5 +1,5 @@
-import { NEW_BLOOD_CAST, type CastProfile } from "../config/newBloodCast";
-import type { CastMemberStatus } from "../../types";
+import { NEW_BLOOD_CAST, type CastProfile } from "../config/newBloodCast.ts";
+import type { CastMemberStatus } from "../../types.ts";
 
 export interface CastOption {
   name: string;

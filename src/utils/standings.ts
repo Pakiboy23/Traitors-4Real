@@ -1,10 +1,10 @@
-import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types";
-import { normalizeWeekId } from "../../types";
+import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types.ts";
+import { normalizeWeekId } from "../../types.ts";
 import {
   calculatePlayerScore,
   getFinaleTieBreakDistance,
   type PlayerScore,
-} from "./scoring";
+} from "./scoring.ts";
 
 /**
  * Same "is there anything to score this week?" check the Leaderboard uses
