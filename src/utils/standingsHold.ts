@@ -62,13 +62,24 @@ export const applyStandingsFetchResult = (
   return null;
 };
 
+/**
+ * True when this scoring snapshot is an admin edit that has not been saved.
+ * The local board stays up until that save completes and a fetch for it returns.
+ */
+export const standingsEditIsUnsaved = (
+  unsavedRefreshKey: string | null,
+  refreshKey: string
+): boolean => unsavedRefreshKey !== null && unsavedRefreshKey === refreshKey;
+
 /** Board the UI may render. Null means score locally. */
 export const selectPublishedStandings = (
   hold: StandingsHold | null,
   seasonId: string,
-  playerIds: readonly string[]
+  playerIds: readonly string[],
+  refreshKey?: string
 ): PublishedStandings | null => {
   if (!seasonId || !hold || hold.seasonId !== seasonId) return null;
+  if (refreshKey !== undefined && hold.refreshKey !== refreshKey) return null;
   if (!sameStandingRoster(hold.board, playerIds)) return null;
   return hold.board;
 };

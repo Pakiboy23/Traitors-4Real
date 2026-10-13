@@ -24,9 +24,13 @@ import { homeStandingsBoard } from "./src/utils/standings";
 import { normalizeGameState } from "./src/utils/normalizeGameState";
 import {
   homeBoardFromStandings,
+  publishedWeekMovement,
   usablePublishedStandings,
 } from "./src/utils/publishedStandings";
-import { usePublishedStandings } from "./src/utils/usePublishedStandings";
+import {
+  standingsRefreshKey,
+  usePublishedStandings,
+} from "./src/utils/usePublishedStandings";
 import { TIMING } from "./src/utils/scoringConstants";
 import { sanitizeSeasonConfig } from "./src/config/validation";
 import { adminAuthErrorMessage, applyAdminSessionResult } from "./src/utils/adminAuth";
@@ -81,6 +85,8 @@ const App: React.FC = () => {
   const [adminAuthPending, setAdminAuthPending] = useState(false);
   const [pendingSubmissions, setPendingSubmissions] = useState<number | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [unsavedStandingsKey, setUnsavedStandingsKey] = useState<string | null>(null);
+  const committedStandingsKeyRef = useRef<string | null>(null);
   const [lastWriteError, setLastWriteError] = useState<string | null>(null);
   const [seasons, setSeasons] = useState<SeasonConfig[]>([]);
   const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
@@ -200,6 +206,8 @@ const App: React.FC = () => {
         ? new Date(record.updated as string).getTime()
         : Date.now();
       setLastSavedAt(updatedAt);
+      committedStandingsKeyRef.current = standingsRefreshKey(gameState);
+      setUnsavedStandingsKey(null);
       unsavedFailedWriteRef.current = false;
       setLastWriteError(null);
     } catch (error) {
@@ -366,6 +374,8 @@ const App: React.FC = () => {
         if (decision.applyRemote) {
           lastRemoteStateRef.current = JSON.stringify(nextState);
           unsavedFailedWriteRef.current = false;
+          committedStandingsKeyRef.current = standingsRefreshKey(nextState);
+          setUnsavedStandingsKey(null);
           setGameState(nextState);
           appliedBoardKeyRef.current = boardKey;
           setLoadedSeasonId(seasonId);
@@ -563,6 +573,8 @@ const App: React.FC = () => {
           // A newer save may have started while this one was in flight.
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
+          committedStandingsKeyRef.current = standingsRefreshKey(gameState);
+          setUnsavedStandingsKey(null);
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
             : Date.now();
@@ -677,7 +689,24 @@ const App: React.FC = () => {
     ? gameState.weeklyScoreHistory
     : [];
 
-  const publishedStandings = usePublishedStandings(gameState, lastSavedAt);
+  const standingsKey = useMemo(() => standingsRefreshKey(gameState), [gameState]);
+  // During render so the published-standings hook never starts a fetch for an
+  // admin edit that is still inside the autosave debounce.
+  if (
+    isAdminAuthenticated &&
+    adminSeasonReady &&
+    committedStandingsKeyRef.current !== null &&
+    standingsKey !== committedStandingsKeyRef.current &&
+    unsavedStandingsKey !== standingsKey
+  ) {
+    setUnsavedStandingsKey(standingsKey);
+  }
+
+  const publishedStandings = usePublishedStandings(
+    gameState,
+    lastSavedAt,
+    unsavedStandingsKey
+  );
   const { mvp: overallMvp, finalStandings } = useMemo(() => {
     const published = usablePublishedStandings(publishedStandings, gameState);
     return published
@@ -709,7 +738,24 @@ const App: React.FC = () => {
     [gameState]
   );
 
+  const publishedMovement = useMemo(() => {
+    const published = usablePublishedStandings(publishedStandings, gameState);
+    return published ? publishedWeekMovement(gameState, published) : null;
+  }, [gameState, publishedStandings]);
+
   const weeklyMvp = useMemo(() => {
+    if (publishedMovement) {
+      const best = publishedMovement[0];
+      if (!best) return null;
+      const last = scoreHistory[scoreHistory.length - 1];
+      return {
+        name: best.name,
+        score: best.delta,
+        portraitUrl: best.portraitUrl,
+        label: last?.label || "Weekly MVP",
+        delta: best.delta,
+      };
+    }
     if (scoreHistory.length === 0) return null;
     const last = scoreHistory[scoreHistory.length - 1];
     const prev = scoreHistory.length > 1 ? scoreHistory[scoreHistory.length - 2] : null;
@@ -731,9 +777,16 @@ const App: React.FC = () => {
       label: last.label || "Weekly MVP",
       delta: best.delta,
     };
-  }, [gameState, scoreHistory]);
+  }, [gameState, publishedMovement, scoreHistory]);
 
   const topMovers = useMemo<TopMoverEntry[]>(() => {
+    if (publishedMovement) {
+      return publishedMovement.slice(0, 3).map((entry) => ({
+        name: entry.name,
+        delta: entry.delta,
+        league: entry.league,
+      }));
+    }
     if (scoreHistory.length < 2) return [];
 
     const last = scoreHistory[scoreHistory.length - 1];
@@ -753,7 +806,7 @@ const App: React.FC = () => {
       .filter((entry): entry is TopMoverEntry => Boolean(entry))
       .sort((a, b) => b.delta - a.delta)
       .slice(0, 3);
-  }, [gameState.players, scoreHistory]);
+  }, [gameState.players, publishedMovement, scoreHistory]);
 
   const leaguePulse = useMemo<LeaguePulseOverview>(() => {
     const latestArchive = scoreHistory[scoreHistory.length - 1];

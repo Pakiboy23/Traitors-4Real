@@ -3,6 +3,7 @@ import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
+  standingsEditIsUnsaved,
   standingsRefreshKey,
   type StandingsHold,
 } from "./standingsHold";
@@ -93,6 +94,24 @@ describe("selectPublishedStandings", () => {
     expect(
       selectPublishedStandings(current, "traitors-new-blood-s1", ["serena", "connor"])
     ).toBeNull();
+  });
+
+  it("hides a board fetched for a different scoring snapshot", () => {
+    const current = hold(4.5, "saved-key");
+    expect(
+      selectPublishedStandings(current, "traitors-new-blood-s1", ["serena"], "edited-key")
+    ).toBeNull();
+    expect(
+      selectPublishedStandings(current, "traitors-new-blood-s1", ["serena"], "saved-key")
+    ).toEqual(board(4.5));
+  });
+});
+
+describe("standingsEditIsUnsaved", () => {
+  it("keeps the local board only for the unsaved scoring snapshot", () => {
+    expect(standingsEditIsUnsaved(null, "loaded")).toBe(false);
+    expect(standingsEditIsUnsaved("edited", "loaded")).toBe(false);
+    expect(standingsEditIsUnsaved("edited", "edited")).toBe(true);
   });
 });
 

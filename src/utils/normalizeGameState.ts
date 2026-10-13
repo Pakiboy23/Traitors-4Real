@@ -18,14 +18,12 @@ import { sanitizeWeeklyRecaps } from "./weeklyRecap.ts";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
-const buildDefaultFinaleLockAt = () =>
-  new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+const DEFAULT_FINALE_LABEL = "Finale Gauntlet";
+const FINALE_LOCK_LEAD_MS = 7 * 24 * 60 * 60 * 1000;
 
-const DEFAULT_FINALE_CONFIG = {
-  enabled: false,
-  label: "Finale Gauntlet",
-  lockAt: buildDefaultFinaleLockAt(),
-};
+/** Default finale lock, measured from the time the caller supplies. */
+export const defaultFinaleLockAt = (now: number): string =>
+  new Date(now + FINALE_LOCK_LEAD_MS).toISOString();
 
 const DEFAULT_WEEKLY_RESULTS = {
   nextBanished: "",
@@ -44,17 +42,18 @@ const DEFAULT_WEEKLY_RESULTS = {
 };
 
 export const normalizeFinaleConfig = (
-  input?: GameState["finaleConfig"] | null
+  input?: GameState["finaleConfig"] | null,
+  now: number = Date.now()
 ): GameState["finaleConfig"] => ({
   enabled: Boolean(input?.enabled),
   label:
     typeof input?.label === "string" && input.label.trim()
       ? input.label
-      : DEFAULT_FINALE_CONFIG.label,
+      : DEFAULT_FINALE_LABEL,
   lockAt:
     typeof input?.lockAt === "string" && input.lockAt.trim()
       ? input.lockAt
-      : DEFAULT_FINALE_CONFIG.lockAt,
+      : defaultFinaleLockAt(now),
 });
 
 export const normalizeWeeklyResults = (
@@ -100,7 +99,10 @@ export const normalizeWeeklyResults = (
  * The shape Home and the Leaderboard score. Kept here so the bundled client
  * and the season-standings Edge Function cannot drift apart on defaults.
  */
-export const normalizeGameState = (input?: Partial<GameState> | null): GameState => {
+export const normalizeGameState = (
+  input?: Partial<GameState> | null,
+  now: number = Date.now()
+): GameState => {
   const weeklyScoreHistory = Array.isArray(input?.weeklyScoreHistory)
     ? (input!.weeklyScoreHistory as WeeklyScoreSnapshot[])
     : [];
@@ -221,7 +223,7 @@ export const normalizeGameState = (input?: Partial<GameState> | null): GameState
           ...adjustment,
           weekId: normalizeWeekId(adjustment.weekId) ?? undefined,
           createdBy: adjustment.createdBy || "admin",
-          createdAt: adjustment.createdAt || new Date().toISOString(),
+          createdAt: adjustment.createdAt || new Date(now).toISOString(),
         }))
     : [];
   const seasonId =
@@ -246,7 +248,7 @@ export const normalizeGameState = (input?: Partial<GameState> | null): GameState
       activeWeekId,
       rulePackId,
     },
-    finaleConfig: normalizeFinaleConfig(input?.finaleConfig),
+    finaleConfig: normalizeFinaleConfig(input?.finaleConfig, now),
     scoreAdjustments,
     weeklyResults: normalizeWeeklyResults(input?.weeklyResults, activeWeekId),
     weeklySubmissionHistory: history,

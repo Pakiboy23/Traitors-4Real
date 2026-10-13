@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import WeeklyRecapView, { RecapUnavailable } from "../../../../../components/WeeklyRecapView";
 import { loadPublicWeeklyRecap } from "../../../../../src/utils/loadPublicRecap";
@@ -58,6 +59,15 @@ const publishedMetadata = (recap: PublicWeeklyRecap, canonical: string): Metadat
   };
 };
 
+const loadRecapForRequest = cache(async (seasonId: string, weekId: string) => {
+  const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
+  if (loaded.status !== "published") return loaded;
+  return {
+    status: "published" as const,
+    recap: await recapWithServerStandings(loaded.recap),
+  };
+});
+
 const devFixture = (
   seasonId: string,
   weekId: string,
@@ -78,9 +88,9 @@ export async function generateMetadata({
   const canonical = publicRecapUrl(seasonId, weekId);
   const fixture = devFixture(seasonId, weekId, query.fixture);
   if (fixture) return publishedMetadata(fixture, canonical);
-  const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
+  const loaded = await loadRecapForRequest(seasonId, weekId);
   if (loaded.status !== "published") return unpublishedMetadata(canonical);
-  return publishedMetadata(await recapWithServerStandings(loaded.recap), canonical);
+  return publishedMetadata(loaded.recap, canonical);
 }
 
 export default async function RecapPage({
@@ -93,7 +103,7 @@ export default async function RecapPage({
   const [{ seasonId, weekId }, query] = await Promise.all([params, searchParams]);
   const fixture = devFixture(seasonId, weekId, query.fixture);
   if (fixture) return <WeeklyRecapView recap={fixture} hubHref={recapHubPath(fixture.seasonId)} />;
-  const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
+  const loaded = await loadRecapForRequest(seasonId, weekId);
   if (loaded.status === "error") {
     return (
       <RecapUnavailable
@@ -103,6 +113,7 @@ export default async function RecapPage({
     );
   }
   if (loaded.status !== "published") notFound();
-  const recap = await recapWithServerStandings(loaded.recap);
-  return <WeeklyRecapView recap={recap} hubHref={recapHubPath(recap.seasonId)} />;
+  return (
+    <WeeklyRecapView recap={loaded.recap} hubHref={recapHubPath(loaded.recap.seasonId)} />
+  );
 }

@@ -7,7 +7,7 @@ import type {
   PlayerEntry,
   WeeklyResults,
 } from "../../types";
-import { normalizeGameState } from "./normalizeGameState";
+import { normalizeFinaleConfig, normalizeGameState } from "./normalizeGameState";
 import { redactPublicSeasonState } from "./publicRedaction";
 import { calculatePlayerScore } from "./scoring";
 import {
@@ -22,9 +22,13 @@ import {
   homeBoardFromStandings,
   orderByPublishedStandings,
   parsePublishedStandings,
+  publicRosterIds,
   publishedStandingsFromGameState,
+  publishedWeekMovement,
   sameStandingRoster,
+  scoreAdjustmentsFromRows,
   standingsResponseFromRecords,
+  stateWithAuthoritativeAdjustments,
   usablePublishedStandings,
   type PublishedStandings,
   type SeasonStandingsRecord,
@@ -133,9 +137,16 @@ const expectServerMatchesStandings = (
   const prepared = gameStateForStandings({ season, state, showConfig });
   const server = standingsResponseFromRecords({ season, state, showConfig });
   const local = currentStandings(prepared);
+  const rosterIds = publicRosterIds(prepared.players);
+  const publicIdFor = (internalId: string) => {
+    const index = prepared.players.findIndex((player) => player.id === internalId);
+    return index >= 0 ? rosterIds[index] : internalId;
+  };
 
   expect(server.seasonId).toBe("traitors-new-blood-s1");
-  expect(server.rows.map((row) => row.playerId)).toEqual(local.map((row) => row.playerId));
+  expect(server.rows.map((row) => row.playerId)).toEqual(
+    local.map((row) => publicIdFor(row.playerId))
+  );
   expect(server.rows.map((row) => row.name)).toEqual(local.map((row) => row.name));
   expect(server.rows.map((row) => row.score)).toEqual(local.map((row) => row.score));
   expect(server.rows.map((row) => row.tieBreakDistance)).toEqual(
@@ -147,9 +158,10 @@ const expectServerMatchesStandings = (
   expect(server.rows.map((row) => row.rank)).toEqual(local.map((_, index) => index + 1));
 
   for (const row of server.rows) {
-    const entry = prepared.players.find((candidate) => candidate.id === row.playerId);
+    const index = rosterIds.indexOf(row.playerId);
+    const entry = index >= 0 ? prepared.players[index] : undefined;
     const draft = entry ? calculatePlayerScore(prepared, entry).draftPredictionPoints : 0;
-    expect(row.timeline).toEqual(seasonTimeline(prepared, row.playerId, draft));
+    expect(row.timeline).toEqual(seasonTimeline(prepared, entry?.id ?? row.playerId, draft));
   }
 
   expect(homeBoardFromStandings(prepared, server)).toEqual(homeStandingsBoard(prepared));
@@ -495,6 +507,124 @@ describe("season-standings matches standings.ts", () => {
     expect(server.rows[0]?.playerId).toBe("legacy-fan");
     expect(server.rows[0]?.playerId).not.toBe("legacy@example.com");
   });
+
+  it("publishes a name slug when the stored player id is an email", () => {
+    const state = runningSeason({
+      players: [
+        player({
+          id: "serena@example.com",
+          name: "Serena",
+          email: "serena@example.com",
+          portraitUrl: "/portraits/serena.png",
+          league: "main",
+        }),
+      ],
+    });
+    const prepared = gameStateForStandings({ season: seasonRecord(), state });
+    const server = standingsResponseFromRecords({ season: seasonRecord(), state });
+    expect(prepared.players[0]?.id).toBe("serena@example.com");
+    expect(server.rows[0]?.playerId).toBe("serena");
+    expect(JSON.stringify(server)).not.toContain("serena@example.com");
+    expect(usablePublishedStandings(server, prepared)).toEqual(server);
+    expect(homeBoardFromStandings(prepared, server).finalStandings[0]?.portraitUrl).toBe(
+      "/portraits/serena.png"
+    );
+    expect(publicRosterIds(prepared.players)).toEqual(["serena"]);
+    expect(
+      publicRosterIds([
+        player({ id: "a@example.com", name: "Sam Lee" }),
+        player({ id: "b@example.com", name: "Sam Lee" }),
+      ])
+    ).toEqual(["sam-lee-1", "sam-lee-2"]);
+  });
+
+  it("scores a table adjustment the snapshot save never copied", () => {
+    const history = [
+      ...publishedWeeks(),
+      {
+        id: "week-3-snap",
+        label: "Week 3",
+        createdAt: "2026-10-02T00:00:00.000Z",
+        totals: { serena: 1.5 },
+        weeklyCallPoints: { serena: 1 },
+        draftPredictionPoints: { serena: 0 },
+      },
+    ];
+    const snapshot = runningSeason({
+      players: [player({ id: "serena", name: "Serena", email: "serena@example.com" })],
+      scoreAdjustments: [],
+      weeklyScoreHistory: history,
+    });
+    const withTable = stateWithAuthoritativeAdjustments(snapshot, [
+      seasonWideAdjustment("2026-10-08T00:00:00.000Z"),
+    ]);
+    const without = standingsResponseFromRecords({ season: seasonRecord(), state: snapshot });
+    const withAdjustment = standingsResponseFromRecords({
+      season: seasonRecord(),
+      state: withTable,
+    });
+    expect(withAdjustment.rows[0]?.score).toBe((without.rows[0]?.score ?? 0) + 5);
+
+    const staleSnapshot = stateWithAuthoritativeAdjustments(
+      runningSeason({
+        players: [player({ id: "serena", name: "Serena", email: "serena@example.com" })],
+        scoreAdjustments: [seasonWideAdjustment("2026-10-08T00:00:00.000Z")],
+        weeklyScoreHistory: history,
+      }),
+      []
+    );
+    const cleared = standingsResponseFromRecords({
+      season: seasonRecord(),
+      state: staleSnapshot,
+    });
+    expect(cleared.rows[0]?.score).toBe(without.rows[0]?.score);
+    expect(
+      scoreAdjustmentsFromRows([
+        {
+          id: "adj-1",
+          season_id: "traitors-new-blood-s1",
+          player_id: "serena",
+          week_id: null,
+          reason: "Manual correction",
+          points: "5",
+          created_by_label: null,
+          created_at: "2026-10-08T00:00:00.000Z",
+        },
+      ])
+    ).toEqual([
+      {
+        id: "adj-1",
+        seasonId: "traitors-new-blood-s1",
+        playerId: "serena",
+        weekId: undefined,
+        reason: "Manual correction",
+        points: 5,
+        createdBy: "admin",
+        createdAt: "2026-10-08T00:00:00.000Z",
+      },
+    ]);
+  });
+
+  it("ranks home movement from published week deltas", () => {
+    const state = runningSeason({
+      scoreAdjustments: [seasonWideAdjustment("2026-10-08T00:00:00.000Z", 20)],
+    });
+    const prepared = gameStateForStandings({ season: seasonRecord(), state });
+    const server = standingsResponseFromRecords({ season: seasonRecord(), state });
+    const movement = publishedWeekMovement(prepared, server);
+    const serena = movement.find((entry) => entry.name === "Serena");
+    const archiveOnly = 0.5 - -1;
+    expect(serena?.delta).toBe(server.rows.find((row) => row.name === "Serena")?.weekDelta);
+    expect(serena?.delta).toBe(archiveOnly + 20);
+    expect(movement[0]?.name).toBe("Serena");
+    expect(movement.map((entry) => entry.delta)).not.toEqual(
+      prepared.players.map((player) => {
+        const last = prepared.weeklyScoreHistory?.at(-1)?.totals?.[player.id] ?? 0;
+        const prev = prepared.weeklyScoreHistory?.at(-2)?.totals?.[player.id] ?? 0;
+        return Number(last) - Number(prev);
+      })
+    );
+  });
 });
 
 describe("published standings payload", () => {
@@ -502,6 +632,22 @@ describe("published standings payload", () => {
     expect(parsePublishedStandings({ error: "Season not found." })).toBeNull();
     expect(parsePublishedStandings(null)).toBeNull();
     expect(parsePublishedStandings({ seasonId: "traitors-new-blood-s1", rows: [{ playerId: "a" }] })).toBeNull();
+    expect(
+      parsePublishedStandings({
+        seasonId: "traitors-new-blood-s1",
+        rows: [
+          {
+            playerId: "serena@example.com",
+            name: "Serena",
+            score: 1,
+            tieBreakDistance: null,
+            weekDelta: null,
+            rank: 1,
+            timeline: [],
+          },
+        ],
+      })
+    ).toBeNull();
 
     const standings: PublishedStandings = {
       seasonId: "traitors-new-blood-s1",
@@ -582,6 +728,41 @@ describe("published standings payload", () => {
   });
 });
 
+describe("normalizeFinaleConfig", () => {
+  it("derives the default lock from the supplied time", () => {
+    const january = Date.parse("2026-01-01T00:00:00.000Z");
+    const february = Date.parse("2026-02-01T00:00:00.000Z");
+    expect(normalizeFinaleConfig(null, january).lockAt).toBe("2026-01-08T00:00:00.000Z");
+    expect(normalizeFinaleConfig(null, february).lockAt).toBe("2026-02-08T00:00:00.000Z");
+    expect(
+      normalizeFinaleConfig(
+        { enabled: false, label: "Finale", lockAt: "2026-12-01T00:00:00.000Z" },
+        january
+      ).lockAt
+    ).toBe("2026-12-01T00:00:00.000Z");
+
+    const stamped = normalizeGameState(
+      {
+        players: [],
+        scoreAdjustments: [
+          {
+            id: "adj-1",
+            seasonId: "traitors-new-blood-s1",
+            playerId: "serena",
+            reason: "Manual correction",
+            points: 1,
+            createdBy: "",
+            createdAt: "",
+          },
+        ],
+      },
+      january
+    );
+    expect(stamped.finaleConfig.lockAt).toBe("2026-01-08T00:00:00.000Z");
+    expect(stamped.scoreAdjustments[0]?.createdAt).toBe("2026-01-01T00:00:00.000Z");
+  });
+});
+
 describe("season-standings function", () => {
   const source = readFileSync(
     path.resolve(__dirname, "../../supabase/functions/season-standings/index.ts"),
@@ -591,6 +772,10 @@ describe("season-standings function", () => {
   it("renders standingsResponseFromRecords and does not reimplement scoring", () => {
     expect(source).toContain("standingsResponseFromRecords");
     expect(source).toContain("redactPublicSeasonState");
+    expect(source).toContain('from("season_states_public")');
+    expect(source).not.toMatch(/from\("season_states"\)/);
+    expect(source).toContain('from("score_adjustments")');
+    expect(source).toContain("stateWithAuthoritativeAdjustments");
     expect(source).not.toContain("calculatePlayerScore");
     expect(source).not.toContain("currentStandings");
     expect(source).not.toContain("MULTIPLIERS");
@@ -602,7 +787,23 @@ describe("season-standings function", () => {
     const hook = readFileSync(path.resolve(__dirname, "./usePublishedStandings.ts"), "utf8");
     const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
     expect(hook).toContain("persistRevision");
-    expect(app).toContain("usePublishedStandings(gameState, lastSavedAt)");
+    expect(hook).toContain("unsavedRefreshKey");
+    expect(hook).toContain("editIsUnsaved");
+    expect(app).toContain("unsavedStandingsKey");
+    expect(app).toContain("publishedWeekMovement");
+    expect(app).toContain("setUnsavedStandingsKey(standingsKey)");
+    const leaderboard = readFileSync(
+      path.resolve(__dirname, "../../components/Leaderboard.tsx"),
+      "utf8"
+    );
+    expect(leaderboard).toContain("publicRosterIds");
+    const recapPage = readFileSync(
+      path.resolve(__dirname, "../app/recap/[seasonId]/[weekId]/page.tsx"),
+      "utf8"
+    );
+    expect(recapPage).toContain("loadRecapForRequest");
+    expect(recapPage.match(/recapWithServerStandings\(/g)).toHaveLength(1);
+    expect(recapPage.match(/loadRecapForRequest\(/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it("uses explicit .ts extensions on the Deno import graph", () => {

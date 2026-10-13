@@ -3,7 +3,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_SHOW_SLUG } from "../../../src/config/defaultShowConfig.ts";
 import { redactPublicSeasonState } from "../../../src/utils/publicRedaction.ts";
 import {
+  scoreAdjustmentsFromRows,
   standingsResponseFromRecords,
+  stateWithAuthoritativeAdjustments,
+  type ScoreAdjustmentRow,
   type SeasonStandingsRecord,
 } from "../../../src/utils/publishedStandings.ts";
 
@@ -37,7 +40,9 @@ import {
  *      changes need this function redeployed. They do not need a new binary.
  *
  * The gateway still requires the anon JWT. The function reads with the
- * service role and returns only scores, names, ranks, and week deltas.
+ * service role through season_states_public and score_adjustments, and
+ * returns only scores, names, ranks, and week deltas. Player ids in that
+ * payload are public roster ids, never email addresses.
  */
 
 const corsHeaders = {
@@ -98,7 +103,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const stateResult = await supabase
-    .from("season_states")
+    .from("season_states_public")
     .select("state")
     .eq("season_id", seasonId)
     .maybeSingle();
@@ -116,10 +121,34 @@ Deno.serve(async (req: Request) => {
     console.error("season-standings show config read failed:", showResult.error.message);
   }
 
-  const standings = standingsResponseFromRecords({
-    season: seasonResult.data as SeasonStandingsRecord,
-    state: redactPublicSeasonState(stateResult.data?.state ?? { players: [] }),
-    showConfig: showResult.error ? null : showResult.data?.config ?? null,
-  });
+  const adjustmentsResult = await supabase
+    .from("score_adjustments")
+    .select("id,season_id,player_id,week_id,reason,points,created_by_label,created_at")
+    .eq("season_id", seasonId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (adjustmentsResult.error) {
+    console.error(
+      "season-standings adjustments read failed:",
+      adjustmentsResult.error.message
+    );
+  }
+
+  const storedState = stateResult.data?.state ?? { players: [] };
+  const stateForStandings = adjustmentsResult.error
+    ? storedState
+    : stateWithAuthoritativeAdjustments(
+        storedState,
+        scoreAdjustmentsFromRows((adjustmentsResult.data ?? []) as ScoreAdjustmentRow[])
+      );
+
+  const standings = standingsResponseFromRecords(
+    {
+      season: seasonResult.data as SeasonStandingsRecord,
+      state: redactPublicSeasonState(stateForStandings),
+      showConfig: showResult.error ? null : showResult.data?.config ?? null,
+    },
+    Date.now()
+  );
   return json(200, standings);
 });

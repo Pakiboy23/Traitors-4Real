@@ -24,6 +24,7 @@ import {
   weeklyResultsAreLive,
 } from "../src/utils/standings";
 import {
+  publicRosterIds,
   usablePublishedStandings,
   type PublishedStandings,
 } from "../src/utils/publishedStandings";
@@ -108,12 +109,13 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
   const rankContext = leaderboardRankContext(gameState);
   const isFinaleTieBreakActive = rankContext.tieBreakActive;
   const publishedBoard = usablePublishedStandings(publishedStandings, gameState);
+  const rosterIds = publicRosterIds(gameState.players);
   const publishedById = new Map(
     (publishedBoard?.rows ?? []).map((row) => [row.playerId, row])
   );
 
   const scoredPlayers = gameState.players
-    .map((player) => {
+    .map((player, index) => {
       const scoring = calculatePlayerScore(gameState, player);
       const detailScoring = calculatePlayerScore(detailGameState, player);
       const localTotal = resolveDisplayTotal(gameState, player.id, scoring.total, {
@@ -124,7 +126,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
         isFinaleTieBreakActive && typeof effectiveFinalePotValue === "number"
           ? getFinaleTieBreakDistance(player, effectiveFinalePotValue)
           : null;
-      const serverRow = publishedById.get(player.id);
+      const serverRow = publishedById.get(rosterIds[index] ?? "");
       const displayTotal = serverRow ? serverRow.score : localTotal;
       const tieBreakDistance = serverRow ? serverRow.tieBreakDistance : localTieBreak;
       return {

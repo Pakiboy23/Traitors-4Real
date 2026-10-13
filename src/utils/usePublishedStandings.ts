@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import type { GameState } from "../../types";
 import { normalizeWeekId } from "../../types";
 import { fetchPublishedStandings } from "./fetchPublishedStandings";
-import { sameStandingRoster } from "./publishedStandings";
+import { publicRosterIds, sameStandingRoster } from "./publishedStandings";
 import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
+  standingsEditIsUnsaved,
   standingsRefreshKey,
   type StandingsHold,
 } from "./standingsHold";
@@ -14,29 +15,32 @@ import {
 export {
   applyStandingsFetchResult,
   selectPublishedStandings,
+  standingsEditIsUnsaved,
   standingsRefreshKey,
   type StandingsHold,
 } from "./standingsHold";
 
 /**
  * Latest server board for this season.
- * Null means score locally. While a refresh is in flight the previous server
- * board stays up. A failed refresh clears that hold so the next live update
- * cannot flash those outdated scores before the new request fails.
+ * Null means score locally. A scoring edit stays on the local board until
+ * that snapshot has been saved and a fetch for it returns. A failed refresh
+ * clears the hold so the next live update cannot flash those outdated scores.
  */
 export const usePublishedStandings = (
   gameState: GameState,
-  persistRevision: number | null = null
+  persistRevision: number | null = null,
+  unsavedRefreshKey: string | null = null
 ): PublishedStandings | null => {
   const seasonId = normalizeWeekId(gameState.seasonId) ?? "";
   const refreshKey = useMemo(() => standingsRefreshKey(gameState), [gameState]);
-  const playerIds = gameState.players.map((player) => player.id);
+  const rosterIds = useMemo(() => publicRosterIds(gameState.players), [gameState.players]);
+  const editIsUnsaved = standingsEditIsUnsaved(unsavedRefreshKey, refreshKey);
   const [hold, setHold] = useState<StandingsHold | null>(null);
 
   useEffect(() => {
-    if (!seasonId) return undefined;
+    if (!seasonId || editIsUnsaved) return undefined;
     let cancelled = false;
-    const ids = playerIds;
+    const ids = rosterIds;
     const requestKey = refreshKey;
     void (async () => {
       const next = await fetchPublishedStandings(seasonId);
@@ -59,12 +63,12 @@ export const usePublishedStandings = (
     return () => {
       cancelled = true;
     };
-    // playerIds is covered by refreshKey, which changes when the roster changes.
-    // persistRevision is lastSavedAt (or the row updated_at). A scoring edit
-    // refetches immediately, before the 500 ms autosave, so the first response
-    // can still be the pre-save board. Completing the save must fetch again.
+    // rosterIds is covered by refreshKey, which changes when the roster changes.
+    // An unsaved admin edit does not fetch, so the pre-save response cannot
+    // replace the board. persistRevision refetches after the save succeeds.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonId, refreshKey, persistRevision]);
+  }, [seasonId, refreshKey, persistRevision, editIsUnsaved]);
 
-  return selectPublishedStandings(hold, seasonId, playerIds);
+  if (editIsUnsaved) return null;
+  return selectPublishedStandings(hold, seasonId, rosterIds, refreshKey);
 };

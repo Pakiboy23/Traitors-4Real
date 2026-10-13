@@ -213,7 +213,11 @@ payload, including the week delta. The public recap and the in-app recap take
 score and order from it. If the function cannot be reached, those screens fall
 back to `src/utils/standings.ts` on the device.
 
-There is no migration. Deploy the function from the `main` commit that contains
+The function reads `season_states_public` and replaces the snapshot's score
+adjustments with the `score_adjustments` rows when that read succeeds. Published
+player ids are roster ids. An email stored as a legacy player id is not returned.
+
+There is no new migration. Deploy the function from the `main` commit that contains
 it, before relying on an App Store build to pick up a scoring change:
 
 ```bash

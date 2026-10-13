@@ -1,4 +1,4 @@
-import type { GameState, SeasonConfig } from "../../types.ts";
+import type { GameState, ScoreAdjustment, SeasonConfig } from "../../types.ts";
 import { normalizeWeekId } from "../../types.ts";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation.ts";
 import { normalizeGameState } from "./normalizeGameState.ts";
@@ -50,13 +50,70 @@ export interface SeasonStandingsRecord {
 const finite = (value: unknown): number | null =>
   typeof value === "number" && Number.isFinite(value) ? value : null;
 
+/** Stored ids that are themselves email addresses. */
+const EMAIL_SHAPED_ID = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+
+export const isEmailShapedId = (value: string): boolean => EMAIL_SHAPED_ID.test(value.trim());
+
+const nameSlug = (name: string): string => name.trim().toLowerCase().replace(/\s+/g, "-");
+
+/**
+ * Public roster id for one player.
+ *
+ * A non-email stored id is kept. An email-shaped id, or a missing id, becomes
+ * the name slug. The slug is not computed from the address. Scoring still
+ * uses the stored id; only the published row and the client match use this.
+ */
+const preferredPublicRosterId = (
+  player: { id?: string | null; name?: string | null },
+  index: number
+): string => {
+  const rawId = typeof player.id === "string" ? player.id.trim() : "";
+  if (rawId && !isEmailShapedId(rawId)) return rawId;
+  const slug = typeof player.name === "string" ? nameSlug(player.name) : "";
+  return slug || `player-${index + 1}`;
+};
+
+/**
+ * One stable public id per row, in player-array order.
+ * Collisions get a numeric suffix so the set stays unique without the email.
+ */
+export const publicRosterIds = (
+  players: readonly { id?: string | null; name?: string | null }[]
+): string[] => {
+  const preferred = players.map((player, index) => preferredPublicRosterId(player, index));
+  const counts = new Map<string, number>();
+  for (const id of preferred) counts.set(id, (counts.get(id) ?? 0) + 1);
+  const seen = new Map<string, number>();
+  return preferred.map((id) => {
+    if ((counts.get(id) ?? 0) < 2) return id;
+    const next = (seen.get(id) ?? 0) + 1;
+    seen.set(id, next);
+    return `${id}-${next}`;
+  });
+};
+
+const publicIdByInternalId = (gameState: GameState): Map<string, string> => {
+  const rosterIds = publicRosterIds(gameState.players);
+  const map = new Map<string, string>();
+  gameState.players.forEach((player, index) => {
+    const publicId = rosterIds[index];
+    if (publicId && !map.has(player.id)) map.set(player.id, publicId);
+  });
+  return map;
+};
+
 export const publishedStandingsFromGameState = (gameState: GameState): PublishedStandings => {
+  const publishedIds = publicIdByInternalId(gameState);
   const playersById = new Map(gameState.players.map((player) => [player.id, player]));
   const rows = currentStandings(gameState).map((row, index) => {
     const player = playersById.get(row.playerId);
     const draft = player ? calculatePlayerScore(gameState, player).draftPredictionPoints : 0;
+    const publicId =
+      publishedIds.get(row.playerId) ??
+      (nameSlug(row.name) || `player-${index + 1}`);
     return {
-      playerId: row.playerId,
+      playerId: publicId,
       name: row.name,
       score: row.score,
       tieBreakDistance: row.tieBreakDistance,
@@ -92,11 +149,14 @@ const seasonConfigFromRecord = (season: SeasonStandingsRecord): SeasonConfig =>
  * for finale, lifecycle, and rule pack, foreign gameplay is stripped, then
  * show config is overlaid and the snapshot is normalized.
  */
-export const gameStateForStandings = (input: {
-  season: SeasonStandingsRecord;
-  state: unknown;
-  showConfig?: unknown | null;
-}): GameState => {
+export const gameStateForStandings = (
+  input: {
+    season: SeasonStandingsRecord;
+    state: unknown;
+    showConfig?: unknown | null;
+  },
+  now: number = Date.now()
+): GameState => {
   const seasonConfig = seasonConfigFromRecord(input.season);
   const raw = redactPublicSeasonState(
     input.state && typeof input.state === "object"
@@ -112,23 +172,92 @@ export const gameStateForStandings = (input: {
     seasonConfig,
     roster
   );
-  const normalized = normalizeGameState({
-    ...isolated,
-    rulePackId: seasonConfig.rulePackId,
-  });
+  const normalized = normalizeGameState(
+    {
+      ...isolated,
+      rulePackId: seasonConfig.rulePackId,
+    },
+    now
+  );
   if (input.showConfig == null) return normalized;
-  return normalizeGameState({
-    ...normalized,
-    showConfig: sanitizeShowConfig(input.showConfig),
-  });
+  return normalizeGameState(
+    {
+      ...normalized,
+      showConfig: sanitizeShowConfig(input.showConfig),
+    },
+    now
+  );
 };
 
-export const standingsResponseFromRecords = (input: {
-  season: SeasonStandingsRecord;
-  state: unknown;
-  showConfig?: unknown | null;
-}): PublishedStandings =>
-  publishedStandingsFromGameState(gameStateForStandings(input));
+/** score_adjustments row, as PostgREST returns it. Points may arrive as a string. */
+export interface ScoreAdjustmentRow {
+  id: string;
+  season_id: string;
+  player_id: string;
+  week_id?: string | null;
+  reason: string;
+  points: number | string;
+  created_by_label?: string | null;
+  created_at?: string | null;
+}
+
+export const scoreAdjustmentsFromRows = (
+  rows: readonly ScoreAdjustmentRow[]
+): ScoreAdjustment[] =>
+  rows.flatMap((row) => {
+    const points = typeof row.points === "number" ? row.points : Number(row.points);
+    if (
+      typeof row.id !== "string" ||
+      !row.id ||
+      typeof row.player_id !== "string" ||
+      !row.player_id ||
+      typeof row.season_id !== "string" ||
+      !row.season_id ||
+      typeof row.reason !== "string" ||
+      !row.reason ||
+      !Number.isFinite(points)
+    ) {
+      return [];
+    }
+    return [
+      {
+        id: row.id,
+        seasonId: row.season_id,
+        playerId: row.player_id,
+        weekId: row.week_id ?? undefined,
+        reason: row.reason,
+        points,
+        createdBy: row.created_by_label || "admin",
+        createdAt: row.created_at || "1970-01-01T00:00:00.000Z",
+      },
+    ];
+  });
+
+/**
+ * The score_adjustments table is the list the admin restores.
+ * A successful read replaces the copy inside the season snapshot, which is
+ * written later by the debounced save and can be missing or stale.
+ */
+export const stateWithAuthoritativeAdjustments = (
+  state: unknown,
+  adjustments: readonly ScoreAdjustment[]
+): unknown => {
+  const base =
+    state && typeof state === "object" && !Array.isArray(state)
+      ? { ...(state as Record<string, unknown>) }
+      : {};
+  return { ...base, scoreAdjustments: adjustments };
+};
+
+export const standingsResponseFromRecords = (
+  input: {
+    season: SeasonStandingsRecord;
+    state: unknown;
+    showConfig?: unknown | null;
+  },
+  now: number = Date.now()
+): PublishedStandings =>
+  publishedStandingsFromGameState(gameStateForStandings(input, now));
 
 const parseTimeline = (value: unknown): SeasonTimelinePoint[] | null => {
   if (!Array.isArray(value)) return null;
@@ -152,6 +281,7 @@ const parseRow = (value: unknown): PublishedStandingRow | null => {
   const weekDelta = row.weekDelta == null ? null : finite(row.weekDelta);
   const timeline = parseTimeline(row.timeline);
   if (typeof row.playerId !== "string" || !row.playerId.trim()) return null;
+  if (isEmailShapedId(row.playerId)) return null;
   if (typeof row.name !== "string") return null;
   if (score === null || rank === null || !Number.isInteger(rank) || rank < 1) return null;
   if (row.tieBreakDistance != null && tieBreak === null) return null;
@@ -204,7 +334,7 @@ export const usablePublishedStandings = (
   if (!standings) return null;
   const seasonId = normalizeWeekId(gameState.seasonId);
   if (!seasonId || standings.seasonId !== seasonId) return null;
-  const playerIds = gameState.players.map((player) => player.id);
+  const playerIds = publicRosterIds(gameState.players);
   if (!sameStandingRoster(standings, playerIds)) return null;
   return standings;
 };
@@ -214,9 +344,12 @@ export const homeBoardFromStandings = (
   gameState: GameState,
   standings: PublishedStandings
 ): HomeStandingsBoard => {
-  const playersById = new Map(gameState.players.map((player) => [player.id, player]));
+  const rosterIds = publicRosterIds(gameState.players);
+  const playersByPublicId = new Map(
+    gameState.players.map((player, index) => [rosterIds[index], player])
+  );
   const finalStandings = standings.rows.slice(0, 3).map((row) => {
-    const player = playersById.get(row.playerId);
+    const player = playersByPublicId.get(row.playerId);
     const entry: HomeStandingsBoard["finalStandings"][number] = {
       name: row.name,
       score: row.score,
@@ -237,6 +370,44 @@ export const homeBoardFromStandings = (
       : null,
     finalStandings,
   };
+};
+
+export interface PublishedWeekMovement {
+  name: string;
+  delta: number;
+  league: "main" | "jr";
+  portraitUrl?: string;
+}
+
+/**
+ * Home weekly MVP and top movers from the published weekDelta.
+ * That delta includes season-wide adjustments scored after the latest archive.
+ * Snapshot subtraction does not, so the two must not be mixed on one screen.
+ */
+export const publishedWeekMovement = (
+  gameState: GameState,
+  standings: PublishedStandings
+): PublishedWeekMovement[] => {
+  const rosterIds = publicRosterIds(gameState.players);
+  const playersByPublicId = new Map(
+    gameState.players.map((player, index) => [rosterIds[index], player])
+  );
+  return standings.rows
+    .filter(
+      (row): row is PublishedStandingRow & { weekDelta: number } =>
+        typeof row.weekDelta === "number"
+    )
+    .map((row) => {
+      const player = playersByPublicId.get(row.playerId);
+      const entry: PublishedWeekMovement = {
+        name: row.name,
+        delta: row.weekDelta,
+        league: player?.league === "jr" ? "jr" : "main",
+      };
+      if (typeof player?.portraitUrl === "string") entry.portraitUrl = player.portraitUrl;
+      return entry;
+    })
+    .sort((a, b) => b.delta - a.delta || a.name.localeCompare(b.name));
 };
 
 /**
