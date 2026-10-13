@@ -1,4 +1,4 @@
-• Leaderboard standings now show running season totals from week 3 on.
-• Security and stability updates.
+• The leaderboard now counts season-wide score adjustments, so standings match the website.
+• An admin refresh that fails no longer drops those adjustments.
 
 Independent app — not affiliated with any television network or production.
