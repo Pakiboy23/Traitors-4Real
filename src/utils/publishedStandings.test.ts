@@ -7,6 +7,8 @@ import type {
   PlayerEntry,
   WeeklyResults,
 } from "../../types";
+import { normalizeGameState } from "./normalizeGameState";
+import { redactPublicSeasonState } from "./publicRedaction";
 import { calculatePlayerScore } from "./scoring";
 import {
   currentStandings,
@@ -434,6 +436,65 @@ describe("season-standings matches standings.ts", () => {
     expect(server.rows[0]?.tieBreakDistance).toBe(10000);
     expect(server.rows[2]?.tieBreakDistance).toBeNull();
   });
+
+  it("scores from the season row's rule pack when the snapshot still names the old one", () => {
+    const state = {
+      seasonId: "traitors-new-blood-s1",
+      rulePackId: "traitors-classic",
+      players: [
+        player({
+          id: "serena",
+          name: "Serena",
+          email: "serena@example.com",
+          predWinner: "Abbey Benjamin",
+        }),
+      ],
+      castStatus: { "Abbey Benjamin": cast({ isWinner: true }) },
+    };
+    const season = seasonRecord({
+      active_week_id: "week-1",
+      rule_pack_id: "generic-elimination",
+    });
+    const prepared = gameStateForStandings({ season, state });
+    expect(prepared.rulePackId).toBe("generic-elimination");
+    expect(prepared.seasonConfig.rulePackId).toBe("generic-elimination");
+
+    const { server } = expectServerMatchesStandings(state, season);
+    const classic = gameStateForStandings({
+      season: seasonRecord({
+        active_week_id: "week-1",
+        rule_pack_id: "traitors-classic",
+      }),
+      state,
+    });
+    expect(currentStandings(classic)[0]?.score).not.toBe(server.rows[0]?.score);
+    expect(server.rows[0]?.score).toBe(currentStandings(prepared)[0]?.score);
+  });
+
+  it("uses the public client's roster id when a stored player has no id", () => {
+    const state = {
+      seasonId: "traitors-new-blood-s1",
+      players: [
+        {
+          name: "Legacy Fan",
+          email: "legacy@example.com",
+          picks: [],
+          predFirstOut: "",
+          predWinner: "",
+          predTraitors: [],
+        },
+      ],
+      castStatus: {},
+    };
+    const season = seasonRecord();
+    const publicClient = normalizeGameState(redactPublicSeasonState(state as Partial<GameState>));
+    const server = standingsResponseFromRecords({ season, state });
+    expect(server.rows.map((row) => row.playerId)).toEqual(
+      publicClient.players.map((entry) => entry.id)
+    );
+    expect(server.rows[0]?.playerId).toBe("legacy-fan");
+    expect(server.rows[0]?.playerId).not.toBe("legacy@example.com");
+  });
 });
 
 describe("published standings payload", () => {
@@ -529,10 +590,43 @@ describe("season-standings function", () => {
 
   it("renders standingsResponseFromRecords and does not reimplement scoring", () => {
     expect(source).toContain("standingsResponseFromRecords");
+    expect(source).toContain("redactPublicSeasonState");
     expect(source).not.toContain("calculatePlayerScore");
     expect(source).not.toContain("currentStandings");
     expect(source).not.toContain("MULTIPLIERS");
     expect(source).toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(source).not.toMatch(/grant execute/i);
+  });
+
+  it("refetches published standings after a successful save", () => {
+    const hook = readFileSync(path.resolve(__dirname, "./usePublishedStandings.ts"), "utf8");
+    const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+    expect(hook).toContain("persistRevision");
+    expect(app).toContain("usePublishedStandings(gameState, lastSavedAt)");
+  });
+
+  it("uses explicit .ts extensions on the Deno import graph", () => {
+    const roots = [
+      path.resolve(__dirname, "../../supabase/functions/season-standings/index.ts"),
+    ];
+    const seen = new Set<string>();
+    const queue = [...roots];
+    const extensionless: string[] = [];
+    while (queue.length) {
+      const file = queue.pop();
+      if (!file || seen.has(file)) continue;
+      seen.add(file);
+      const text = readFileSync(file, "utf8");
+      for (const match of text.matchAll(/from\s+['"](\.[^'"]+)['"]/g)) {
+        const spec = match[1];
+        if (!/\.(ts|tsx|js|json)$/.test(spec)) {
+          extensionless.push(`${path.relative(process.cwd(), file)}: ${spec}`);
+          continue;
+        }
+        const resolved = path.resolve(path.dirname(file), spec);
+        if (resolved.endsWith(".ts") || resolved.endsWith(".tsx")) queue.push(resolved);
+      }
+    }
+    expect(extensionless).toEqual([]);
   });
 });

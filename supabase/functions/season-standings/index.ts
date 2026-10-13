@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { DEFAULT_SHOW_SLUG } from "../../../src/config/defaultShowConfig.ts";
+import { redactPublicSeasonState } from "../../../src/utils/publicRedaction.ts";
 import {
   standingsResponseFromRecords,
   type SeasonStandingsRecord,
@@ -117,7 +118,7 @@ Deno.serve(async (req: Request) => {
 
   const standings = standingsResponseFromRecords({
     season: seasonResult.data as SeasonStandingsRecord,
-    state: stateResult.data?.state ?? { players: [] },
+    state: redactPublicSeasonState(stateResult.data?.state ?? { players: [] }),
     showConfig: showResult.error ? null : showResult.data?.config ?? null,
   });
   return json(200, standings);

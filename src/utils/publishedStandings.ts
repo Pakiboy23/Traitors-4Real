@@ -1,16 +1,17 @@
-import type { GameState, SeasonConfig } from "../../types";
-import { normalizeWeekId } from "../../types";
-import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation";
-import { normalizeGameState } from "./normalizeGameState";
-import { calculatePlayerScore } from "./scoring";
-import { isolateSeasonGameplay, rosterForSeason } from "./seasonAuthority";
+import type { GameState, SeasonConfig } from "../../types.ts";
+import { normalizeWeekId } from "../../types.ts";
+import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation.ts";
+import { normalizeGameState } from "./normalizeGameState.ts";
+import { calculatePlayerScore } from "./scoring.ts";
+import { redactPublicSeasonState } from "./publicRedaction.ts";
+import { isolateSeasonGameplay, rosterForSeason } from "./seasonAuthority.ts";
 import {
   currentStandings,
   displayedWeekDelta,
   seasonTimeline,
   type HomeStandingsBoard,
   type SeasonTimelinePoint,
-} from "./standings";
+} from "./standings.ts";
 
 /**
  * Board the site and the app both render.
@@ -86,9 +87,10 @@ const seasonConfigFromRecord = (season: SeasonStandingsRecord): SeasonConfig =>
   );
 
 /**
- * Same preparation the client does before it scores: season row wins for
- * finale and lifecycle, foreign gameplay is stripped, then show config is
- * overlaid and the snapshot is normalized.
+ * Same preparation the public client does before it scores: emails are
+ * stripped so missing player IDs fall back to the name, the season row wins
+ * for finale, lifecycle, and rule pack, foreign gameplay is stripped, then
+ * show config is overlaid and the snapshot is normalized.
  */
 export const gameStateForStandings = (input: {
   season: SeasonStandingsRecord;
@@ -96,10 +98,11 @@ export const gameStateForStandings = (input: {
   showConfig?: unknown | null;
 }): GameState => {
   const seasonConfig = seasonConfigFromRecord(input.season);
-  const raw =
+  const raw = redactPublicSeasonState(
     input.state && typeof input.state === "object"
       ? (input.state as Partial<GameState>)
-      : {};
+      : {}
+  );
   const roster = rosterForSeason(
     seasonConfig.seasonId,
     Object.keys(raw.castStatus ?? {})
@@ -109,7 +112,10 @@ export const gameStateForStandings = (input: {
     seasonConfig,
     roster
   );
-  const normalized = normalizeGameState(isolated);
+  const normalized = normalizeGameState({
+    ...isolated,
+    rulePackId: seasonConfig.rulePackId,
+  });
   if (input.showConfig == null) return normalized;
   return normalizeGameState({
     ...normalized,
