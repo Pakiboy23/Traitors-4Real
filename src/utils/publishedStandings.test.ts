@@ -1047,6 +1047,31 @@ describe("standings reads from one version", () => {
     expect(result).toEqual({ value: "aligned", snapshotAhead: false });
     expect(calls).toBe(2);
   });
+
+  it("keeps the last successful read when a later attempt fails", async () => {
+    let calls = 0;
+    const result = await readUntilSeasonRowCatchesUp(async () => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          seasonUpdatedAt: "2026-10-13T00:00:00.000Z",
+          stateUpdatedAt: "2026-10-13T00:00:01.000Z",
+          value: "ahead",
+        };
+      }
+      throw new Error("timeout");
+    });
+    expect(result).toEqual({ value: "ahead", snapshotAhead: true });
+    expect(calls).toBe(2);
+  });
+
+  it("still throws when the first standings read fails", async () => {
+    await expect(
+      readUntilSeasonRowCatchesUp(async () => {
+        throw new Error("timeout");
+      })
+    ).rejects.toThrow("timeout");
+  });
 });
 
 describe("season-standings function", () => {

@@ -112,9 +112,10 @@ export const standingsSeasonForSnapshot = (
 };
 
 /**
- * Re-read while the snapshot is ahead of the season row. The last attempt is
- * returned either way so the caller can score the snapshot's own lifecycle
- * fields instead of waiting out the request.
+ * Re-read while the snapshot is ahead of the season row. The last successful
+ * attempt is returned either way so the caller can score the snapshot's own
+ * lifecycle fields. A later transient failure keeps that value instead of
+ * failing the request.
  */
 export const readUntilSeasonRowCatchesUp = async <T>(
   read: () => Promise<{
@@ -128,11 +129,16 @@ export const readUntilSeasonRowCatchesUp = async <T>(
   const tries = Math.max(1, attempts);
   let last: { value: T; snapshotAhead: boolean } | null = null;
   for (let attempt = 0; attempt < tries; attempt += 1) {
-    const row = await read();
-    const snapshotAhead = snapshotAheadOfSeasonRow(row.seasonUpdatedAt, row.stateUpdatedAt);
-    last = { value: row.value, snapshotAhead };
-    if (!snapshotAhead || attempt === tries - 1) return last;
-    await wait(attempt);
+    try {
+      const row = await read();
+      const snapshotAhead = snapshotAheadOfSeasonRow(row.seasonUpdatedAt, row.stateUpdatedAt);
+      last = { value: row.value, snapshotAhead };
+      if (!snapshotAhead || attempt === tries - 1) return last;
+      await wait(attempt);
+    } catch (error) {
+      if (last) return { value: last.value, snapshotAhead: true };
+      throw error;
+    }
   }
   return last as { value: T; snapshotAhead: boolean };
 };
