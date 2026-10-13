@@ -111,10 +111,13 @@ if (existsSync(recapDir)) {
   console.log("[native:web:build] Left the hosted recap routes out of the static export.");
 }
 
+// Turbopack's next/font/google path does not retry a failed fonts.gstatic.com
+// fetch and turns it into Module not found. Webpack retries. CI has failed
+// both here and on `npm run build` on that flake.
 console.log("[native:web:build] Building static export (CAPACITOR_BUNDLED=1)...");
 let buildStatus = 1;
 try {
-  const build = spawnSync("npx", ["next", "build"], {
+  const build = spawnSync("npx", ["next", "build", "--webpack"], {
     cwd: repoRoot,
     stdio: "inherit",
     env: { ...process.env, CAPACITOR_BUNDLED: "1" },

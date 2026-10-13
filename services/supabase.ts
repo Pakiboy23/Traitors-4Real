@@ -424,6 +424,7 @@ export const listScoreAdjustments = async (seasonId: string): Promise<ScoreAdjus
 };
 
 export const createScoreAdjustment = async (input: {
+  id?: string;
   seasonId: string;
   playerId: string;
   weekId?: string;
@@ -434,6 +435,7 @@ export const createScoreAdjustment = async (input: {
   const { data, error } = await supabase
     .from("score_adjustments")
     .insert({
+      ...(input.id ? { id: input.id } : {}),
       season_id: input.seasonId,
       player_id: input.playerId,
       week_id: input.weekId || null,

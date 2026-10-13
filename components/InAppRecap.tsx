@@ -2,6 +2,11 @@
 
 import type { GameState } from "../types";
 import { buildPublicWeeklyRecap } from "../src/utils/weeklyRecap";
+import {
+  orderByPublishedStandings,
+  usablePublishedStandings,
+  type PublishedStandings,
+} from "../src/utils/publishedStandings";
 import type { RecapDeepLink } from "../src/utils/pushDeepLink";
 import WeeklyRecapView, { RecapUnavailable } from "./WeeklyRecapView";
 
@@ -9,6 +14,7 @@ interface InAppRecapProps {
   gameState: GameState;
   link: RecapDeepLink;
   loadedSeasonId: string | null;
+  publishedStandings?: PublishedStandings | null;
   onClose: () => void;
 }
 
@@ -16,9 +22,19 @@ interface InAppRecapProps {
  * Notification tap inside the bundled app. The web recap is the fallback when
  * this device is sitting on a different season than the link.
  */
-const InAppRecap = ({ gameState, link, loadedSeasonId, onClose }: InAppRecapProps) => {
+const InAppRecap = ({
+  gameState,
+  link,
+  loadedSeasonId,
+  publishedStandings = null,
+  onClose,
+}: InAppRecapProps) => {
   const seasonMatches = !link.seasonId || link.seasonId === loadedSeasonId;
-  const recap = seasonMatches ? buildPublicWeeklyRecap(gameState, link.weekId) : null;
+  const built = seasonMatches ? buildPublicWeeklyRecap(gameState, link.weekId) : null;
+  const published = usablePublishedStandings(publishedStandings, gameState);
+  const ordered =
+    built && published ? orderByPublishedStandings(built.standings, published) : null;
+  const recap = built && ordered ? { ...built, standings: ordered } : built;
 
   return (
     <div className="recap-in-app">

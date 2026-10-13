@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { loadPublicWeeklyRecap } from "../../../../../src/utils/loadPublicRecap";
+import { recapWithServerStandings } from "../../../../../src/utils/fetchPublishedStandings";
 
 export const alt = "Weekly recap";
 export const size = { width: 1200, height: 630 };
@@ -14,7 +15,8 @@ export default async function RecapOgImage({
 }) {
   const { seasonId, weekId } = await params;
   const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
-  const recap = loaded.status === "published" ? loaded.recap : null;
+  const recap =
+    loaded.status === "published" ? await recapWithServerStandings(loaded.recap) : null;
   const lines = recap
     ? [
         recap.results.banished ? `Banished   ${recap.results.banished}` : null,

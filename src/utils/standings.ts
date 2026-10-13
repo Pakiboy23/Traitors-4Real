@@ -1,10 +1,10 @@
-import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types";
-import { normalizeWeekId } from "../../types";
+import type { GameState, League, PlayerEntry, WeeklyResults, WeeklyScoreSnapshot } from "../../types.ts";
+import { normalizeWeekId } from "../../types.ts";
 import {
   calculatePlayerScore,
   getFinaleTieBreakDistance,
   type PlayerScore,
-} from "./scoring";
+} from "./scoring.ts";
 
 /**
  * Same "is there anything to score this week?" check the Leaderboard uses
@@ -438,6 +438,8 @@ const tieBreakDistanceFor = (
 
 export interface CurrentStanding {
   playerId: string;
+  /** Index in gameState.players. Two rows can share an internal id. */
+  playerIndex: number;
   name: string;
   score: number;
   tieBreakDistance: number | null;
@@ -447,10 +449,11 @@ export interface CurrentStanding {
 export const currentStandings = (gameState: GameState): CurrentStanding[] => {
   const context = leaderboardRankContext(gameState);
   return gameState.players
-    .map((player) => {
+    .map((player, playerIndex) => {
       const scoring = calculatePlayerScore(gameState, player);
       return {
         playerId: player.id,
+        playerIndex,
         name: player.name,
         score: resolveDisplayTotal(gameState, player.id, scoring.total, {
           draftPredictionPoints: scoring.draftPredictionPoints,

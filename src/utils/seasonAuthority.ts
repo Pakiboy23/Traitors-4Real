@@ -4,12 +4,12 @@ import type {
   PlayerEntry,
   SeasonConfig,
   SeasonState,
-} from "../../types";
-import { normalizeWeekId } from "../../types";
+} from "../../types.ts";
+import { normalizeWeekId } from "../../types.ts";
 import {
   NEW_BLOOD_CAST_NAMES,
   NEW_BLOOD_SEASON_ID,
-} from "../config/newBloodCast";
+} from "../config/newBloodCast.ts";
 
 const DEFAULT_FINALE_CONFIG: FinaleConfig = {
   enabled: false,

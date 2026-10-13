@@ -1,4 +1,4 @@
-import { NEW_BLOOD_CAST_NAMES } from "./src/config/newBloodCast";
+import { NEW_BLOOD_CAST_NAMES } from "./src/config/newBloodCast.ts";
 
 export interface CastMemberStatus {
   isWinner: boolean;
@@ -249,6 +249,8 @@ export interface PlayerEntry {
   id: string;
   name: string;
   email: string;
+  /** Stable id for published standings. Not an email and not a `jr-` id. */
+  publicId?: string;
   league?: League;
   picks: DraftPick[];
   predFirstOut: string;

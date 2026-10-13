@@ -1,6 +1,6 @@
-import type { SeasonConfig, ShowConfig } from "../../types";
-import { DEFAULT_SHOW_CONFIG } from "./defaultShowConfig";
-import { TRAITORS_CLASSIC_RULE_PACK } from "./rulePacks";
+import type { SeasonConfig, ShowConfig } from "../../types.ts";
+import { DEFAULT_SHOW_CONFIG } from "./defaultShowConfig.ts";
+import { TRAITORS_CLASSIC_RULE_PACK } from "./rulePacks.ts";
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   value && typeof value === "object" && !Array.isArray(value)

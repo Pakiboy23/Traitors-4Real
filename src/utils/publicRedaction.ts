@@ -1,4 +1,4 @@
-import type { SeasonState } from "../../types";
+import type { SeasonState } from "../../types.ts";
 
 /**
  * Keys used to put archived addresses back on an admin read.

@@ -205,6 +205,37 @@ Without them the function returns 503 and names what is missing, rather than
 reporting success and sending nothing — a reminder that quietly fails is only
 discovered after the lock has passed.
 
+## Standings
+
+The leaderboard is computed by the `season-standings` Edge Function, not by the
+copy of the app that happens to be open. Home and the Leaderboard render that
+payload, including the week delta. The public recap and the in-app recap take
+score and order from it. If the function cannot be reached, those screens fall
+back to `src/utils/standings.ts` on the device.
+
+The function reads `season_states_public` and replaces the snapshot's score
+adjustments with the `score_adjustments` rows when that read succeeds. Published
+player ids are roster ids. An email stored as a legacy player id is not returned.
+
+There is no new migration. Deploy the function from the `main` commit that contains
+it, before relying on an App Store build to pick up a scoring change:
+
+```bash
+supabase functions deploy season-standings --project-ref tpjiqegneohtbcxapqnq
+```
+
+Redeploy that function after any later change to scoring or standings. The
+installed app does not need a new binary for the board to move. The site keeps
+the local board until this function exists. Confirm with the anon key:
+
+```bash
+curl -sS -X POST "$SUPABASE_URL/functions/v1/season-standings" \
+  -H "Authorization: Bearer $ANON_KEY" \
+  -H "apikey: $ANON_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"seasonId":"traitors-new-blood-s1"}'
+```
+
 ## Deployment
 
 Production is Vercel, deployed from `main`. Set `NEXT_PUBLIC_SUPABASE_URL` and

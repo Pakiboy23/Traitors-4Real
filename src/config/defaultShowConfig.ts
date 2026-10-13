@@ -2,7 +2,7 @@ import {
   CAST_NAMES,
   COUNCIL_LABELS,
   type ShowConfig,
-} from "../../types";
+} from "../../types.ts";
 
 export const DEFAULT_SHOW_SLUG = "default";
 
