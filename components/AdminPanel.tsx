@@ -1569,9 +1569,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
+    const requestId = crypto.randomUUID();
     try {
       bumpSeasonScopedCounter(scoreAdjustmentWriteRevRef.current, seasonId);
       const created = await createScoreAdjustment({
+        id: requestId,
         seasonId,
         playerId,
         weekId: weekId ?? undefined,
@@ -1594,7 +1596,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         return;
       }
       const fallback: ScoreAdjustment = {
-        id: `local-${Date.now()}`,
+        id: `local-${requestId}`,
         seasonId,
         playerId,
         weekId: weekId ?? undefined,

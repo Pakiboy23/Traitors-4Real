@@ -12,9 +12,9 @@ import {
   type HomeStandingsBoard,
   type SeasonTimelinePoint,
 } from "./standings.ts";
-import { isEmailShapedId, nameSlug, publicRosterIds } from "./publicRosterIds.ts";
+import { isPrivateRosterId, nameSlug, publicRosterIds } from "./publicRosterIds.ts";
 
-export { isEmailShapedId, publicRosterIds } from "./publicRosterIds.ts";
+export { isEmailShapedId, isPrivateRosterId, publicRosterIds } from "./publicRosterIds.ts";
 
 /**
  * Board the site and the app both render.
@@ -198,7 +198,8 @@ const isPendingLocalAdjustment = (value: unknown): value is ScoreAdjustment => {
  * A successful read replaces the copy inside the season snapshot, which is
  * written later by the debounced save and can be missing or stale.
  * Rows the admin added locally after a failed insert stay. Their ids start
- * with `local-` and were never in the table.
+ * with `local-`. When that suffix is the id of a row the table already
+ * committed, the local copy is the same correction and is not scored again.
  */
 export const stateWithAuthoritativeAdjustments = (
   state: unknown,
@@ -210,9 +211,11 @@ export const stateWithAuthoritativeAdjustments = (
       : {};
   const tableIds = new Set(adjustments.map((row) => row.id));
   const pending = Array.isArray(base.scoreAdjustments)
-    ? base.scoreAdjustments.filter(
-        (row) => isPendingLocalAdjustment(row) && !tableIds.has(row.id)
-      )
+    ? base.scoreAdjustments.filter((row) => {
+        if (!isPendingLocalAdjustment(row) || tableIds.has(row.id)) return false;
+        const requestId = row.id.startsWith("local-") ? row.id.slice("local-".length) : "";
+        return !requestId || !tableIds.has(requestId);
+      })
     : [];
   return { ...base, scoreAdjustments: [...adjustments, ...pending] };
 };
@@ -281,7 +284,7 @@ const parseRow = (value: unknown): PublishedStandingRow | null => {
   const weekDelta = row.weekDelta == null ? null : finite(row.weekDelta);
   const timeline = parseTimeline(row.timeline);
   if (typeof row.playerId !== "string" || !row.playerId.trim()) return null;
-  if (isEmailShapedId(row.playerId)) return null;
+  if (isPrivateRosterId(row.playerId)) return null;
   if (typeof row.name !== "string") return null;
   if (score === null || rank === null || !Number.isInteger(rank) || rank < 1) return null;
   if (row.tieBreakDistance != null && tieBreak === null) return null;

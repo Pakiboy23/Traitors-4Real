@@ -8,6 +8,7 @@ import type {
   WeeklyResults,
 } from "../../types";
 import { normalizeFinaleConfig, normalizeGameState } from "./normalizeGameState";
+import { assignPublicRosterIds as stampPublicRosterIds } from "./publicRosterIds";
 import { redactPublicSeasonState } from "./publicRedaction";
 import { calculatePlayerScore } from "./scoring";
 import {
@@ -546,6 +547,36 @@ describe("season-standings matches standings.ts", () => {
     expect(publicRosterIds([player({ id: "player@example", name: "Pat Example" })])).toEqual([
       "pat-example",
     ]);
+    expect(publicRosterIds([player({ id: "jr-alice-example-com", name: "Alice" })])).toEqual([
+      "alice",
+    ]);
+    expect(publicRosterIds([player({ id: "jr-alice-example-com", name: "JR Player" })])).toEqual([
+      "player-1",
+    ]);
+    const stamped = stampPublicRosterIds([
+      player({ id: "sam", name: "Sam" }),
+      player({ id: "sam", name: "Sam" }),
+    ]);
+    expect(publicRosterIds(stamped)).toEqual(["sam-1", "sam-2"]);
+    expect(publicRosterIds([stamped[1]!, stamped[0]!])).toEqual(["sam-2", "sam-1"]);
+    expect(
+      publicRosterIds([
+        player({ id: "sam", name: "Sam", publicId: "sam-1" }),
+        player({ id: "sam-1", name: "Other" }),
+      ])
+    ).toEqual(["sam-1", "sam-1-1"]);
+    const normalized = normalizeGameState({
+      players: stamped,
+      castStatus: {},
+    });
+    const reordered = normalizeGameState({
+      ...normalized,
+      players: [normalized.players[1]!, normalized.players[0]!],
+    });
+    expect(reordered.players.map((entry) => entry.publicId)).toEqual([
+      normalized.players[1]?.publicId,
+      normalized.players[0]?.publicId,
+    ]);
   });
 
   it("publishes distinct roster ids when two rows share an internal id", () => {
@@ -567,6 +598,37 @@ describe("season-standings matches standings.ts", () => {
         }),
       }).rows[0]?.playerId
     ).toBe("alice");
+    const jrServer = standingsResponseFromRecords({
+      season: seasonRecord(),
+      state: runningSeason({
+        players: [
+          player({
+            id: "jr-alice-example-com",
+            name: "Alice",
+            email: "alice@example.com",
+          }),
+        ],
+      }),
+    });
+    expect(jrServer.rows[0]?.playerId).toBe("alice");
+    expect(JSON.stringify(jrServer)).not.toContain("jr-alice-example-com");
+    expect(JSON.stringify(jrServer)).not.toContain("alice@example.com");
+    expect(
+      parsePublishedStandings({
+        seasonId: "traitors-new-blood-s1",
+        rows: [
+          {
+            playerId: "jr-alice-example-com",
+            name: "Alice",
+            score: 1,
+            tieBreakDistance: null,
+            weekDelta: null,
+            rank: 1,
+            timeline: [],
+          },
+        ],
+      })
+    ).toBeNull();
   });
 
   it("scores a table adjustment the snapshot save never copied", () => {
@@ -628,6 +690,23 @@ describe("season-standings matches standings.ts", () => {
     ]);
     const withLocal = standingsResponseFromRecords({ season: seasonRecord(), state: merged });
     expect(withLocal.rows[0]?.score).toBe((without.rows[0]?.score ?? 0) + 5 + 3);
+
+    const requestId = "11111111-1111-4111-8111-111111111111";
+    const committed = seasonWideAdjustment("2026-10-08T00:00:00.000Z");
+    const lostResponse = stateWithAuthoritativeAdjustments(
+      runningSeason({
+        players: [player({ id: "serena", name: "Serena", email: "serena@example.com" })],
+        scoreAdjustments: [{ ...committed, id: `local-${requestId}` }],
+        weeklyScoreHistory: history,
+      }),
+      [{ ...committed, id: requestId }]
+    ) as GameState;
+    expect(lostResponse.scoreAdjustments?.map((row) => row.id)).toEqual([requestId]);
+    const countedOnce = standingsResponseFromRecords({
+      season: seasonRecord(),
+      state: lostResponse,
+    });
+    expect(countedOnce.rows[0]?.score).toBe((without.rows[0]?.score ?? 0) + 5);
     expect(
       scoreAdjustmentsFromRows([
         {
@@ -943,6 +1022,8 @@ describe("season-standings function", () => {
     expect(app).toContain("unsavedStandingsKey");
     expect(app).toContain("homeWeekMovement");
     expect(app).toContain("standingsSaveCommit");
+    expect(app).toContain("saveGeneration");
+    expect(app).toContain("staleSaveNeedsRewrite");
     expect(app).toContain("useLayoutEffect");
     expect(app).toContain("setUnsavedStandingsKey(standingsKey)");
     const leaderboard = readFileSync(

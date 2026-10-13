@@ -3,6 +3,7 @@ import type { PublishedStandings } from "./publishedStandings";
 import {
   applyStandingsFetchResult,
   selectPublishedStandings,
+  staleSaveNeedsRewrite,
   standingsEditIsUnsaved,
   standingsSaveCommit,
   standingsRefreshKey,
@@ -124,6 +125,8 @@ describe("standingsSaveCommit", () => {
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-a",
+        saveGeneration: 1,
+        appliedGeneration: 0,
       })
     ).toEqual({ recordSavedKey: true, clearUnsaved: true });
     expect(
@@ -132,6 +135,8 @@ describe("standingsSaveCommit", () => {
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-a",
+        saveGeneration: 2,
+        appliedGeneration: 1,
       })
     ).toEqual({ recordSavedKey: true, clearUnsaved: true });
   });
@@ -143,8 +148,66 @@ describe("standingsSaveCommit", () => {
         activeSeasonId: "season-a",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-b",
+        saveGeneration: 2,
+        appliedGeneration: 1,
       })
     ).toEqual({ recordSavedKey: true, clearUnsaved: false });
+  });
+
+  it("ignores a save that started before the one already applied", () => {
+    expect(
+      standingsSaveCommit({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        savedStandingsKey: "key-a",
+        currentStandingsKey: "key-b",
+        saveGeneration: 1,
+        appliedGeneration: 2,
+      })
+    ).toEqual({ recordSavedKey: false, clearUnsaved: false });
+  });
+
+  it("rewrites only when an older save lost the race to a different snapshot", () => {
+    expect(
+      staleSaveNeedsRewrite({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        saveGeneration: 1,
+        appliedGeneration: 2,
+        savedSerialized: "older",
+        currentSerialized: "newer",
+      })
+    ).toBe(true);
+    expect(
+      staleSaveNeedsRewrite({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        saveGeneration: 1,
+        appliedGeneration: 2,
+        savedSerialized: "same",
+        currentSerialized: "same",
+      })
+    ).toBe(false);
+    expect(
+      staleSaveNeedsRewrite({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-b",
+        saveGeneration: 1,
+        appliedGeneration: 2,
+        savedSerialized: "older",
+        currentSerialized: "newer",
+      })
+    ).toBe(false);
+    expect(
+      staleSaveNeedsRewrite({
+        savedSeasonId: "season-a",
+        activeSeasonId: "season-a",
+        saveGeneration: 2,
+        appliedGeneration: 1,
+        savedSerialized: "older",
+        currentSerialized: "newer",
+      })
+    ).toBe(false);
   });
 
   it("ignores a save that finishes after another season is active", () => {
@@ -154,6 +217,8 @@ describe("standingsSaveCommit", () => {
         activeSeasonId: "season-b",
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-b",
+        saveGeneration: 2,
+        appliedGeneration: 1,
       })
     ).toEqual({ recordSavedKey: false, clearUnsaved: false });
     expect(
@@ -162,6 +227,8 @@ describe("standingsSaveCommit", () => {
         activeSeasonId: null,
         savedStandingsKey: "key-a",
         currentStandingsKey: "key-a",
+        saveGeneration: 1,
+        appliedGeneration: 0,
       })
     ).toEqual({ recordSavedKey: false, clearUnsaved: false });
   });

@@ -14,6 +14,7 @@ import {
 import { DEFAULT_SHOW_CONFIG } from "../config/defaultShowConfig.ts";
 import { sanitizeSeasonConfig, sanitizeShowConfig } from "../config/validation.ts";
 import { normalizeCastMemberStatus, resolveCastNames } from "./castProfiles.ts";
+import { assignPublicRosterIds } from "./publicRosterIds.ts";
 import { sanitizeWeeklyRecaps } from "./weeklyRecap.ts";
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
@@ -134,7 +135,7 @@ export const normalizeGameState = (
   });
 
   const players = Array.isArray(input?.players) ? input!.players : [];
-  const normalizedPlayers = players.map((player, index) => {
+  const normalizedPlayers = assignPublicRosterIds(players.map((player, index) => {
     const safeName = typeof player.name === "string" ? player.name : "";
     const safeEmail = typeof player.email === "string" ? player.email : "";
     const legacyPlayer = player as PlayerEntry & {
@@ -203,7 +204,7 @@ export const normalizeGameState = (
         },
       },
     } as PlayerEntry;
-  });
+  }));
 
   const history = Array.isArray(input?.weeklySubmissionHistory)
     ? (input!.weeklySubmissionHistory as WeeklySubmissionHistoryEntry[])

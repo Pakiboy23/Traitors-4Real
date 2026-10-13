@@ -27,7 +27,7 @@ import {
   homeWeekMovement,
   usablePublishedStandings,
 } from "./src/utils/publishedStandings";
-import { standingsSaveCommit } from "./src/utils/standingsHold";
+import { staleSaveNeedsRewrite, standingsSaveCommit } from "./src/utils/standingsHold";
 import {
   standingsRefreshKey,
   usePublishedStandings,
@@ -96,6 +96,8 @@ const App: React.FC = () => {
     activeSeasonIdRef.current = activeSeasonId;
   }, [activeSeasonId]);
   const standingsKeyRef = useRef("");
+  const standingsSaveGenerationRef = useRef(0);
+  const appliedStandingsSaveGenerationRef = useRef(0);
   const [loadedSeasonId, setLoadedSeasonId] = useState<string | null>(null);
   const [seasonShellEnabled, setSeasonShellEnabled] = useState(false);
   const lastRemoteStateRef = useRef<string | null>(null);
@@ -183,6 +185,77 @@ const App: React.FC = () => {
     return value;
   };
 
+  const gameStateRef = useRef(gameState);
+  gameStateRef.current = gameState;
+  const commitStandingsSaveRef = useRef<
+    (result: {
+      scopedSeasonId: string;
+      writtenSerialized: string;
+      savedStandingsKey: string;
+      saveGeneration: number;
+      updatedAt: number;
+    }) => void
+  >(() => undefined);
+  useLayoutEffect(() => {
+    commitStandingsSaveRef.current = (result) => {
+      const commit = standingsSaveCommit({
+        savedSeasonId: result.scopedSeasonId,
+        activeSeasonId: activeSeasonIdRef.current,
+        savedStandingsKey: result.savedStandingsKey,
+        currentStandingsKey: standingsKeyRef.current,
+        saveGeneration: result.saveGeneration,
+        appliedGeneration: appliedStandingsSaveGenerationRef.current,
+      });
+      if (commit.recordSavedKey) {
+        appliedStandingsSaveGenerationRef.current = result.saveGeneration;
+        lastRemoteStateRef.current = result.writtenSerialized;
+        unsavedFailedWriteRef.current = false;
+        committedStandingsKeyRef.current = result.savedStandingsKey;
+        if (commit.clearUnsaved) setUnsavedStandingsKey(null);
+        setLastSavedAt(result.updatedAt);
+        setLastWriteError(null);
+        return;
+      }
+      const current = gameStateRef.current;
+      const currentSerialized = JSON.stringify(current);
+      if (
+        !staleSaveNeedsRewrite({
+          savedSeasonId: result.scopedSeasonId,
+          activeSeasonId: activeSeasonIdRef.current,
+          saveGeneration: result.saveGeneration,
+          appliedGeneration: appliedStandingsSaveGenerationRef.current,
+          savedSerialized: result.writtenSerialized,
+          currentSerialized,
+        })
+      ) {
+        return;
+      }
+      // The older upsert may have replaced the newer snapshot. Hold the local
+      // board and write the current one again.
+      const healGeneration = ++standingsSaveGenerationRef.current;
+      const healKey = standingsRefreshKey(current);
+      setUnsavedStandingsKey(healKey);
+      saveSeasonState(result.scopedSeasonId, normalizeUndefined(current) as GameState)
+        .then((record) => {
+          const updatedAt = record?.updated
+            ? new Date(record.updated as string).getTime()
+            : Date.now();
+          commitStandingsSaveRef.current({
+            scopedSeasonId: result.scopedSeasonId,
+            writtenSerialized: currentSerialized,
+            savedStandingsKey: healKey,
+            saveGeneration: healGeneration,
+            updatedAt,
+          });
+        })
+        .catch((error) => {
+          unsavedFailedWriteRef.current = true;
+          setLastWriteError(error instanceof Error ? error.message : String(error));
+          logger.warn("Stale season save rewrite failed:", error);
+        });
+    };
+  });
+
   const saveNow = useCallback(async () => {
     if (!isAdminAuthenticated || !adminSeasonReady) return;
     // Empty-league bootstrap stays in localStorage. Remote writes go to
@@ -205,6 +278,8 @@ const App: React.FC = () => {
     // Any season fetch that overlaps this save may predate it.
     manualSaveInFlightRef.current += 1;
     adminEditRevisionRef.current += 1;
+    const saveGeneration = ++standingsSaveGenerationRef.current;
+    const writtenSerialized = JSON.stringify(gameState);
     try {
       const safeState = normalizeUndefined(gameState);
       const savedStandingsKey = standingsRefreshKey(gameState);
@@ -212,19 +287,13 @@ const App: React.FC = () => {
       const updatedAt = record?.updated
         ? new Date(record.updated as string).getTime()
         : Date.now();
-      setLastSavedAt(updatedAt);
-      const commit = standingsSaveCommit({
-        savedSeasonId: scopedSeasonId,
-        activeSeasonId: activeSeasonIdRef.current,
+      commitStandingsSaveRef.current({
+        scopedSeasonId,
+        writtenSerialized,
         savedStandingsKey,
-        currentStandingsKey: standingsKeyRef.current,
+        saveGeneration,
+        updatedAt,
       });
-      if (commit.recordSavedKey) {
-        committedStandingsKeyRef.current = savedStandingsKey;
-        if (commit.clearUnsaved) setUnsavedStandingsKey(null);
-      }
-      unsavedFailedWriteRef.current = false;
-      setLastWriteError(null);
     } catch (error) {
       unsavedFailedWriteRef.current =
         JSON.stringify(gameState) !== lastRemoteStateRef.current;
@@ -582,30 +651,24 @@ const App: React.FC = () => {
       adminEditRevisionRef.current += 1;
       const safeState = normalizeUndefined(gameState);
       const savedStandingsKey = standingsRefreshKey(gameState);
+      const saveGeneration = ++standingsSaveGenerationRef.current;
       saveSeasonState(scopedSeasonId, safeState as GameState)
         .then((record) => {
-          lastRemoteStateRef.current = serialized;
-          unsavedFailedWriteRef.current = false;
           // A newer save may have started while this one was in flight.
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;
           adminEditRevisionRef.current += 1;
-          // The timer closed over the season it saved. The screen may have
-          // moved to another season before this write finished.
-          const commit = standingsSaveCommit({
-            savedSeasonId: scopedSeasonId,
-            activeSeasonId: activeSeasonIdRef.current,
-            savedStandingsKey,
-            currentStandingsKey: standingsKeyRef.current,
-          });
-          if (commit.recordSavedKey) {
-            committedStandingsKeyRef.current = savedStandingsKey;
-            if (commit.clearUnsaved) setUnsavedStandingsKey(null);
-          }
           const updatedAt = record?.updated
             ? new Date(record.updated as string).getTime()
             : Date.now();
-          setLastSavedAt(updatedAt);
-          setLastWriteError(null);
+          // The timer closed over the season it saved. The screen may have
+          // moved to another season, or a newer save may already have landed.
+          commitStandingsSaveRef.current({
+            scopedSeasonId,
+            writtenSerialized: serialized,
+            savedStandingsKey,
+            saveGeneration,
+            updatedAt,
+          });
         })
         .catch((error) => {
           if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;

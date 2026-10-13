@@ -249,6 +249,8 @@ export interface PlayerEntry {
   id: string;
   name: string;
   email: string;
+  /** Stable id for published standings. Not an email and not a `jr-` id. */
+  publicId?: string;
   league?: League;
   picks: DraftPick[];
   predFirstOut: string;
