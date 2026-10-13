@@ -26,12 +26,12 @@ const packageResolved = JSON.parse(
 
 /**
  * 2.0.1 is approved and on the store, so its train is closed (ITMS-90186 /
- * ITMS-90062 rejected build 105). The next upload is 2.0.2. Xcode Cloud
- * replaces CFBundleVersion with its own build-run number; 102 is the floor for
- * a Mac archive (App Store Connect's highest accepted build is 101).
+ * ITMS-90062 rejected build 105). The next upload is 2.0.3. Xcode Cloud
+ * replaces CFBundleVersion with its own build-run number; 103 is the floor for
+ * a Mac archive. 102 was the repo build on both 2.0.1 and 2.0.2.
  */
-const MARKETING_VERSION = "2.0.2";
-const MIN_BUILD_NUMBER = 102;
+const MARKETING_VERSION = "2.0.3";
+const MIN_BUILD_NUMBER = 103;
 const BUNDLE_ID = "com.roundtabledraft.app";
 
 function appTargetSettings(name: "Debug" | "Release"): string {
@@ -46,9 +46,9 @@ function appTargetSettings(name: "Debug" | "Release"): string {
   return match[0];
 }
 
-describe("iOS 2.0.2 release identity", () => {
+describe("iOS 2.0.3 release identity", () => {
   it.each(["Debug", "Release"] as const)(
-    "sets MARKETING_VERSION 2.0.2 and CURRENT_PROJECT_VERSION >= 102 on App %s",
+    "sets MARKETING_VERSION 2.0.3 and CURRENT_PROJECT_VERSION >= 103 on App %s",
     (name) => {
       const settings = appTargetSettings(name);
       expect(settings).toMatch(new RegExp(`MARKETING_VERSION = ${MARKETING_VERSION};`));
