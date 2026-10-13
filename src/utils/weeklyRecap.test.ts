@@ -519,7 +519,10 @@ describe("weekly recap records", () => {
 });
 
 describe("season save keeps weeklyRecaps", () => {
-  const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+  const normalizerSource = readFileSync(
+    path.resolve(__dirname, "./normalizeGameState.ts"),
+    "utf8"
+  );
   const types = readFileSync(path.resolve(__dirname, "../../types.ts"), "utf8");
   const supabaseClient = readFileSync(path.resolve(__dirname, "../../services/supabase.ts"), "utf8");
 
@@ -536,9 +539,8 @@ describe("season save keeps weeklyRecaps", () => {
       expect.arrayContaining(["weeklyRecaps", "weeklyScoreHistory", "players", "castStatus"])
     );
 
-    const normalizerStart = app.indexOf("const normalizeGameState = ");
-    const normalizerEnd = app.indexOf("const App: React.FC", normalizerStart);
-    const normalizer = app.slice(normalizerStart, normalizerEnd);
+    const normalizerStart = normalizerSource.indexOf("export const normalizeGameState = ");
+    const normalizer = normalizerSource.slice(normalizerStart);
     for (const key of keys) {
       expect(normalizer, key).toContain(key);
     }

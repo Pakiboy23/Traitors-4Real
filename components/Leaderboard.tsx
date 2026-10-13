@@ -23,6 +23,10 @@ import {
   seasonTimeline,
   weeklyResultsAreLive,
 } from "../src/utils/standings";
+import {
+  usablePublishedStandings,
+  type PublishedStandings,
+} from "../src/utils/publishedStandings";
 import { TIMING } from "../src/utils/scoringConstants";
 import {
   pageRevealVariants,
@@ -41,6 +45,7 @@ interface LeaderboardProps {
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
   onSeasonChange?: (seasonId: string) => void;
+  publishedStandings?: PublishedStandings | null;
 }
 
 const Leaderboard: React.FC<LeaderboardProps> = ({
@@ -48,6 +53,7 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
   seasons = [],
   activeSeasonId,
   onSeasonChange,
+  publishedStandings = null,
 }) => {
   const reduceMotion = useReducedMotion();
   const [isSyncing, setIsSyncing] = useState(false);
@@ -101,30 +107,42 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
   );
   const rankContext = leaderboardRankContext(gameState);
   const isFinaleTieBreakActive = rankContext.tieBreakActive;
+  const publishedBoard = usablePublishedStandings(publishedStandings, gameState);
+  const publishedById = new Map(
+    (publishedBoard?.rows ?? []).map((row) => [row.playerId, row])
+  );
 
   const scoredPlayers = gameState.players
     .map((player) => {
       const scoring = calculatePlayerScore(gameState, player);
       const detailScoring = calculatePlayerScore(detailGameState, player);
-      const displayTotal = resolveDisplayTotal(gameState, player.id, scoring.total, {
+      const localTotal = resolveDisplayTotal(gameState, player.id, scoring.total, {
         draftPredictionPoints: scoring.draftPredictionPoints,
         weeklyCallPoints: scoring.weeklyCallPoints,
       });
-      const tieBreakDistance =
+      const localTieBreak =
         isFinaleTieBreakActive && typeof effectiveFinalePotValue === "number"
           ? getFinaleTieBreakDistance(player, effectiveFinalePotValue)
           : null;
+      const serverRow = publishedById.get(player.id);
+      const displayTotal = serverRow ? serverRow.score : localTotal;
+      const tieBreakDistance = serverRow ? serverRow.tieBreakDistance : localTieBreak;
       return {
         ...player,
         scoring,
         detailScoring,
         displayTotal,
         tieBreakDistance,
-        weekDelta: displayedWeekDelta(gameState, player.id, displayTotal),
+        weekDelta: serverRow
+          ? serverRow.weekDelta
+          : displayedWeekDelta(gameState, player.id, displayTotal),
+        serverRank: serverRow?.rank ?? null,
+        serverTimeline: serverRow?.timeline ?? null,
       };
     })
-    .sort((a, b) =>
-      compareStandingEntries(
+    .sort((a, b) => {
+      if (a.serverRank !== null && b.serverRank !== null) return a.serverRank - b.serverRank;
+      return compareStandingEntries(
         {
           name: a.name,
           displayTotal: a.displayTotal,
@@ -135,8 +153,8 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
           displayTotal: b.displayTotal,
           tieBreakDistance: b.tieBreakDistance,
         }
-      )
-    );
+      );
+    });
 
   const getPenaltyEntries = (
     contextState: GameState,
@@ -649,10 +667,12 @@ const Leaderboard: React.FC<LeaderboardProps> = ({
             );
             const total = player.displayTotal;
             const weeklyDelta = player.weekDelta;
-            const timeline = seasonTimeline(
-              gameState,
-              player.id,
-              player.scoring.draftPredictionPoints
+            const timeline = (player.serverTimeline ??
+              seasonTimeline(
+                gameState,
+                player.id,
+                player.scoring.draftPredictionPoints
+              )
             ).slice(-6);
             const impactFeed = [
               ...player.detailScoring.achievements.map((achievement, idx) => ({

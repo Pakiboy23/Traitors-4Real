@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import WeeklyRecapView, { RecapUnavailable } from "../../../../../components/WeeklyRecapView";
 import { loadPublicWeeklyRecap } from "../../../../../src/utils/loadPublicRecap";
+import { recapWithServerStandings } from "../../../../../src/utils/fetchPublishedStandings";
 import { RECAP_FIXTURE } from "../../../../../src/utils/recapFixture";
 import {
   publicRecapUrl,
@@ -79,7 +80,7 @@ export async function generateMetadata({
   if (fixture) return publishedMetadata(fixture, canonical);
   const loaded = await loadPublicWeeklyRecap(seasonId, weekId);
   if (loaded.status !== "published") return unpublishedMetadata(canonical);
-  return publishedMetadata(loaded.recap, canonical);
+  return publishedMetadata(await recapWithServerStandings(loaded.recap), canonical);
 }
 
 export default async function RecapPage({
@@ -102,5 +103,6 @@ export default async function RecapPage({
     );
   }
   if (loaded.status !== "published") notFound();
-  return <WeeklyRecapView recap={loaded.recap} hubHref={recapHubPath(loaded.recap.seasonId)} />;
+  const recap = await recapWithServerStandings(loaded.recap);
+  return <WeeklyRecapView recap={recap} hubHref={recapHubPath(recap.seasonId)} />;
 }

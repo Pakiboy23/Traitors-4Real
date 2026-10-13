@@ -66,8 +66,11 @@ describe("send-lock-reminder live-send guard", () => {
   });
 
   it("documents an admin access token, not the anon key, as the caller", () => {
-    expect(readme).toMatch(/Authorization:\s*Bearer\s+\$ADMIN_ACCESS_TOKEN/);
-    expect(readme).not.toMatch(/Authorization:\s*Bearer\s+\$ANON_KEY/);
+    const pushStart = readme.indexOf("## Push notifications");
+    const pushEnd = readme.indexOf("\n## ", pushStart + 1);
+    const push = readme.slice(pushStart, pushEnd);
+    expect(push).toMatch(/Authorization:\s*Bearer\s+\$ADMIN_ACCESS_TOKEN/);
+    expect(push).not.toMatch(/Authorization:\s*Bearer\s+\$ANON_KEY/);
   });
 
   it("refuses a live send unless APNS_ENV is production", () => {
