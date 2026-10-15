@@ -13,7 +13,7 @@ Capacitor for the iOS shell.
 
 ## Run locally
 
-Requires Node 20 or newer.
+Requires Node 22.12+, 24, or 26+.
 
 ```bash
 npm install
