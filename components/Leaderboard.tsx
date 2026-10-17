@@ -45,7 +45,7 @@ interface LeaderboardProps {
   gameState: GameState;
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
-  onSeasonChange?: (seasonId: string) => void;
+  onSeasonChange?: (seasonId: string) => void | Promise<boolean | void>;
   publishedStandings?: PublishedStandings | null;
 }
 
