@@ -151,6 +151,17 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     expect(app).toContain("if (pendingWriteRef.current === serialized) pendingWriteRef.current = null;");
   });
 
+  it("flushes the current season before Load or the picker can replace the board", () => {
+    expect(app).toContain("shouldFlushSeasonBeforeLeaving");
+    expect(app).toMatch(
+      /handleSeasonChange = useCallback\(async \(seasonId: string\): Promise<boolean> =>/
+    );
+    expect(admin).toContain("const switched = await onSeasonChange?.(seasonId);");
+    expect(admin).toMatch(
+      /const switched = await onSeasonChange\?\.\(seasonId\);[\s\S]*?const seasonState = await fetchAdminSeasonState\(seasonId\);/
+    );
+  });
+
   it("keeps the weekly poll and postgres_changes listener, and refreshes draft entries too", () => {
     expect(admin).toContain("subscribeToWeeklySubmissions");
     expect(admin).toMatch(/window\.setInterval\(\(\) => \{\s*refreshSubmissions\(\);\s*\}, 30000\)/);

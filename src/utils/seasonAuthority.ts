@@ -54,6 +54,25 @@ export const canPersistSeasonState = ({
   return Boolean(active && loaded && active === loaded);
 };
 
+/**
+ * Leaving a season cancels the 500ms autosave timer. A merged vote is already
+ * off the queue (`markSubmissionMerged`), so that write must flush first or
+ * the board change is gone.
+ */
+export const shouldFlushSeasonBeforeLeaving = ({
+  currentSeasonId,
+  nextSeasonId,
+  hasUnsavedWork,
+}: {
+  currentSeasonId: string | null | undefined;
+  nextSeasonId: string | null | undefined;
+  hasUnsavedWork: boolean;
+}): boolean => {
+  const current = normalizeWeekId(currentSeasonId ?? null);
+  const next = normalizeWeekId(nextSeasonId ?? null);
+  return Boolean(hasUnsavedWork && current && next && current !== next);
+};
+
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */
 export const isFinaleResultsCertified = (
   state: Pick<GameState, "finaleConfig" | "weeklyResults">
