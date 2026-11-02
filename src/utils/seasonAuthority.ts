@@ -273,6 +273,27 @@ export const isolateSeasonGameplay = <T extends Partial<GameState>>(
 };
 
 /**
+ * App's season loader and Admin Load must share this. A snapshot can still
+ * carry the previous season's finale; the seasons row wins. Admin Load used
+ * to apply the raw JSON, and the 500ms autosave wrote that poison onto both
+ * season_states and seasons.finale_config.
+ */
+export const prepareSeasonBoard = <T extends Partial<GameState>>(
+  seasonState: T,
+  season: SeasonConfig | undefined,
+  seasonId: string
+): T & { seasonId: string } => {
+  if (!season) {
+    return { ...seasonState, seasonId };
+  }
+  const roster = rosterForSeason(
+    seasonId,
+    Object.keys(seasonState.castStatus || {})
+  );
+  return isolateSeasonGameplay({ ...seasonState, seasonId }, season, roster);
+};
+
+/**
  * Clone copies roster shape, not the source season's outcome. The target
  * row's finaleConfig wins — otherwise a new season opens on FINAL RESULTS.
  */

@@ -51,6 +51,7 @@ import {
   canPersistSeasonState,
   isolateSeasonGameplay,
   isFinaleResultsCertified,
+  prepareSeasonBoard,
   rosterForSeason,
 } from "./src/utils/seasonAuthority";
 import { logger } from "./src/utils/logger";
@@ -461,13 +462,7 @@ const App: React.FC = () => {
           );
           return;
         }
-        const roster = rosterForSeason(
-          seasonId,
-          Object.keys(seasonState.castStatus || {})
-        );
-        const applied = seasonMeta
-          ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
-          : { ...seasonState, seasonId };
+        const applied = prepareSeasonBoard(seasonState, seasonMeta, seasonId);
         const normalized = normalizeGameState(applied);
         commitRemoteState(
           isAdminAuthenticated ? normalized : redactPublicSeasonState(normalized)
