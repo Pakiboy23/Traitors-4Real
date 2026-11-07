@@ -19,6 +19,7 @@ import {
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { runningTotalAtSnapshot, snapshotScoreRecords } from "../src/utils/standings";
+import { mergeWeeklyBonusPredictions } from "../src/utils/weeklySubmissionMerge";
 import {
   duplicateFlagsTouching,
   formatDuplicateImportWarning,
@@ -1043,16 +1044,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
     const league = getSubmissionLeague(submission);
     const match = findPlayerMatch(players, submission, league);
-    const normalizedBonusGames = normalizeSubmissionBonusGames(submission);
+    const submittedBonus = getSubmissionBonusGames(submission);
     const normalizedFinalePredictions = normalizeSubmissionFinalePredictions(submission);
     const incomingBanished = normalizeEmpty(submission.weeklyBanished);
     const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
-    const incomingBonusGames = {
-      redemptionRoulette: normalizedBonusGames?.redemptionRoulette,
-      doubleOrNothing: normalizedBonusGames?.doubleOrNothing,
-      shieldGambit: normalizedBonusGames?.shieldGambit,
-      traitorTrio: normalizedBonusGames?.traitorTrio,
-    };
+    const mergedBonusGames = (existingWeekly?: PlayerEntry["weeklyPredictions"]) =>
+      mergeWeeklyBonusPredictions({
+        activeWeekId,
+        existingWeekly,
+        submittedBonus,
+      });
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
       const normalizedEmail = normalize(submission.email || "");
@@ -1073,12 +1074,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           weekId: activeWeekId,
           nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
           nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
-          bonusGames: {
-            redemptionRoulette: incomingBonusGames.redemptionRoulette ?? "",
-            doubleOrNothing: Boolean(incomingBonusGames.doubleOrNothing),
-            shieldGambit: incomingBonusGames.shieldGambit ?? "",
-            traitorTrio: incomingBonusGames.traitorTrio ?? [],
-          },
+          bonusGames: mergedBonusGames(),
           finalePredictions: normalizedFinalePredictions ?? {
             finalWinner: "",
             lastFaithfulStanding: "",
@@ -1107,20 +1103,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           finalPotEstimate: null,
         },
       };
-      const existingBonus = existingWeekly.bonusGames ?? {};
       const existingFinale = existingWeekly.finalePredictions;
-      const nextBonusGames = {
-        redemptionRoulette:
-          incomingBonusGames.redemptionRoulette ?? existingBonus.redemptionRoulette ?? "",
-        doubleOrNothing:
-          typeof incomingBonusGames.doubleOrNothing === "boolean"
-            ? incomingBonusGames.doubleOrNothing
-            : Boolean(existingBonus.doubleOrNothing),
-        shieldGambit:
-          incomingBonusGames.shieldGambit ?? existingBonus.shieldGambit ?? "",
-        traitorTrio:
-          incomingBonusGames.traitorTrio ?? existingBonus.traitorTrio ?? [],
-      };
+      const nextBonusGames = mergedBonusGames(existingWeekly);
       const nextFinalePredictions = normalizedFinalePredictions
         ? {
             finalWinner:
