@@ -21,6 +21,12 @@ import { calculatePlayerScore } from "../src/utils/scoring";
 import { runningTotalAtSnapshot, snapshotScoreRecords } from "../src/utils/standings";
 import { mergeWeeklyBonusPredictions } from "../src/utils/weeklySubmissionMerge";
 import {
+  mergeReadyWeeklySubmissions,
+  partitionWeeklyMergeWinners,
+  weeklyVoteKey,
+  type WeeklyVoteStamp,
+} from "../src/utils/weeklySubmissionBatch";
+import {
   duplicateFlagsTouching,
   formatDuplicateImportWarning,
 } from "../src/utils/duplicatePlayers";
@@ -1145,11 +1151,116 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return { matched: true as const, players: updatedPlayers, match };
   };
 
+  const recordedWeeklyVotes = (
+    history: WeeklySubmissionHistoryEntry[] | undefined
+  ): WeeklyVoteStamp[] =>
+    (Array.isArray(history) ? history : []).flatMap((entry) => {
+      const weekId = normalizeWeekId(entry.weekId);
+      if (!weekId) return [];
+      return [
+        {
+          id: entry.id,
+          created: entry.created,
+          weekId,
+          playerKey: weeklyVoteKey({
+            email: entry.email,
+            name: entry.name,
+            league: entry.league,
+            weekId,
+          }),
+        },
+      ];
+    });
+
+  const inspectWeeklySubmission = (
+    submission: SubmissionRecord,
+    players: PlayerEntry[],
+    options?: { allowLate?: boolean }
+  ) => {
+    const allowLate = Boolean(options?.allowLate);
+    if (!isSubmissionForActiveWeek(submission)) return { kind: "stale" as const };
+    if (!allowLate && !isSubmissionBeforeFinaleLock(submission)) return { kind: "late" as const };
+    const league = getSubmissionLeague(submission);
+    const match = findPlayerMatch(players, submission, league);
+    if (!match && league !== "jr") return { kind: "unmatched" as const };
+    const weekId = getSubmissionWeekId(submission) ?? getActiveWeekId();
+    return {
+      kind: "ready" as const,
+      playerKey: weeklyVoteKey({
+        email: submission.email,
+        name: submission.name,
+        league,
+        weekId,
+      }),
+      weekId,
+    };
+  };
+
   const mergeSubmissionRecord = async (
     submission: SubmissionRecord,
     { announce = true }: { announce?: boolean } = {}
   ) => {
     const currentState = gameStateRef.current;
+    const inspected = inspectWeeklySubmission(submission, currentState.players);
+    if (inspected.kind === "ready") {
+      const decision = mergeReadyWeeklySubmissions({
+        players: currentState.players,
+        ready: [
+          {
+            submission,
+            playerKey: inspected.playerKey,
+            weekId: inspected.weekId,
+          },
+        ],
+        recorded: recordedWeeklyVotes(currentState.weeklySubmissionHistory),
+        apply: (players, item) => {
+          const applied = applySubmissionToPlayers(players, item);
+          return applied.matched
+            ? { players: applied.players, applied: true as const }
+            : { players, applied: false as const };
+        },
+        historyFor: (item, players) => buildHistoryEntry(item, players),
+      });
+      if (decision.supersededIds.includes(submission.id)) {
+        if (announce) {
+          setMsg({
+            text: `Left ${submission.name}'s older vote pending. A newer submission for this week already stands.`,
+            type: "error",
+          });
+        }
+        return;
+      }
+      if (decision.mergedIds.includes(submission.id)) {
+        const nextHistory = mergeHistoryEntries(
+          Array.isArray(currentState.weeklySubmissionHistory)
+            ? currentState.weeklySubmissionHistory
+            : [],
+          decision.historyAdds
+        );
+        const nextState = {
+          ...currentState,
+          players: decision.players,
+          weeklySubmissionHistory: nextHistory,
+        };
+        gameStateRef.current = nextState;
+        updateGameState(nextState);
+        try {
+          await markSubmissionMerged(submission.id);
+          setSubmissions((prev) => prev.filter((s) => s.id !== submission.id));
+          if (announce) {
+            setMsg({ text: `Merged weekly vote for ${submission.name}.`, type: "success" });
+          }
+        } catch (err: any) {
+          if (announce) {
+            setMsg({
+              text: `Merged weekly vote, but failed to mark submission as merged: ${err?.message || err}`,
+              type: "error",
+            });
+          }
+        }
+        return;
+      }
+    }
     const historyEntry = buildHistoryEntry(submission, currentState.players);
     let forcedLateMerge = false;
     let result = applySubmissionToPlayers(currentState.players, submission);
@@ -1162,6 +1273,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           allowLate: true,
         });
         forcedLateMerge = result.matched;
+      }
+    }
+    if (result.matched) {
+      const gate = inspectWeeklySubmission(submission, currentState.players, { allowLate: true });
+      if (gate.kind === "ready") {
+        const { supersededIds } = partitionWeeklyMergeWinners(
+          [
+            {
+              id: submission.id,
+              created: submission.created,
+              playerKey: gate.playerKey,
+              weekId: gate.weekId,
+            },
+          ],
+          recordedWeeklyVotes(currentState.weeklySubmissionHistory)
+        );
+        if (supersededIds.includes(submission.id)) {
+          if (announce) {
+            setMsg({
+              text: `Left ${submission.name}'s older vote pending. A newer submission for this week already stands.`,
+              type: "error",
+            });
+          }
+          return;
+        }
       }
     }
     if (!result.matched) {
@@ -1226,32 +1362,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     { announce = true }: { announce?: boolean } = {}
   ) => {
     if (list.length === 0) return;
-    let updatedPlayers = gameStateRef.current.players;
-    const mergedIds: string[] = [];
+    const currentPlayers = gameStateRef.current.players;
     const lateIds: string[] = [];
     const staleIds: string[] = [];
-    const historyAdds: WeeklySubmissionHistoryEntry[] = [];
+    const ready: Array<{
+      submission: SubmissionRecord;
+      playerKey: string;
+      weekId: string;
+    }> = [];
     let skipped = 0;
     let staleSkipped = 0;
     let lateSkipped = 0;
 
     list.forEach((submission) => {
-      const historyEntry = buildHistoryEntry(submission, updatedPlayers);
-      const result = applySubmissionToPlayers(updatedPlayers, submission);
-      if (result.matched) {
-        updatedPlayers = result.players;
-        mergedIds.push(submission.id);
-        historyAdds.push(historyEntry);
-      } else if (result.stale) {
+      const inspected = inspectWeeklySubmission(submission, currentPlayers);
+      if (inspected.kind === "stale") {
         staleSkipped += 1;
         staleIds.push(submission.id);
-      } else if (result.late) {
+        return;
+      }
+      if (inspected.kind === "late") {
         lateSkipped += 1;
         lateIds.push(submission.id);
-      } else {
-        skipped += 1;
+        return;
       }
+      if (inspected.kind === "unmatched") {
+        skipped += 1;
+        return;
+      }
+      ready.push({
+        submission,
+        playerKey: inspected.playerKey,
+        weekId: inspected.weekId,
+      });
     });
+
+    const decision = mergeReadyWeeklySubmissions({
+      players: currentPlayers,
+      ready,
+      recorded: recordedWeeklyVotes(gameStateRef.current.weeklySubmissionHistory),
+      apply: (players, submission) => {
+        const applied = applySubmissionToPlayers(players, submission);
+        return applied.matched
+          ? { players: applied.players, applied: true as const }
+          : { players, applied: false as const };
+      },
+      historyFor: (submission, players) => buildHistoryEntry(submission, players),
+    });
+    const updatedPlayers = decision.players;
+    const mergedIds = decision.mergedIds;
+    const historyAdds = decision.historyAdds;
+    const superseded = decision.supersededIds.length;
 
     if (mergedIds.length > 0) {
       const nextHistory = mergeHistoryEntries(
@@ -1282,7 +1443,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             `Merged ${mergedIds.length} weekly votes` +
             `${lateSkipped ? `, skipped ${lateSkipped} late` : ""}` +
             `${staleSkipped ? `, skipped ${staleSkipped} stale` : ""}` +
-            `${skipped ? `, skipped ${skipped}` : ""}.`,
+            `${skipped ? `, skipped ${skipped}` : ""}` +
+            `${superseded ? `, left ${superseded} older ${superseded === 1 ? "vote" : "votes"} pending` : ""}.`,
           type: "success",
         });
       }
