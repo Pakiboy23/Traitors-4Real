@@ -1,6 +1,46 @@
 import type { BonusGamePredictions, WeeklyPredictions } from "../../types";
 import { normalizeWeekId } from "../../types";
 
+const isSameWeek = (
+  existingWeekly?: WeeklyPredictions | null,
+  activeWeekId?: string | null
+) => {
+  const existingWeekId = normalizeWeekId(existingWeekly?.weekId);
+  const normalizedActiveWeekId = normalizeWeekId(activeWeekId);
+  return (
+    existingWeekId !== null &&
+    normalizedActiveWeekId !== null &&
+    existingWeekId === normalizedActiveWeekId
+  );
+};
+
+/**
+ * Merge one submission's council picks onto the active week.
+ *
+ * A different week never keeps the previous week's banished/murdered calls.
+ * Bonus-only votes store those columns as null, which is indistinguishable
+ * from an omitted field, so a same-week omit still keeps this week's choice.
+ * A submitted name replaces what was stored.
+ */
+export const mergeWeeklyCouncilPicks = (input: {
+  activeWeekId: string;
+  existingWeekly?: WeeklyPredictions | null;
+  submittedBanished?: string | null;
+  submittedMurdered?: string | null;
+}): { nextBanished: string; nextMurdered: string } => {
+  const sameWeek = isSameWeek(input.existingWeekly, input.activeWeekId);
+  return {
+    nextBanished: resolveString(
+      readOmittedString(input.submittedBanished),
+      sameWeek ? input.existingWeekly?.nextBanished : undefined
+    ),
+    nextMurdered: resolveString(
+      readOmittedString(input.submittedMurdered),
+      sameWeek ? input.existingWeekly?.nextMurdered : undefined
+    ),
+  };
+};
+
 /**
  * Merge one submission's bonus picks onto the active week.
  *
@@ -14,10 +54,7 @@ export const mergeWeeklyBonusPredictions = (input: {
   existingWeekly?: WeeklyPredictions | null;
   submittedBonus?: BonusGamePredictions | null;
 }): BonusGamePredictions => {
-  const existingWeekId = normalizeWeekId(input.existingWeekly?.weekId);
-  const activeWeekId = normalizeWeekId(input.activeWeekId);
-  const sameWeek =
-    existingWeekId !== null && activeWeekId !== null && existingWeekId === activeWeekId;
+  const sameWeek = isSameWeek(input.existingWeekly, input.activeWeekId);
   const existing = input.existingWeekly?.bonusGames;
   const submitted = bonusRecord(input.submittedBonus);
 
@@ -48,6 +85,13 @@ const bonusRecord = (
 ): BonusGamePredictions | undefined => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
   return value;
+};
+
+const readOmittedString = (raw: string | null | undefined): FieldRead<string> => {
+  if (typeof raw !== "string") return { state: "absent" };
+  const trimmed = raw.trim();
+  if (!trimmed) return { state: "absent" };
+  return { state: "value", value: trimmed };
 };
 
 const readString = (

@@ -2,7 +2,10 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { BonusGamePredictions, PlayerEntry, WeeklyPredictions } from "../../types";
-import { mergeWeeklyBonusPredictions } from "./weeklySubmissionMerge";
+import {
+  mergeWeeklyBonusPredictions,
+  mergeWeeklyCouncilPicks,
+} from "./weeklySubmissionMerge";
 
 const week6 = (
   bonusGames: BonusGamePredictions
@@ -214,12 +217,17 @@ describe("weekly bonus merge", () => {
     const beforePending = structuredClone(pending);
 
     const bonusGames = merge(player.weeklyPredictions, active.bonusGames);
+    const councilPicks = mergeWeeklyCouncilPicks({
+      activeWeekId: "week-7",
+      existingWeekly: player.weeklyPredictions,
+      submittedBanished: "",
+      submittedMurdered: "",
+    });
     const updated: PlayerEntry = {
       ...player,
       weeklyPredictions: {
         weekId: "week-7",
-        nextBanished: player.weeklyPredictions?.nextBanished ?? "",
-        nextMurdered: player.weeklyPredictions?.nextMurdered ?? "",
+        ...councilPicks,
         bonusGames,
         finalePredictions: player.weeklyPredictions?.finalePredictions,
       },
@@ -236,7 +244,8 @@ describe("weekly bonus merge", () => {
     expect(updated.predFirstOut).toBe(player.predFirstOut);
     expect(updated.predWinner).toBe(player.predWinner);
     expect(updated.predTraitors).toBe(player.predTraitors);
-    expect(updated.weeklyPredictions?.nextBanished).toBe("Week Six Banished");
+    expect(updated.weeklyPredictions?.nextBanished).toBe("");
+    expect(updated.weeklyPredictions?.nextMurdered).toBe("");
     expect(player).toEqual(beforePlayer);
     expect(active).toEqual(beforeActive);
     expect(pending).toEqual(beforePending);
@@ -254,5 +263,91 @@ describe("weekly bonus merge", () => {
     expect(source).not.toContain("existingBonus.redemptionRoulette");
     expect(source).not.toContain("existingBonus.traitorTrio");
     expect(source).not.toContain("existingBonus.doubleOrNothing");
+  });
+});
+
+describe("weekly council merge", () => {
+  const council = (
+    existingWeekly: WeeklyPredictions | undefined,
+    submittedBanished?: string | null,
+    submittedMurdered?: string | null,
+    activeWeekId = "week-7"
+  ) =>
+    mergeWeeklyCouncilPicks({
+      activeWeekId,
+      existingWeekly,
+      submittedBanished,
+      submittedMurdered,
+    });
+
+  it("does not copy week-6 banished or murdered onto week-7 when the vote omits them", () => {
+    expect(
+      council(week6({ shieldGambit: "Victor Vollbrechthausen" }), null, undefined)
+    ).toEqual({
+      nextBanished: "",
+      nextMurdered: "",
+    });
+  });
+
+  it("clears blank council fields on a new week instead of keeping week 6", () => {
+    expect(council(week6({}), "", "   ")).toEqual({
+      nextBanished: "",
+      nextMurdered: "",
+    });
+  });
+
+  it("keeps submitted week-7 council names", () => {
+    expect(
+      council(
+        week6({}),
+        "Michael Foote",
+        "Abby Lee"
+      )
+    ).toEqual({
+      nextBanished: "Michael Foote",
+      nextMurdered: "Abby Lee",
+    });
+  });
+
+  it("does not treat an unscoped prior council pick as this week's call", () => {
+    expect(
+      council(
+        {
+          nextBanished: "Week Six Banished",
+          nextMurdered: "Week Six Murdered",
+          bonusGames: {},
+        },
+        null,
+        null
+      )
+    ).toEqual({
+      nextBanished: "",
+      nextMurdered: "",
+    });
+  });
+
+  it("keeps an omitted same-week council pick and still replaces a submitted name", () => {
+    const existing: WeeklyPredictions = {
+      weekId: "week-7",
+      nextBanished: "Already Banished",
+      nextMurdered: "Already Murdered",
+      bonusGames: {},
+    };
+
+    expect(council(existing, null, "Katie Fites", "week-7")).toEqual({
+      nextBanished: "Already Banished",
+      nextMurdered: "Katie Fites",
+    });
+  });
+
+  it("is the council merge used by the admin submission merge", () => {
+    const source = readFileSync(
+      path.resolve(__dirname, "../../components/AdminPanel.tsx"),
+      "utf8"
+    );
+
+    expect(source).toContain("mergeWeeklyCouncilPicks");
+    expect(source).not.toContain("existingWeekly.nextBanished || \"\"");
+    expect(source).not.toContain("existingWeekly.nextMurdered || \"\"");
   });
 });
