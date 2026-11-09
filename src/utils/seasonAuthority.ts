@@ -37,21 +37,45 @@ export const applySeasonRecord = <T extends object>(
   finaleConfig: season.finaleConfig ?? DEFAULT_FINALE_CONFIG,
 });
 
+/** Season id stamped on the in-memory board (top-level, then seasonConfig). */
+export const resolveBoardSeasonId = (
+  state:
+    | {
+        seasonId?: string | null;
+        seasonConfig?: { seasonId?: string | null } | null;
+      }
+    | null
+    | undefined
+): string | null =>
+  normalizeWeekId(state?.seasonId ?? null) ??
+  normalizeWeekId(state?.seasonConfig?.seasonId ?? null);
+
 /**
  * Admin autosave must not write the previous season's board into the newly
  * selected season. That race is what stamped Season 4's certified finale onto
  * the live New Blood snapshot.
+ *
+ * `loadedSeasonId` covers the switch-season race (selector moved, snapshot
+ * still loading). `boardSeasonId` covers Tome / raw JSON import: the selector
+ * stays on season A while `updateGameState` swaps in season B's gameplay.
+ * A board with no season id is treated as belonging to the loaded season
+ * (legacy backups of the current board).
  */
 export const canPersistSeasonState = ({
   activeSeasonId,
   loadedSeasonId,
+  boardSeasonId,
 }: {
   activeSeasonId: string | null | undefined;
   loadedSeasonId: string | null | undefined;
+  boardSeasonId?: string | null | undefined;
 }): boolean => {
   const active = normalizeWeekId(activeSeasonId ?? null);
   const loaded = normalizeWeekId(loadedSeasonId ?? null);
-  return Boolean(active && loaded && active === loaded);
+  if (!active || !loaded || active !== loaded) return false;
+  const board = normalizeWeekId(boardSeasonId ?? null);
+  if (!board) return true;
+  return board === active;
 };
 
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */

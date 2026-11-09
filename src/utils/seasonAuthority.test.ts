@@ -8,6 +8,7 @@ import {
   isolateSeasonGameplay,
   isFinaleResultsCertified,
   resetSeasonStateForClone,
+  resolveBoardSeasonId,
   rosterForSeason,
 } from "./seasonAuthority";
 
@@ -103,6 +104,23 @@ describe("applySeasonRecord", () => {
   });
 });
 
+describe("resolveBoardSeasonId", () => {
+  it("prefers the top-level seasonId over seasonConfig", () => {
+    expect(
+      resolveBoardSeasonId({
+        seasonId: "traitors-new-blood-s1",
+        seasonConfig: { seasonId: "season-legacy" },
+      })
+    ).toBe("traitors-new-blood-s1");
+  });
+
+  it("falls back to seasonConfig when the top-level id is missing", () => {
+    expect(resolveBoardSeasonId({ seasonConfig: { seasonId: "season-legacy" } })).toBe(
+      "season-legacy"
+    );
+  });
+});
+
 describe("canPersistSeasonState", () => {
   it("blocks a write while the newly selected season has not loaded", () => {
     expect(
@@ -127,6 +145,36 @@ describe("canPersistSeasonState", () => {
       canPersistSeasonState({
         activeSeasonId: "traitors-new-blood-s1",
         loadedSeasonId: "traitors-new-blood-s1",
+      })
+    ).toBe(true);
+  });
+
+  it("still allows a loaded season whose board omitted a season id", () => {
+    expect(
+      canPersistSeasonState({
+        activeSeasonId: "traitors-new-blood-s1",
+        loadedSeasonId: "traitors-new-blood-s1",
+        boardSeasonId: null,
+      })
+    ).toBe(true);
+  });
+
+  it("blocks autosave after Tome import of another season while the selector stays put", () => {
+    expect(
+      canPersistSeasonState({
+        activeSeasonId: "traitors-new-blood-s1",
+        loadedSeasonId: "traitors-new-blood-s1",
+        boardSeasonId: "season-legacy",
+      })
+    ).toBe(false);
+  });
+
+  it("allows a restore whose board season id matches the selector", () => {
+    expect(
+      canPersistSeasonState({
+        activeSeasonId: "traitors-new-blood-s1",
+        loadedSeasonId: "traitors-new-blood-s1",
+        boardSeasonId: "traitors-new-blood-s1",
       })
     ).toBe(true);
   });
