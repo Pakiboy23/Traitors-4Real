@@ -9,6 +9,7 @@ import {
   isFinaleResultsCertified,
   resetSeasonStateForClone,
   rosterForSeason,
+  shouldFlushSeasonBeforeLeaving,
 } from "./seasonAuthority";
 
 const liveNewBlood: SeasonConfig = {
@@ -129,6 +130,38 @@ describe("canPersistSeasonState", () => {
         loadedSeasonId: "traitors-new-blood-s1",
       })
     ).toBe(true);
+  });
+});
+
+describe("shouldFlushSeasonBeforeLeaving", () => {
+  it("flushes unsaved work when the commissioner leaves the loaded season", () => {
+    expect(
+      shouldFlushSeasonBeforeLeaving({
+        currentSeasonId: "traitors-new-blood-s1",
+        nextSeasonId: "season-legacy",
+        hasUnsavedWork: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not flush a reload of the same season", () => {
+    expect(
+      shouldFlushSeasonBeforeLeaving({
+        currentSeasonId: "traitors-new-blood-s1",
+        nextSeasonId: "traitors-new-blood-s1",
+        hasUnsavedWork: true,
+      })
+    ).toBe(false);
+  });
+
+  it("does not flush when the board already matches the last saved snapshot", () => {
+    expect(
+      shouldFlushSeasonBeforeLeaving({
+        currentSeasonId: "traitors-new-blood-s1",
+        nextSeasonId: "season-legacy",
+        hasUnsavedWork: false,
+      })
+    ).toBe(false);
   });
 });
 
