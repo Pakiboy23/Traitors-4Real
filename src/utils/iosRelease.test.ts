@@ -97,7 +97,7 @@ describe("iOS release shipping guards", () => {
     // platforms: .iOS(.v17) diff is easy to commit by accident and is not the
     // App target's 15.0 deployment target.
     expect(packageSwift).toContain("platforms: [.iOS(.v15)]");
-    expect(packageSwift).toContain('exact: "8.5.2"');
+    expect(packageSwift).toContain('exact: "8.5.3"');
   });
 
   it("pins capacitor-swift-pm to the installed @capacitor/ios in Package.swift and Package.resolved", () => {

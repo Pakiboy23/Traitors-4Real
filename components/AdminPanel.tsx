@@ -41,6 +41,8 @@ import {
   recapRecordFor,
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
+import { sanitizeSeasonConfig } from "../src/config/validation";
+import { prepareSeasonBoard } from "../src/utils/seasonAuthority";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -111,7 +113,7 @@ interface AdminPanelProps {
   seasonConfig?: SeasonConfig;
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
-  onSeasonChange?: (seasonId: string) => void;
+  onSeasonChange?: (seasonId: string) => void | Promise<boolean | void>;
 }
 
 type ConfirmDialogState = {
@@ -1919,7 +1921,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const refreshed = await listSeasonRecords();
       setSeasonRecords(refreshed);
-      onSeasonChange?.(seasonId);
+      const switched = await onSeasonChange?.(seasonId);
+      if (switched === false) {
+        setMsg({
+          text: "Season created, but the current season still has unsaved work. Save it, then load the new season.",
+          type: "error",
+        });
+        return;
+      }
       setNewSeasonId("");
       setNewSeasonLabel("");
       setNewSeasonCastInput("");
@@ -1937,13 +1946,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleLoadSeason = async (seasonId: string) => {
     try {
+      // Flush the season we are leaving before replacing the board. Load used
+      // to apply the fetched snapshot first, which dropped unsaved merges.
+      const switched = await onSeasonChange?.(seasonId);
+      if (switched === false) {
+        setMsg({
+          text: "Could not save the current season. Stay here, then try again.",
+          type: "error",
+        });
+        return;
+      }
       const seasonState = await fetchAdminSeasonState(seasonId);
       if (!seasonState) {
         setMsg({ text: "No saved state found for this season.", type: "error" });
         return;
       }
-      updateGameState(seasonState);
-      onSeasonChange?.(seasonId);
+      const seasonMeta =
+        seasons.find((season) => season.seasonId === seasonId) ||
+        seasonRecords.find((season) => season.seasonId === seasonId) ||
+        (seasonState.seasonConfig
+          ? sanitizeSeasonConfig(seasonState.seasonConfig, seasonId)
+          : undefined);
+      updateGameState(prepareSeasonBoard(seasonState, seasonMeta, seasonId));
       setMsg({ text: `Loaded ${seasonId}.`, type: "success" });
     } catch (error: any) {
       setMsg({
