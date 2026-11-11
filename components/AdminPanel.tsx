@@ -53,6 +53,7 @@ import {
   readSeasonScopedCounter,
 } from "../src/utils/scoreAdjustmentHydration";
 import { RULE_PACKS } from "../src/config/rulePacks";
+import { resolveBoardSeasonId } from "../src/utils/seasonAuthority";
 import {
   archiveSeason,
   cloneSeason,
@@ -1028,6 +1029,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     try {
       const data = JSON.parse(e.target.value);
       if (data.players && data.castStatus) {
+        const active =
+          normalizeWeekId(activeSeasonId) ??
+          normalizeWeekId(seasonConfig?.seasonId);
+        const imported = resolveBoardSeasonId(data);
+        if (imported && active && imported !== active) {
+          setMsg({
+            text: `That JSON belongs to ${imported}, not the active season ${active}. Switch seasons first, or paste a backup of this season.`,
+            type: "error",
+          });
+          return;
+        }
         updateGameState(data);
         setMsg({ text: "Database fully restored from Tome.", type: 'success' });
       }

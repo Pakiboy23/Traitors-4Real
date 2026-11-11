@@ -52,6 +52,7 @@ import {
   isolateSeasonGameplay,
   isFinaleResultsCertified,
   prepareSeasonBoard,
+  resolveBoardSeasonId,
   rosterForSeason,
   shouldFlushSeasonBeforeLeaving,
 } from "./src/utils/seasonAuthority";
@@ -242,9 +243,15 @@ const App: React.FC = () => {
       !canPersistSeasonState({
         activeSeasonId: scopedSeasonId,
         loadedSeasonId,
+        boardSeasonId: resolveBoardSeasonId(gameState),
       })
     ) {
-      setLastWriteError("Active season has not finished loading.");
+      const boardSeasonId = resolveBoardSeasonId(gameState);
+      setLastWriteError(
+        boardSeasonId && boardSeasonId !== scopedSeasonId
+          ? "On-screen board belongs to a different season."
+          : "Active season has not finished loading."
+      );
       return false;
     }
     // Any season fetch that overlaps this save may predate it.
@@ -593,8 +600,13 @@ const App: React.FC = () => {
       !canPersistSeasonState({
         activeSeasonId: scopedSeasonId,
         loadedSeasonId,
+        boardSeasonId: resolveBoardSeasonId(gameState),
       })
     ) {
+      const boardSeasonId = resolveBoardSeasonId(gameState);
+      if (boardSeasonId && boardSeasonId !== scopedSeasonId) {
+        setLastWriteError("On-screen board belongs to a different season.");
+      }
       return undefined;
     }
     if (writeTimerRef.current !== null) {
