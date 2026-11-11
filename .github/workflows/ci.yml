@@ -23,6 +23,9 @@ jobs:
 
       # Node 22 to match ios/App/ci_scripts/ci_post_clone.sh, which needs it:
       # @capacitor/cli declares engines >=22.0.0 and refuses to run below that.
+      # Vitest 5 additionally requires ^22.12.0 (or ^24 / >=26). setup-node
+      # `22` resolves to latest 22.x, which is the 22.12+ floor — do not pin
+      # `22.12` or the runner would stay on the 22.12.x line.
       # This job never invokes the CLI — it stops at native:web:build — so it
       # passed on Node 20 while the Xcode Cloud sync could not run at all.
       - name: Setup Node
