@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { GameState, SeasonConfig } from "../../types";
 import { NEW_BLOOD_CAST_NAMES } from "../config/newBloodCast";
@@ -7,6 +9,7 @@ import {
   hasForeignSeasonGameplay,
   isolateSeasonGameplay,
   isFinaleResultsCertified,
+  prepareSeasonBoard,
   resetSeasonStateForClone,
   rosterForSeason,
   shouldFlushSeasonBeforeLeaving,
@@ -382,5 +385,58 @@ describe("isolateSeasonGameplay", () => {
     expect(isolated.weeklyScoreHistory?.[0]?.label).toBe("Week 1");
     expect(isolated.players[0].picks[0]?.member).toBe("Abbey Benjamin");
     expect(isolated.castStatus["Abby Lee"]?.isEliminated).toBe(true);
+  });
+});
+
+describe("prepareSeasonBoard", () => {
+  it("lets the seasons row disable a leftover finale before Admin Load can autosave it", () => {
+    const board = prepareSeasonBoard(
+      poisonedNewBloodState(),
+      liveNewBlood,
+      liveNewBlood.seasonId
+    );
+
+    expect(board.finaleConfig?.enabled).toBe(false);
+    expect(board.finaleConfig?.label).toBe("Finale Gauntlet");
+    expect(isFinaleResultsCertified(board)).toBe(false);
+  });
+
+  it("strips Season 4 archives from a live snapshot the same way App load does", () => {
+    const board = prepareSeasonBoard(
+      poisonedNewBloodState(),
+      liveNewBlood,
+      liveNewBlood.seasonId
+    );
+    const roster = rosterForSeason(liveNewBlood.seasonId);
+
+    expect(hasForeignSeasonGameplay(poisonedNewBloodState(), roster)).toBe(true);
+    expect(hasForeignSeasonGameplay(board, roster)).toBe(false);
+    expect(board.weeklyResults?.finaleResults?.finalWinner).toBe("");
+  });
+
+  it("passes the raw snapshot through when the seasons row is missing", () => {
+    const snapshot = {
+      players: [],
+      finaleConfig: { enabled: true, label: "X", lockAt: "" },
+    };
+    const board = prepareSeasonBoard(snapshot, undefined, "unknown-season");
+
+    expect(board.seasonId).toBe("unknown-season");
+    expect(board.finaleConfig?.enabled).toBe(true);
+    expect(board.finaleConfig?.label).toBe("X");
+  });
+});
+
+describe("Admin Load shares prepareSeasonBoard with App", () => {
+  it("does not apply a raw season_states snapshot", () => {
+    const admin = readFileSync(
+      path.resolve(__dirname, "../../components/AdminPanel.tsx"),
+      "utf8"
+    );
+    const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+
+    expect(admin).toContain("prepareSeasonBoard(seasonState, seasonMeta, seasonId)");
+    expect(admin).not.toMatch(/updateGameState\(seasonState\)/);
+    expect(app).toContain("prepareSeasonBoard(seasonState, seasonMeta, seasonId)");
   });
 });

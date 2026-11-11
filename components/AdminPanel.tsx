@@ -38,6 +38,8 @@ import {
   recapRecordFor,
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
+import { sanitizeSeasonConfig } from "../src/config/validation";
+import { prepareSeasonBoard } from "../src/utils/seasonAuthority";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -1963,7 +1965,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         setMsg({ text: "No saved state found for this season.", type: "error" });
         return;
       }
-      updateGameState(seasonState);
+      const seasonMeta =
+        seasons.find((season) => season.seasonId === seasonId) ||
+        seasonRecords.find((season) => season.seasonId === seasonId) ||
+        (seasonState.seasonConfig
+          ? sanitizeSeasonConfig(seasonState.seasonConfig, seasonId)
+          : undefined);
+      updateGameState(prepareSeasonBoard(seasonState, seasonMeta, seasonId));
       setMsg({ text: `Loaded ${seasonId}.`, type: "success" });
     } catch (error: any) {
       setMsg({
