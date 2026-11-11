@@ -19,7 +19,10 @@ import {
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { runningTotalAtSnapshot, snapshotScoreRecords } from "../src/utils/standings";
-import { mergeWeeklyBonusPredictions } from "../src/utils/weeklySubmissionMerge";
+import {
+  mergeWeeklyBonusPredictions,
+  mergeWeeklyCouncilPicks,
+} from "../src/utils/weeklySubmissionMerge";
 import {
   mergeReadyWeeklySubmissions,
   partitionWeeklyMergeWinners,
@@ -374,10 +377,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setPromptDialog({ title, initialValue, resolve });
     });
 
-  const normalizeEmpty = <T,>(value: T | null | undefined) => {
-    if (value === undefined || value === null || value === "") return null;
-    return value;
-  };
   const getActiveWeekId = () => inferActiveWeekId(gameStateRef.current);
   const createEmptyWeeklyResults = (weekId: string) => ({
     weekId,
@@ -1054,13 +1053,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const match = findPlayerMatch(players, submission, league);
     const submittedBonus = getSubmissionBonusGames(submission);
     const normalizedFinalePredictions = normalizeSubmissionFinalePredictions(submission);
-    const incomingBanished = normalizeEmpty(submission.weeklyBanished);
-    const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
     const mergedBonusGames = (existingWeekly?: PlayerEntry["weeklyPredictions"]) =>
       mergeWeeklyBonusPredictions({
         activeWeekId,
         existingWeekly,
         submittedBonus,
+      });
+    const mergedCouncilPicks = (existingWeekly?: PlayerEntry["weeklyPredictions"]) =>
+      mergeWeeklyCouncilPicks({
+        activeWeekId,
+        existingWeekly,
+        submittedBanished: submission.weeklyBanished,
+        submittedMurdered: submission.weeklyMurdered,
       });
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
@@ -1080,8 +1084,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predTraitors: [],
         weeklyPredictions: {
           weekId: activeWeekId,
-          nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
-          nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
+          ...mergedCouncilPicks(),
           bonusGames: mergedBonusGames(),
           finalePredictions: normalizedFinalePredictions ?? {
             finalWinner: "",
@@ -1137,14 +1140,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         email: submission.email || player.email,
         weeklyPredictions: {
           weekId: activeWeekId,
-          nextBanished:
-            typeof incomingBanished === "string"
-              ? incomingBanished
-              : existingWeekly.nextBanished || "",
-          nextMurdered:
-            typeof incomingMurdered === "string"
-              ? incomingMurdered
-              : existingWeekly.nextMurdered || "",
+          ...mergedCouncilPicks(existingWeekly),
           bonusGames: nextBonusGames,
           finalePredictions: nextFinalePredictions,
         },
