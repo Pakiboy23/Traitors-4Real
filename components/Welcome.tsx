@@ -57,7 +57,7 @@ interface WelcomeProps {
   showConfig?: ShowConfig;
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
-  onSeasonChange?: (seasonId: string) => void;
+  onSeasonChange?: (seasonId: string) => void | Promise<boolean | void>;
 }
 
 const FINALE_OVERVIEW_CONFETTI_COUNT = 20;

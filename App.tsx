@@ -51,8 +51,10 @@ import {
   canPersistSeasonState,
   isolateSeasonGameplay,
   isFinaleResultsCertified,
+  prepareSeasonBoard,
   resolveBoardSeasonId,
   rosterForSeason,
+  shouldFlushSeasonBeforeLeaving,
 } from "./src/utils/seasonAuthority";
 import { logger } from "./src/utils/logger";
 import { installPushDeepLinkHandler, RECAP_DEEP_LINK_EVENT, registerForPush } from "./src/native/push";
@@ -227,15 +229,15 @@ const App: React.FC = () => {
     };
   });
 
-  const saveNow = useCallback(async () => {
-    if (!isAdminAuthenticated || !adminSeasonReady) return;
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    if (!isAdminAuthenticated || !adminSeasonReady) return false;
     // Empty-league bootstrap stays in localStorage. Remote writes go to
     // season_states.
-    if (!seasonShellEnabled) return;
+    if (!seasonShellEnabled) return false;
     const scopedSeasonId = normalizeWeekId(activeSeasonId);
     if (!scopedSeasonId) {
       setLastWriteError("No active season selected.");
-      return;
+      return false;
     }
     if (
       !canPersistSeasonState({
@@ -250,7 +252,7 @@ const App: React.FC = () => {
           ? "On-screen board belongs to a different season."
           : "Active season has not finished loading."
       );
-      return;
+      return false;
     }
     // Any season fetch that overlaps this save may predate it.
     manualSaveInFlightRef.current += 1;
@@ -271,6 +273,7 @@ const App: React.FC = () => {
         saveGeneration,
         updatedAt,
       });
+      return true;
     } catch (error) {
       unsavedFailedWriteRef.current =
         JSON.stringify(gameState) !== lastRemoteStateRef.current;
@@ -278,6 +281,7 @@ const App: React.FC = () => {
         error instanceof Error ? error.message : String(error)
       );
       logger.warn("Manual save failed:", error);
+      return false;
     } finally {
       adminEditRevisionRef.current += 1;
       manualSaveInFlightRef.current -= 1;
@@ -468,13 +472,7 @@ const App: React.FC = () => {
           );
           return;
         }
-        const roster = rosterForSeason(
-          seasonId,
-          Object.keys(seasonState.castStatus || {})
-        );
-        const applied = seasonMeta
-          ? isolateSeasonGameplay({ ...seasonState, seasonId }, seasonMeta, roster)
-          : { ...seasonState, seasonId };
+        const applied = prepareSeasonBoard(seasonState, seasonMeta, seasonId);
         const normalized = normalizeGameState(applied);
         commitRemoteState(
           isAdminAuthenticated ? normalized : redactPublicSeasonState(normalized)
@@ -752,9 +750,38 @@ const App: React.FC = () => {
     signOutAdmin();
   }, []);
 
-  const handleSeasonChange = useCallback((seasonId: string) => {
-    setActiveSeasonId(seasonId);
-  }, []);
+  const handleSeasonChange = useCallback(async (seasonId: string): Promise<boolean> => {
+    const next = normalizeWeekId(seasonId);
+    const current = normalizeWeekId(activeSeasonId);
+    if (!next) return false;
+    if (next === current) return true;
+
+    const hasUnsavedWork =
+      writeTimerRef.current !== null ||
+      pendingWriteRef.current !== null ||
+      unsavedFailedWriteRef.current ||
+      (lastRemoteStateRef.current !== null &&
+        JSON.stringify(gameState) !== lastRemoteStateRef.current);
+
+    if (
+      isAdminAuthenticated &&
+      shouldFlushSeasonBeforeLeaving({
+        currentSeasonId: current,
+        nextSeasonId: next,
+        hasUnsavedWork,
+      })
+    ) {
+      if (writeTimerRef.current !== null) {
+        window.clearTimeout(writeTimerRef.current);
+        writeTimerRef.current = null;
+      }
+      const saved = await saveNow();
+      if (!saved) return false;
+    }
+
+    setActiveSeasonId(next);
+    return true;
+  }, [activeSeasonId, gameState, isAdminAuthenticated, saveNow]);
 
   const scoreHistory = Array.isArray(gameState.weeklyScoreHistory)
     ? gameState.weeklyScoreHistory

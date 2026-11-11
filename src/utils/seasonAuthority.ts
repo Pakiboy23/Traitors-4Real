@@ -78,6 +78,25 @@ export const canPersistSeasonState = ({
   return board === active;
 };
 
+/**
+ * Leaving a season cancels the 500ms autosave timer. A merged vote is already
+ * off the queue (`markSubmissionMerged`), so that write must flush first or
+ * the board change is gone.
+ */
+export const shouldFlushSeasonBeforeLeaving = ({
+  currentSeasonId,
+  nextSeasonId,
+  hasUnsavedWork,
+}: {
+  currentSeasonId: string | null | undefined;
+  nextSeasonId: string | null | undefined;
+  hasUnsavedWork: boolean;
+}): boolean => {
+  const current = normalizeWeekId(currentSeasonId ?? null);
+  const next = normalizeWeekId(nextSeasonId ?? null);
+  return Boolean(hasUnsavedWork && current && next && current !== next);
+};
+
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */
 export const isFinaleResultsCertified = (
   state: Pick<GameState, "finaleConfig" | "weeklyResults">
@@ -294,6 +313,27 @@ export const isolateSeasonGameplay = <T extends Partial<GameState>>(
     weeklyRecaps: [],
     scoreAdjustments: [],
   };
+};
+
+/**
+ * App's season loader and Admin Load must share this. A snapshot can still
+ * carry the previous season's finale; the seasons row wins. Admin Load used
+ * to apply the raw JSON, and the 500ms autosave wrote that poison onto both
+ * season_states and seasons.finale_config.
+ */
+export const prepareSeasonBoard = <T extends Partial<GameState>>(
+  seasonState: T,
+  season: SeasonConfig | undefined,
+  seasonId: string
+): T & { seasonId: string } => {
+  if (!season) {
+    return { ...seasonState, seasonId };
+  }
+  const roster = rosterForSeason(
+    seasonId,
+    Object.keys(seasonState.castStatus || {})
+  );
+  return isolateSeasonGameplay({ ...seasonState, seasonId }, season, roster);
 };
 
 /**

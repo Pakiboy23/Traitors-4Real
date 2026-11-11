@@ -19,7 +19,10 @@ import {
 } from '../types';
 import { calculatePlayerScore } from "../src/utils/scoring";
 import { runningTotalAtSnapshot, snapshotScoreRecords } from "../src/utils/standings";
-import { mergeWeeklyBonusPredictions } from "../src/utils/weeklySubmissionMerge";
+import {
+  mergeWeeklyBonusPredictions,
+  mergeWeeklyCouncilPicks,
+} from "../src/utils/weeklySubmissionMerge";
 import {
   mergeReadyWeeklySubmissions,
   partitionWeeklyMergeWinners,
@@ -38,6 +41,8 @@ import {
   recapRecordFor,
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
+import { sanitizeSeasonConfig } from "../src/config/validation";
+import { prepareSeasonBoard } from "../src/utils/seasonAuthority";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -109,7 +114,7 @@ interface AdminPanelProps {
   seasonConfig?: SeasonConfig;
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
-  onSeasonChange?: (seasonId: string) => void;
+  onSeasonChange?: (seasonId: string) => void | Promise<boolean | void>;
 }
 
 type ConfirmDialogState = {
@@ -373,10 +378,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       setPromptDialog({ title, initialValue, resolve });
     });
 
-  const normalizeEmpty = <T,>(value: T | null | undefined) => {
-    if (value === undefined || value === null || value === "") return null;
-    return value;
-  };
   const getActiveWeekId = () => inferActiveWeekId(gameStateRef.current);
   const createEmptyWeeklyResults = (weekId: string) => ({
     weekId,
@@ -1064,13 +1065,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const match = findPlayerMatch(players, submission, league);
     const submittedBonus = getSubmissionBonusGames(submission);
     const normalizedFinalePredictions = normalizeSubmissionFinalePredictions(submission);
-    const incomingBanished = normalizeEmpty(submission.weeklyBanished);
-    const incomingMurdered = normalizeEmpty(submission.weeklyMurdered);
     const mergedBonusGames = (existingWeekly?: PlayerEntry["weeklyPredictions"]) =>
       mergeWeeklyBonusPredictions({
         activeWeekId,
         existingWeekly,
         submittedBonus,
+      });
+    const mergedCouncilPicks = (existingWeekly?: PlayerEntry["weeklyPredictions"]) =>
+      mergeWeeklyCouncilPicks({
+        activeWeekId,
+        existingWeekly,
+        submittedBanished: submission.weeklyBanished,
+        submittedMurdered: submission.weeklyMurdered,
       });
     if (!match) {
       if (league !== "jr") return { matched: false as const, players };
@@ -1090,8 +1096,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         predTraitors: [],
         weeklyPredictions: {
           weekId: activeWeekId,
-          nextBanished: typeof incomingBanished === "string" ? incomingBanished : "",
-          nextMurdered: typeof incomingMurdered === "string" ? incomingMurdered : "",
+          ...mergedCouncilPicks(),
           bonusGames: mergedBonusGames(),
           finalePredictions: normalizedFinalePredictions ?? {
             finalWinner: "",
@@ -1147,14 +1152,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         email: submission.email || player.email,
         weeklyPredictions: {
           weekId: activeWeekId,
-          nextBanished:
-            typeof incomingBanished === "string"
-              ? incomingBanished
-              : existingWeekly.nextBanished || "",
-          nextMurdered:
-            typeof incomingMurdered === "string"
-              ? incomingMurdered
-              : existingWeekly.nextMurdered || "",
+          ...mergedCouncilPicks(existingWeekly),
           bonusGames: nextBonusGames,
           finalePredictions: nextFinalePredictions,
         },
@@ -1935,7 +1933,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       });
       const refreshed = await listSeasonRecords();
       setSeasonRecords(refreshed);
-      onSeasonChange?.(seasonId);
+      const switched = await onSeasonChange?.(seasonId);
+      if (switched === false) {
+        setMsg({
+          text: "Season created, but the current season still has unsaved work. Save it, then load the new season.",
+          type: "error",
+        });
+        return;
+      }
       setNewSeasonId("");
       setNewSeasonLabel("");
       setNewSeasonCastInput("");
@@ -1953,13 +1958,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleLoadSeason = async (seasonId: string) => {
     try {
+      // Flush the season we are leaving before replacing the board. Load used
+      // to apply the fetched snapshot first, which dropped unsaved merges.
+      const switched = await onSeasonChange?.(seasonId);
+      if (switched === false) {
+        setMsg({
+          text: "Could not save the current season. Stay here, then try again.",
+          type: "error",
+        });
+        return;
+      }
       const seasonState = await fetchAdminSeasonState(seasonId);
       if (!seasonState) {
         setMsg({ text: "No saved state found for this season.", type: "error" });
         return;
       }
-      updateGameState(seasonState);
-      onSeasonChange?.(seasonId);
+      const seasonMeta =
+        seasons.find((season) => season.seasonId === seasonId) ||
+        seasonRecords.find((season) => season.seasonId === seasonId) ||
+        (seasonState.seasonConfig
+          ? sanitizeSeasonConfig(seasonState.seasonConfig, seasonId)
+          : undefined);
+      updateGameState(prepareSeasonBoard(seasonState, seasonMeta, seasonId));
       setMsg({ text: `Loaded ${seasonId}.`, type: "success" });
     } catch (error: any) {
       setMsg({
