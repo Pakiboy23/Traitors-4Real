@@ -1,45 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans, Manrope } from "next/font/google";
 import type { ReactNode } from "react";
+import "../fonts/faces.css";
 import "../index.css";
 
-/* Downloaded at build time and served from this app. Weights are the ones the
-   UI requests: Fraunces 500–800, IBM Plex Sans 400–700, IBM Plex Mono 500–700,
-   Manrope 400–800. */
-const fraunces = Fraunces({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-fraunces",
-});
-
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-  variable: "--font-plex-sans",
-});
-
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  display: "swap",
-  variable: "--font-plex-mono",
-});
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-manrope",
-});
-
-const fontVariables = [
-  fraunces.variable,
-  plexSans.variable,
-  plexMono.variable,
-  manrope.variable,
-].join(" ");
+/* Latin files only. The stylesheet still serves every subset; these are the
+   faces next/font preloaded when subsets was ["latin"]. */
+const latinFontPreloads = [
+  "/fonts/fraunces-latin.woff2",
+  "/fonts/ibm-plex-sans-latin.woff2",
+  "/fonts/ibm-plex-mono-latin-500.woff2",
+  "/fonts/ibm-plex-mono-latin-600.woff2",
+  "/fonts/ibm-plex-mono-latin-700.woff2",
+  "/fonts/manrope-latin.woff2",
+];
 
 export const metadata: Metadata = {
   title: "Round Table Draft",
@@ -78,7 +51,19 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className={fontVariables}>
+    <html lang="en">
+      <head>
+        {latinFontPreloads.map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            href={href}
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
+        ))}
+      </head>
       <body>{children}</body>
     </html>
   );
