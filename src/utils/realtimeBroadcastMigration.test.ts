@@ -157,6 +157,10 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
       /handleSeasonChange = useCallback\(async \(seasonId: string\): Promise<boolean> =>/
     );
     expect(admin).toContain("const switched = await onSeasonChange?.(seasonId);");
+    expect(admin).toContain("shouldFlushSeasonBeforeAdminLoad");
+    expect(admin).toMatch(
+      /shouldFlushSeasonBeforeAdminLoad\(\{[\s\S]*?currentSeasonId: activeSeasonId,[\s\S]*?nextSeasonId: seasonId,[\s\S]*?\}\)[\s\S]*?const saved = await onSaveNow\?\.\(\);[\s\S]*?if \(saved === false\)/
+    );
     expect(admin).toMatch(
       /const switched = await onSeasonChange\?\.\(seasonId\);[\s\S]*?const seasonState = await fetchAdminSeasonState\(seasonId\);/
     );

@@ -13,6 +13,7 @@ import {
   resetSeasonStateForClone,
   resolveBoardSeasonId,
   rosterForSeason,
+  shouldFlushSeasonBeforeAdminLoad,
   shouldFlushSeasonBeforeLeaving,
 } from "./seasonAuthority";
 
@@ -211,6 +212,35 @@ describe("shouldFlushSeasonBeforeLeaving", () => {
         currentSeasonId: "traitors-new-blood-s1",
         nextSeasonId: "season-legacy",
         hasUnsavedWork: false,
+      })
+    ).toBe(false);
+  });
+});
+
+describe("shouldFlushSeasonBeforeAdminLoad", () => {
+  it("flushes a reload of the already-loaded season", () => {
+    expect(
+      shouldFlushSeasonBeforeAdminLoad({
+        currentSeasonId: "traitors-new-blood-s1",
+        nextSeasonId: "traitors-new-blood-s1",
+      })
+    ).toBe(true);
+  });
+
+  it("does not extra-save when Load is switching to a different season", () => {
+    expect(
+      shouldFlushSeasonBeforeAdminLoad({
+        currentSeasonId: "traitors-new-blood-s1",
+        nextSeasonId: "season-legacy",
+      })
+    ).toBe(false);
+  });
+
+  it("does not flush when no season is loaded yet", () => {
+    expect(
+      shouldFlushSeasonBeforeAdminLoad({
+        currentSeasonId: null,
+        nextSeasonId: "traitors-new-blood-s1",
       })
     ).toBe(false);
   });

@@ -97,6 +97,25 @@ export const shouldFlushSeasonBeforeLeaving = ({
   return Boolean(hasUnsavedWork && current && next && current !== next);
 };
 
+/**
+ * Same-season Admin Load still replaces the board from `season_states`.
+ * `handleSeasonChange` returns immediately when the id is unchanged, so it
+ * never calls saveNow. A merged vote is already `markSubmissionMerged` and
+ * off the queue — that write must land before the fetch or Load restores the
+ * pre-merge snapshot and the next autosave persists it.
+ */
+export const shouldFlushSeasonBeforeAdminLoad = ({
+  currentSeasonId,
+  nextSeasonId,
+}: {
+  currentSeasonId: string | null | undefined;
+  nextSeasonId: string | null | undefined;
+}): boolean => {
+  const current = normalizeWeekId(currentSeasonId ?? null);
+  const next = normalizeWeekId(nextSeasonId ?? null);
+  return Boolean(current && next && current === next);
+};
+
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */
 export const isFinaleResultsCertified = (
   state: Pick<GameState, "finaleConfig" | "weeklyResults">
