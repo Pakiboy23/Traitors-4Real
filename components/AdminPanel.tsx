@@ -42,7 +42,10 @@ import {
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
 import { sanitizeSeasonConfig } from "../src/config/validation";
-import { prepareSeasonBoard } from "../src/utils/seasonAuthority";
+import {
+  prepareSeasonBoard,
+  shouldFlushSeasonBeforeAdminLoad,
+} from "../src/utils/seasonAuthority";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -109,7 +112,7 @@ interface AdminPanelProps {
   onSignOut?: () => void;
   lastSavedAt?: number | null;
   lastWriteError?: string | null;
-  onSaveNow?: () => void;
+  onSaveNow?: () => void | Promise<boolean | void>;
   showConfig?: ShowConfig;
   seasonConfig?: SeasonConfig;
   seasons?: SeasonConfig[];
@@ -1967,6 +1970,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           type: "error",
         });
         return;
+      }
+      // Clicking "Loaded" on the active season does not leave, so the switch
+      // path above skipped saveNow. Persist in-memory merges before the fetch
+      // can restore the last snapshot and the next autosave write it back.
+      if (
+        shouldFlushSeasonBeforeAdminLoad({
+          currentSeasonId: activeSeasonId,
+          nextSeasonId: seasonId,
+        })
+      ) {
+        const saved = await onSaveNow?.();
+        if (saved === false) {
+          setMsg({
+            text: "Could not save the current season. Stay here, then try again.",
+            type: "error",
+          });
+          return;
+        }
       }
       const seasonState = await fetchAdminSeasonState(seasonId);
       if (!seasonState) {
