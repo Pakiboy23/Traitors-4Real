@@ -162,6 +162,13 @@ describe("broadcast listeners still fall back when no signal arrives", () => {
     );
   });
 
+  it("flushes unsaved work before admin sign-out revokes the JWT", () => {
+    expect(app).toContain("shouldFlushSeasonBeforeAdminSignOut");
+    expect(app).toMatch(
+      /const saved = await saveNow\(\);[\s\S]*?if \(!saved\) return;[\s\S]*?signOutAdmin\(\);/
+    );
+  });
+
   it("keeps the weekly poll and postgres_changes listener, and refreshes draft entries too", () => {
     expect(admin).toContain("subscribeToWeeklySubmissions");
     expect(admin).toMatch(/window\.setInterval\(\(\) => \{\s*refreshSubmissions\(\);\s*\}, 30000\)/);

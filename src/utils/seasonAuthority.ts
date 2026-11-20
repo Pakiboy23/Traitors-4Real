@@ -97,6 +97,20 @@ export const shouldFlushSeasonBeforeLeaving = ({
   return Boolean(hasUnsavedWork && current && next && current !== next);
 };
 
+/**
+ * Signing out flips `isAdminAuthenticated`, which remounts the autosave
+ * effect and clears the 500ms timer. The public reload then replaces the
+ * board. A merged vote is already off the queue, so that write must flush
+ * (and succeed) before the JWT is revoked.
+ */
+export const shouldFlushSeasonBeforeAdminSignOut = ({
+  isAdminAuthenticated,
+  hasUnsavedWork,
+}: {
+  isAdminAuthenticated: boolean;
+  hasUnsavedWork: boolean;
+}): boolean => Boolean(isAdminAuthenticated && hasUnsavedWork);
+
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */
 export const isFinaleResultsCertified = (
   state: Pick<GameState, "finaleConfig" | "weeklyResults">

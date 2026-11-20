@@ -54,6 +54,7 @@ import {
   prepareSeasonBoard,
   resolveBoardSeasonId,
   rosterForSeason,
+  shouldFlushSeasonBeforeAdminSignOut,
   shouldFlushSeasonBeforeLeaving,
 } from "./src/utils/seasonAuthority";
 import { logger } from "./src/utils/logger";
@@ -747,8 +748,29 @@ const App: React.FC = () => {
   }, []);
 
   const handleSignOut = useCallback(async () => {
+    const hasUnsavedWork =
+      writeTimerRef.current !== null ||
+      pendingWriteRef.current !== null ||
+      unsavedFailedWriteRef.current ||
+      (lastRemoteStateRef.current !== null &&
+        JSON.stringify(gameState) !== lastRemoteStateRef.current);
+
+    if (
+      shouldFlushSeasonBeforeAdminSignOut({
+        isAdminAuthenticated,
+        hasUnsavedWork,
+      })
+    ) {
+      if (writeTimerRef.current !== null) {
+        window.clearTimeout(writeTimerRef.current);
+        writeTimerRef.current = null;
+      }
+      const saved = await saveNow();
+      if (!saved) return;
+    }
+
     signOutAdmin();
-  }, []);
+  }, [gameState, isAdminAuthenticated, saveNow]);
 
   const handleSeasonChange = useCallback(async (seasonId: string): Promise<boolean> => {
     const next = normalizeWeekId(seasonId);
