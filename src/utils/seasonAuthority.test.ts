@@ -13,6 +13,7 @@ import {
   resetSeasonStateForClone,
   resolveBoardSeasonId,
   rosterForSeason,
+  shouldFlushSeasonBeforeAdminSignOut,
   shouldFlushSeasonBeforeLeaving,
 } from "./seasonAuthority";
 
@@ -213,6 +214,40 @@ describe("shouldFlushSeasonBeforeLeaving", () => {
         hasUnsavedWork: false,
       })
     ).toBe(false);
+  });
+});
+
+describe("shouldFlushSeasonBeforeAdminSignOut", () => {
+  it("flushes unsaved work before the JWT is revoked", () => {
+    expect(
+      shouldFlushSeasonBeforeAdminSignOut({
+        isAdminAuthenticated: true,
+        hasUnsavedWork: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not flush a signed-out or already-saved board", () => {
+    expect(
+      shouldFlushSeasonBeforeAdminSignOut({
+        isAdminAuthenticated: true,
+        hasUnsavedWork: false,
+      })
+    ).toBe(false);
+    expect(
+      shouldFlushSeasonBeforeAdminSignOut({
+        isAdminAuthenticated: false,
+        hasUnsavedWork: true,
+      })
+    ).toBe(false);
+  });
+
+  it("handleSignOut awaits saveNow before signOutAdmin when a merge is still dirty", () => {
+    const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+    expect(app).toContain("shouldFlushSeasonBeforeAdminSignOut");
+    expect(app).toMatch(
+      /handleSignOut = useCallback\(async \(\) => \{[\s\S]*?shouldFlushSeasonBeforeAdminSignOut\(\{[\s\S]*?const saved = await saveNow\(\);[\s\S]*?if \(!saved\) return;[\s\S]*?signOutAdmin\(\);/
+    );
   });
 });
 
