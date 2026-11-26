@@ -23,6 +23,7 @@ interface SubmissionsSectionProps {
   onRefreshSubmissions: () => void;
   onMergeAllSubmissions: () => void;
   mergeAllDisabled: boolean;
+  queueMergeEnabled: boolean;
   draftSubmissions: SubmissionRecord[];
   isLoadingDraftSubmissions: boolean;
   draftSubmissionsError: string | null;
@@ -163,6 +164,7 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
   onRefreshSubmissions,
   onMergeAllSubmissions,
   mergeAllDisabled,
+  queueMergeEnabled,
   getSubmissionLeague,
   getSubmissionBonusGames,
   getSubmissionFinalePredictions,
@@ -196,9 +198,9 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
             <button
               type="button"
               onClick={onMergeAllDraftSubmissions}
-              disabled={draftSubmissions.length === 0}
+              disabled={draftSubmissions.length === 0 || !queueMergeEnabled}
               className={`px-4 py-2 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
-                draftSubmissions.length === 0
+                draftSubmissions.length === 0 || !queueMergeEnabled
                   ? "border border-[color:var(--panel-border)] text-[color:var(--text-muted)] cursor-not-allowed"
                   : "btn-primary"
               }`}
@@ -326,9 +328,9 @@ const SubmissionsSection: React.FC<SubmissionsSectionProps> = ({
                     <button
                       type="button"
                       onClick={() => onMergeSubmission(submission)}
-                      disabled={!canMerge}
+                      disabled={!canMerge || !queueMergeEnabled}
                       className={`px-4 py-2 rounded-full text-[11px] uppercase tracking-[0.14em] font-semibold ${
-                        canMerge
+                        canMerge && queueMergeEnabled
                           ? isLate
                             ? "bg-[color:var(--warning)] text-black"
                             : "bg-[color:var(--success)] text-black"

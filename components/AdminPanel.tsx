@@ -42,7 +42,7 @@ import {
 } from "../src/utils/weeklyRecap";
 import { resolveCastNames } from "../src/utils/castProfiles";
 import { sanitizeSeasonConfig } from "../src/config/validation";
-import { prepareSeasonBoard } from "../src/utils/seasonAuthority";
+import { prepareSeasonBoard, shouldAllowAdminQueueMerge } from "../src/utils/seasonAuthority";
 import { supabaseUrl } from "../src/lib/supabase";
 import { LIMITS } from "../src/utils/scoringConstants";
 import { logger } from "../src/utils/logger";
@@ -115,6 +115,7 @@ interface AdminPanelProps {
   seasons?: SeasonConfig[];
   activeSeasonId?: string | null;
   onSeasonChange?: (seasonId: string) => void | Promise<boolean | void>;
+  adminSeasonReady?: boolean;
 }
 
 type ConfirmDialogState = {
@@ -140,6 +141,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   seasons = [],
   activeSeasonId,
   onSeasonChange,
+  adminSeasonReady = false,
 }) => {
   // The roster comes from the game state, which has already resolved it for the
   // active season. Merging showConfig.castNames back in here re-created the bug
@@ -1210,6 +1212,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     submission: SubmissionRecord,
     { announce = true }: { announce?: boolean } = {}
   ) => {
+    if (!shouldAllowAdminQueueMerge({ adminSeasonReady })) {
+      if (announce) {
+        setMsg({
+          text: "Season snapshot is still loading. Merge once it finishes so the vote stays on the board.",
+          type: "error",
+        });
+      }
+      return;
+    }
     const currentState = gameStateRef.current;
     const inspected = inspectWeeklySubmission(submission, currentState.players);
     if (inspected.kind === "ready") {
@@ -1371,6 +1382,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     list: SubmissionRecord[],
     { announce = true }: { announce?: boolean } = {}
   ) => {
+    if (!shouldAllowAdminQueueMerge({ adminSeasonReady })) {
+      if (announce) {
+        setMsg({
+          text: "Season snapshot is still loading. Merge once it finishes so the vote stays on the board.",
+          type: "error",
+        });
+      }
+      return;
+    }
     if (list.length === 0) return;
     const currentPlayers = gameStateRef.current.players;
     const lateIds: string[] = [];
@@ -1494,6 +1514,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
    * email so re-running this does not duplicate anyone.
    */
   const mergeDraftSubmissionList = async (records: SubmissionRecord[]) => {
+    if (!shouldAllowAdminQueueMerge({ adminSeasonReady })) {
+      setMsg({
+        text: "Season snapshot is still loading. Merge once it finishes so the roster stays on the board.",
+        type: "error",
+      });
+      return;
+    }
     if (records.length === 0) return;
 
     const existingPlayers = gameStateRef.current.players || [];
@@ -2400,7 +2427,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       submissionsError={submissionsError}
       onRefreshSubmissions={refreshSubmissions}
       onMergeAllSubmissions={mergeAllSubmissions}
-      mergeAllDisabled={submissions.length === 0}
+      mergeAllDisabled={
+        submissions.length === 0 ||
+        !shouldAllowAdminQueueMerge({ adminSeasonReady })
+      }
+      queueMergeEnabled={shouldAllowAdminQueueMerge({ adminSeasonReady })}
       draftSubmissions={draftSubmissions}
       isLoadingDraftSubmissions={isLoadingDraftSubmissions}
       draftSubmissionsError={draftSubmissionsError}
