@@ -1012,6 +1012,7 @@ const App: React.FC = () => {
             seasons={seasons}
             activeSeasonId={activeSeasonId || gameState.seasonId}
             onSeasonChange={handleSeasonChange}
+            adminSeasonReady={adminSeasonReady}
           />
         ) : (
           <AdminAuth

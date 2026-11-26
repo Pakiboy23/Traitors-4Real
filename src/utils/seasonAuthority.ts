@@ -97,6 +97,18 @@ export const shouldFlushSeasonBeforeLeaving = ({
   return Boolean(hasUnsavedWork && current && next && current !== next);
 };
 
+/**
+ * Merge stamps the submissions queue (`markSubmissionMerged`) before autosave
+ * writes season_states. Autosave stays off until the first admin snapshot is
+ * on screen, and that fetch always replaces the board. Merging in that window
+ * takes the vote off the queue, then the snapshot wipe drops the picks.
+ */
+export const shouldAllowAdminQueueMerge = ({
+  adminSeasonReady,
+}: {
+  adminSeasonReady: boolean;
+}): boolean => adminSeasonReady;
+
 /** Home "Season Complete" / final podium. Finale week alone is not enough. */
 export const isFinaleResultsCertified = (
   state: Pick<GameState, "finaleConfig" | "weeklyResults">

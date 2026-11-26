@@ -13,6 +13,7 @@ import {
   resetSeasonStateForClone,
   resolveBoardSeasonId,
   rosterForSeason,
+  shouldAllowAdminQueueMerge,
   shouldFlushSeasonBeforeLeaving,
 } from "./seasonAuthority";
 
@@ -213,6 +214,30 @@ describe("shouldFlushSeasonBeforeLeaving", () => {
         hasUnsavedWork: false,
       })
     ).toBe(false);
+  });
+});
+
+describe("shouldAllowAdminQueueMerge", () => {
+  it("blocks merge until the admin season snapshot is on screen", () => {
+    expect(shouldAllowAdminQueueMerge({ adminSeasonReady: false })).toBe(false);
+  });
+
+  it("allows merge once autosave is armed", () => {
+    expect(shouldAllowAdminQueueMerge({ adminSeasonReady: true })).toBe(true);
+  });
+
+  it("AdminPanel refuses merge and App passes adminSeasonReady", () => {
+    const admin = readFileSync(
+      path.resolve(__dirname, "../../components/AdminPanel.tsx"),
+      "utf8"
+    );
+    const app = readFileSync(path.resolve(__dirname, "../../App.tsx"), "utf8");
+
+    expect(admin).toContain("shouldAllowAdminQueueMerge");
+    expect(admin).toMatch(
+      /if \(!shouldAllowAdminQueueMerge\(\{ adminSeasonReady \}\)\)/
+    );
+    expect(app).toContain("adminSeasonReady={adminSeasonReady}");
   });
 });
 
